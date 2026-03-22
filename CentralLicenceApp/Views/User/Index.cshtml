@@ -1,0 +1,91 @@
+@model List<CentralLicenceApp.Models.UserMaster>
+@{
+    ViewData["Title"] = "User Management";
+    var currentUserId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">User Management</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">@Model.Count system user(s)</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;">
+        <i class="bi bi-plus-lg me-1"></i> New User
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Last Login</th>
+                        <th>Created</th>
+                        <th class="pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in Model)
+                    {
+                        <tr>
+                            <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@u.Id</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div style="width:34px;height:34px;background:#e0e7ff;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#6366f1;font-weight:700;font-size:.85rem;flex-shrink:0;">
+                                        @(u.FullName?.Length > 0 ? u.FullName[0].ToString().ToUpper() : u.Username[0].ToString().ToUpper())
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold" style="font-size:.875rem;">@(u.FullName ?? u.Username)</div>
+                                        <div class="text-muted" style="font-size:.75rem;">@@@u.Username</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="font-size:.85rem;">@u.Email</td>
+                            <td>
+                                @if (u.RoleName == "Administrator")
+                                {
+                                    <span class="badge" style="background:#ede9fe;color:#6d28d9;font-size:.73rem;border-radius:20px;padding:.3rem .7rem;"><i class="bi bi-shield-fill me-1"></i>@u.RoleName</span>
+                                }
+                                else
+                                {
+                                    <span class="badge" style="background:#f1f5f9;color:#475569;font-size:.73rem;border-radius:20px;padding:.3rem .7rem;"><i class="bi bi-person me-1"></i>@u.RoleName</span>
+                                }
+                            </td>
+                            <td>
+                                @if (u.IsActive)
+                                {
+                                    <span class="badge badge-ok rounded-pill px-2 py-1" style="font-size:.73rem;">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-neu rounded-pill px-2 py-1" style="font-size:.73rem;">Inactive</span>
+                                }
+                            </td>
+                            <td style="font-size:.82rem;">@(u.LastLoginDate.HasValue ? u.LastLoginDate.Value.ToString("dd MMM yyyy HH:mm") : "—")</td>
+                            <td style="font-size:.82rem;">@u.CreatedAt.ToString("dd MMM yyyy")</td>
+                            <td class="pe-3">
+                                <div class="d-flex gap-1">
+                                    <a asp-action="Edit" asp-route-id="@u.Id" class="btn btn-sm btn-outline-secondary" title="Edit" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
+                                    @if (u.Id != currentUserId)
+                                    {
+                                        <form asp-action="Delete" method="post" onsubmit="return confirm('Delete user @u.Username?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@u.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" style="border-radius:7px;"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

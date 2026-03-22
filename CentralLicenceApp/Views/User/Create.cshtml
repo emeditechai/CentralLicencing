@@ -1,0 +1,73 @@
+@model CentralLicenceApp.Models.ViewModels.UserFormViewModel
+@{
+    ViewData["Title"] = "New User";
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">New User</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Create a new system user</p>
+    </div>
+</div>
+
+<div class="card" style="max-width:560px;">
+    <div class="card-body p-4">
+        <form asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.83rem;"></div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="FullName" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="FullName" class="form-control" style="border-radius:10px;" />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Username" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="Username" class="form-control" style="border-radius:10px;" autocomplete="username" />
+                    <span asp-validation-for="Username" class="text-danger small"></span>
+                </div>
+                <div class="col-md-12">
+                    <label asp-for="Email" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="Email" class="form-control" type="email" style="border-radius:10px;" />
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Password" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="Password" type="password" class="form-control" style="border-radius:10px;" autocomplete="new-password" />
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="ConfirmPassword" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="ConfirmPassword" type="password" class="form-control" style="border-radius:10px;" autocomplete="new-password" />
+                    <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="RoleId" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <select asp-for="RoleId" class="form-select" style="border-radius:10px;"
+                            asp-items="@(new SelectList(Model.Roles, "Id", "RoleName"))">
+                        <option value="">-- Select Role --</option>
+                    </select>
+                    <span asp-validation-for="RoleId" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <div class="form-check pb-1">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                        <label asp-for="IsActive" class="form-check-label fw-semibold" style="font-size:.85rem;"></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn text-white px-4" style="background:#6366f1;border:none;border-radius:10px;">
+                    <i class="bi bi-person-plus me-1"></i> Create User
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary" style="border-radius:10px;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

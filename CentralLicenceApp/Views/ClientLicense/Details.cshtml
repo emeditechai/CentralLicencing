@@ -1,0 +1,177 @@
+@model CentralLicenceApp.Models.ClientAppLicense
+@using CentralLicenceApp.Models
+@{
+    ViewData["Title"] = "Licence Details – " + Model.ClientCode;
+    var isExpired = Model.ExpiryDate < DateTime.Now;
+    var badgeCls  = !Model.IsActive ? "badge-neu" : isExpired ? "badge-err" : "badge-ok";
+    var badgeTxt  = !Model.IsActive ? "Inactive" : isExpired ? "Expired" : "Active";
+    var cd        = ViewBag.ClientDetails as ClientDetails;
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Licence Details</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">@Model.ClientCode</p>
+    </div>
+    <span class="badge @badgeCls rounded-pill px-3 py-2 ms-auto" style="font-size:.8rem;">@badgeTxt</span>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-person-badge me-2" style="color:#6366f1;"></i>Client Information</div>
+            <div class="card-body">
+                <dl class="row mb-0" style="font-size:.875rem;">
+                    <dt class="col-sm-4 text-muted fw-normal">Product Type</dt>
+                    <dd class="col-sm-8"><span class="badge rounded-pill px-2 py-1" style="background:#ede9fe;color:#6366f1;font-size:.75rem;">@Model.ProductType</span></dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Client Code</dt>
+                    <dd class="col-sm-8 fw-semibold" style="color:#6366f1;">@Model.ClientCode</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Client Name</dt>
+                    <dd class="col-sm-8 fw-semibold">@Model.ClientName</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Contact</dt>
+                    <dd class="col-sm-8">@Model.ContactNumber</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Email</dt>
+                    <dd class="col-sm-8">@(Model.EmailID ?? "—")</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">App URL</dt>
+                    <dd class="col-sm-8">
+                        @if (!string.IsNullOrEmpty(Model.AppUrl))
+                        {
+                            <a href="@Model.AppUrl" target="_blank" rel="noopener noreferrer">@Model.AppUrl</a>
+                        }
+                        else { <span>—</span> }
+                    </dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Public IP</dt>
+                    <dd class="col-sm-8">@(Model.PublicIPAddress ?? "—")</dd>
+                    <dt class="col-sm-4 text-muted fw-normal">Last Login</dt>
+                    <dd class="col-sm-8">@(Model.LastLoginDate.HasValue ? Model.LastLoginDate.Value.ToString("dd MMM yyyy HH:mm") : "—")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-key-fill me-2" style="color:#6366f1;"></i>Licence Key</div>
+            <div class="card-body">
+                <div class="p-3 rounded-3 text-center" style="background:#f8fafc;border:1px dashed #e2e8f0;">
+                    <code style="font-size:.8rem;font-weight:600;word-break:break-all;color:#6366f1;">@Model.LicenseKey</code>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-calendar3 me-2" style="color:#6366f1;"></i>Dates</div>
+            <div class="card-body">
+                <dl class="row mb-0" style="font-size:.875rem;">
+                    <dt class="col-sm-5 text-muted fw-normal">Start Date</dt>
+                    <dd class="col-sm-7">@Model.Startdate.ToString("dd MMM yyyy")</dd>
+                    <dt class="col-sm-5 text-muted fw-normal">Expiry Date</dt>
+                    <dd class="col-sm-7 @(isExpired ? "text-danger fw-semibold" : "")">@Model.ExpiryDate.ToString("dd MMM yyyy")</dd>
+                    <dt class="col-sm-5 text-muted fw-normal">AMC Expiry</dt>
+                    <dd class="col-sm-7">@(Model.AMC_Expireddate.HasValue ? Model.AMC_Expireddate.Value.ToString("dd MMM yyyy") : "—")</dd>
+                    <dt class="col-sm-5 text-muted fw-normal">Created</dt>
+                    <dd class="col-sm-7">@Model.CreatedAt.ToString("dd MMM yyyy HH:mm")</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><i class="bi bi-hdd me-2" style="color:#6366f1;"></i>Hardware</div>
+            <div class="card-body" style="font-size:.82rem;">
+                <div class="mb-2">
+                    <div class="text-muted">HDD Serial</div>
+                    <code>@(string.IsNullOrEmpty(Model.HardDiskNumber) ? "—" : Model.HardDiskNumber)</code>
+                </div>
+                <div class="mb-2">
+                    <div class="text-muted">Server MAC</div>
+                    <code>@(string.IsNullOrEmpty(Model.ServerMacID) ? "—" : Model.ServerMacID)</code>
+                </div>
+                <div>
+                    <div class="text-muted">Motherboard</div>
+                    <code>@(string.IsNullOrEmpty(Model.MotherboardNumber) ? "—" : Model.MotherboardNumber)</code>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Client Details Card -->
+@if (cd != null)
+{
+    <div class="row g-3 mt-1">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span><i class="bi bi-person-lines-fill me-2" style="color:#6366f1;"></i>Client Details</span>
+                    @if (User.IsInRole("Administrator"))
+                    {
+                        <a asp-controller="ClientDetails" asp-action="Upsert"
+                           asp-route-clientCode="@Model.ClientCode"
+                           asp-route-productType="@Model.ProductType"
+                           class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;">
+                            <i class="bi bi-pencil me-1"></i>Edit
+                        </a>
+                    }
+                </div>
+                <div class="card-body">
+                    <div class="row g-3" style="font-size:.875rem;">
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="text-muted mb-1" style="font-size:.75rem;">Contact Person</div>
+                            <div class="fw-semibold">@(string.IsNullOrEmpty(cd.ClientPersonName) ? "—" : cd.ClientPersonName)</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="text-muted mb-1" style="font-size:.75rem;">Address</div>
+                            <div>@(string.IsNullOrEmpty(cd.Address) ? "—" : cd.Address)</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="text-muted mb-1" style="font-size:.75rem;">Date of Birth</div>
+                            <div>@(cd.DOB.HasValue ? cd.DOB.Value.ToString("dd MMM yyyy") : "—")</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="text-muted mb-1" style="font-size:.75rem;">Anniversary Date</div>
+                            <div>@(cd.Anniversarydate.HasValue ? cd.Anniversarydate.Value.ToString("dd MMM yyyy") : "—")</div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="text-muted mb-1" style="font-size:.75rem;">Status</div>
+                            <div>
+                                @if (cd.IsActive)
+                                {
+                                    <span class="badge badge-ok rounded-pill px-2 py-1" style="font-size:.72rem;">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-neu rounded-pill px-2 py-1" style="font-size:.72rem;">Inactive</span>
+                                }
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(cd.ProductPurchased))
+                        {
+                            <div class="col-sm-12 col-lg-9">
+                                <div class="text-muted mb-1" style="font-size:.75rem;">Products Purchased</div>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var p in cd.ProductPurchased.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#ede9fe;color:#6366f1;font-size:.75rem;">@p.Trim()</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (User.IsInRole("Administrator"))
+{
+    <div class="d-flex gap-2 mt-4">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn text-white px-4" style="background:#6366f1;border:none;border-radius:10px;">
+            <i class="bi bi-pencil me-1"></i> Edit
+        </a>
+        <a asp-action="Index" asp-route-productType="@Model.ProductType" class="btn btn-outline-secondary" style="border-radius:10px;">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+    </div>
+}

@@ -1,0 +1,280 @@
+@model CentralLicenceApp.Models.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    var monthLabels   = Model.MonthlyStats.Select(m => m.Month).ToList();
+    var validCounts   = Model.MonthlyStats.Select(m => m.ValidCount).ToList();
+    var invalidCounts = Model.MonthlyStats.Select(m => m.InvalidCount).ToList();
+    var selectedPT    = Model.SelectedProductType ?? "";
+}
+
+<!-- Product Type Filter -->
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Dashboard</h4>
+        @if (!string.IsNullOrEmpty(selectedPT))
+        {
+            <p class="text-muted mb-0" style="font-size:.82rem;">Showing data for <strong style="color:#6366f1;">@selectedPT</strong></p>
+        }
+        else
+        {
+            <p class="text-muted mb-0" style="font-size:.82rem;">Showing data for all products</p>
+        }
+    </div>
+    <form method="get" class="d-flex align-items-center gap-2">
+        <label class="fw-semibold mb-0" style="font-size:.82rem;color:#64748b;white-space:nowrap;">Product Type</label>
+        <select name="productType" class="form-select form-select-sm" style="min-width:160px;border-radius:10px;"
+                onchange="this.form.submit()">
+            <option value="">All Products</option>
+            @foreach (var pt in Model.AvailableProductTypes)
+            {
+                <option value="@pt" selected="@(selectedPT == pt)">@pt</option>
+            }
+        </select>
+        @if (!string.IsNullOrEmpty(selectedPT))
+        {
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;white-space:nowrap;">Clear</a>
+        }
+    </form>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
+            <div class="stat-ico"><i class="bi bi-people-fill"></i></div>
+            <div>
+                <div class="stat-val">@Model.TotalClients</div>
+                <div class="stat-lbl">Total Clients</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#10b981,#059669);">
+            <div class="stat-ico"><i class="bi bi-patch-check-fill"></i></div>
+            <div>
+                <div class="stat-val">@Model.ActiveLicenses</div>
+                <div class="stat-lbl">Active Licences</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#ef4444,#dc2626);">
+            <div class="stat-ico"><i class="bi bi-x-circle-fill"></i></div>
+            <div>
+                <div class="stat-val">@Model.ExpiredLicenses</div>
+                <div class="stat-lbl">Expired Licences</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+            <div class="stat-ico"><i class="bi bi-exclamation-triangle-fill"></i></div>
+            <div>
+                <div class="stat-val">@Model.ExpiringThisMonth</div>
+                <div class="stat-lbl">Expiring This Month</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Second row: Validation stats -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-4">
+        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);">
+            <div class="stat-ico"><i class="bi bi-activity"></i></div>
+            <div>
+                <div class="stat-val">@Model.TotalValidations</div>
+                <div class="stat-lbl">Total Validations</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#e11d48,#be123c);">
+            <div class="stat-ico"><i class="bi bi-shield-exclamation"></i></div>
+            <div>
+                <div class="stat-val">@Model.FailedValidations</div>
+                <div class="stat-lbl">Failed Validations</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#14b8a6,#0d9488);">
+            <div class="stat-ico"><i class="bi bi-calendar-check-fill"></i></div>
+            <div>
+                <div class="stat-val">@Model.TodayValidations</div>
+                <div class="stat-lbl">Today's Validations</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-bar-chart-fill me-2" style="color:#6366f1;"></i>Validation Trend (Last 6 Months)</span>
+            </div>
+            <div class="card-body">
+                <canvas id="trendChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-pie-chart-fill me-2" style="color:#6366f1;"></i>Validation Status</div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <canvas id="statusChart" style="max-height:220px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tables Row -->
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-card-checklist me-2" style="color:#6366f1;"></i>Recent Clients</span>
+                <a asp-controller="ClientLicense" asp-action="Index" asp-route-productType="@selectedPT" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table tbl-clean mb-0">
+                        <thead>
+                            <tr>
+                                <th>Client</th>
+                                <th>Expiry</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var c in Model.RecentClients)
+                            {
+                                var isExpired = c.ExpiryDate < DateTime.Now;
+                                var badgeCls  = !c.IsActive ? "badge-neu" : isExpired ? "badge-err" : "badge-ok";
+                                var badgeTxt  = !c.IsActive ? "Inactive" : isExpired ? "Expired" : "Active";
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold" style="font-size:.85rem;">@c.ClientName</div>
+                                        <div class="text-muted" style="font-size:.75rem;">@c.ClientCode</div>
+                                    </td>
+                                    <td style="font-size:.82rem;">@c.ExpiryDate.ToString("dd MMM yyyy")</td>
+                                    <td><span class="badge @badgeCls rounded-pill px-2 py-1" style="font-size:.73rem;">@badgeTxt</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-calendar-event me-2" style="color:#f59e0b;"></i>Upcoming Expiries</span>
+                <a asp-controller="ClientLicense" asp-action="Index" asp-route-status="active" asp-route-productType="@selectedPT" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table tbl-clean mb-0">
+                        <thead>
+                            <tr>
+                                <th>Client</th>
+                                <th>Expiry Date</th>
+                                <th>Days Left</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.UpcomingExpiries.Any())
+                            {
+                                <tr><td colspan="3" class="text-center py-4 text-muted" style="font-size:.83rem;"><i class="bi bi-check2-circle me-1" style="color:#22c55e;"></i>No upcoming expiries</td></tr>
+                            }
+                            @foreach (var c in Model.UpcomingExpiries)
+                            {
+                                var daysLeft = (c.ExpiryDate - DateTime.Now).Days;
+                                var urgency  = daysLeft <= 7  ? "#ef4444"
+                                             : daysLeft <= 30 ? "#f59e0b"
+                                             : "#22c55e";
+                                var urgencyBg = daysLeft <= 7  ? "#fef2f2"
+                                              : daysLeft <= 30 ? "#fffbeb"
+                                              : "#f0fdf4";
+                                var amcExpired = c.AMC_Expireddate.HasValue && c.AMC_Expireddate < DateTime.Now;
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold" style="font-size:.85rem;">@c.ClientName</div>
+                                        <div style="font-size:.74rem;color:#6366f1;">@c.ClientCode</div>
+                                        @if (amcExpired)
+                                        {
+                                            <div style="font-size:.7rem;color:#f59e0b;"><i class="bi bi-exclamation-triangle-fill me-1"></i>AMC Expired</div>
+                                        }
+                                    </td>
+                                    <td style="font-size:.82rem;">@c.ExpiryDate.ToString("dd MMM yyyy")</td>
+                                    <td>
+                                        <span style="display:inline-block;background:@urgencyBg;color:@urgency;border-radius:20px;padding:.2rem .65rem;font-size:.75rem;font-weight:700;">
+                                            @(daysLeft == 0 ? "Today" : daysLeft == 1 ? "1 day" : $"{daysLeft} days")
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Trend chart
+    const trendCtx = document.getElementById('trendChart').getContext('2d');
+    new Chart(trendCtx, {
+        type: 'bar',
+        data: {
+            labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(monthLabels)),
+            datasets: [
+                {
+                    label: 'Valid',
+                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(validCounts)),
+                    backgroundColor: 'rgba(99,102,241,0.8)',
+                    borderRadius: 6
+                },
+                {
+                    label: 'Invalid',
+                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(invalidCounts)),
+                    backgroundColor: 'rgba(239,68,68,0.7)',
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'top' } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+
+    // Status donut chart
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Valid', 'Invalid'],
+            datasets: [{
+                data: [@(Model.TotalValidations - Model.FailedValidations), @Model.FailedValidations],
+                backgroundColor: ['#10b981', '#ef4444'],
+                borderWidth: 3,
+                borderColor: '#fff',
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            cutout: '70%',
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } }
+            }
+        }
+    });
+</script>
+}

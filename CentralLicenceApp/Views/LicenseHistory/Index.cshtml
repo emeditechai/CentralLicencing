@@ -1,0 +1,112 @@
+@model List<CentralLicenceApp.Models.LicenseValidationHistory>
+@{
+    ViewData["Title"] = "Validation History" + (ViewBag.ProductType != null ? " – " + ViewBag.ProductType : "");
+    int page       = ViewBag.Page;
+    int pageSize   = ViewBag.PageSize;
+    int total      = ViewBag.Total;
+    int totalPages = ViewBag.TotalPages;
+    string? productType = ViewBag.ProductType;
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Validation History</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">@total validation event(s)</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <input type="hidden" name="productType" value="@productType" />
+            <div class="col-sm-5">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Client Code / License Key</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="search" value="@ViewBag.Search" class="form-control border-start-0" placeholder="Search…" style="border-radius:0 10px 10px 0;" />
+                </div>
+            </div>
+            <div class="col-sm-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Result</label>
+                <select name="valid" class="form-select" style="border-radius:10px;">
+                    <option value="">All Results</option>
+                    <option value="valid"   selected="@(ViewBag.Valid=="valid")">Valid Only</option>
+                    <option value="invalid" selected="@(ViewBag.Valid=="invalid")">Invalid Only</option>
+                </select>
+            </div>
+            <div class="col-sm-auto">
+                <button type="submit" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;"><i class="bi bi-funnel me-1"></i> Filter</button>
+                <a asp-action="Index" asp-route-productType="@productType" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Client Code</th>
+                        <th>License Key</th>
+                        <th>Result</th>
+                        <th>Failure Reason</th>
+                        <th>IP Address</th>
+                        <th>Device Info</th>
+                        <th class="pe-3">Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr><td colspan="8" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No records found</td></tr>
+                    }
+                    @foreach (var v in Model)
+                    {
+                        <tr>
+                            <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@v.Id</td>
+                            <td class="fw-semibold" style="color:#6366f1;font-size:.86rem;">@v.ClientCode</td>
+                            <td><code style="font-size:.72rem;background:#f1f5f9;padding:.15rem .35rem;border-radius:5px;">@(v.LicenseKey.Length>16?v.LicenseKey[..16]+"…":v.LicenseKey)</code></td>
+                            <td>
+                                @if (v.IsValid)
+                                {
+                                    <span class="badge badge-ok rounded-pill px-2 py-1" style="font-size:.73rem;"><i class="bi bi-check-circle me-1"></i>Valid</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-err rounded-pill px-2 py-1" style="font-size:.73rem;"><i class="bi bi-x-circle me-1"></i>Invalid</span>
+                                }
+                            </td>
+                                    <td style="font-size:.8rem;max-width:180px;white-space:normal;">@(v.FailureReason ?? "—")</td>
+                            <td style="font-size:.78rem;font-family:monospace;">@(v.PublicIPAddress ?? "—")</td>
+                            <td style="font-size:.75rem;max-width:200px;white-space:normal;word-break:break-word;">
+                                @(string.IsNullOrEmpty(v.DeviceInfo) ? "—" : v.DeviceInfo)
+                            </td>
+                            <td class="pe-3" style="font-size:.8rem;white-space:nowrap;">@v.CreatedAt.ToString("dd MMM yyyy HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (totalPages > 1)
+        {
+            <div class="d-flex align-items-center justify-content-between px-3 py-3 border-top" style="font-size:.82rem;">
+                <span class="text-muted">Showing @((page-1)*pageSize+1)–@(Math.Min(page*pageSize,total)) of @total</span>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        @for (int p = 1; p <= totalPages; p++)
+                        {
+                            <li class="page-item @(p == page ? "active" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@p" asp-route-search="@ViewBag.Search" asp-route-valid="@ViewBag.Valid" asp-route-productType="@productType">@p</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>

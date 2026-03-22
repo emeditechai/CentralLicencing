@@ -1,0 +1,119 @@
+@model IEnumerable<CentralLicenceApp.Models.EmailTemplate>
+@{
+    ViewData["Title"] = "Email Templates";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#8b5cf6,#7c3aed);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.25rem;flex-shrink:0;">
+            <i class="bi bi-file-earmark-text"></i>
+        </div>
+        <div>
+            <h4 class="fw-bold mb-0" style="color:#1e293b;">Email Templates</h4>
+            <p class="text-muted mb-0" style="font-size:.83rem;">Manage notification email templates. Use <code>{{Placeholder}}</code> tokens in subject &amp; body.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Available Placeholders reference card -->
+<div class="card mb-4" style="border:1px solid #e9d5ff;border-radius:12px;background:#faf5ff;">
+    <div class="card-body py-3 px-4">
+        <div class="d-flex align-items-center gap-2 mb-2" style="color:#7c3aed;">
+            <i class="bi bi-braces"></i>
+            <span class="fw-semibold" style="font-size:.82rem;text-transform:uppercase;letter-spacing:.04em;">Available Placeholders</span>
+        </div>
+        <div class="d-flex flex-wrap gap-2" style="font-size:.78rem;">
+            @foreach (var ph in new[] { "{{ClientName}}", "{{ClientCode}}", "{{ExpiryDate}}", "{{AmcExpiryDate}}", "{{DaysRemaining}}", "{{AppName}}", "{{AppUrl}}" })
+            {
+                <code style="background:#ede9fe;color:#6d28d9;border-radius:6px;padding:2px 8px;">@ph</code>
+            }
+        </div>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="card">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-file-earmark-x" style="font-size:3rem;color:#cbd5e1;"></i>
+            <div class="mt-3 fw-semibold" style="color:#64748b;">No templates found</div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var t in Model)
+        {
+            var keyColor = t.TemplateKey switch
+            {
+                "LICENSE_ACTIVATED"       => ("#dcfce7", "#16a34a", "bi-check-circle-fill"),
+                "LICENSE_EXPIRY_EXTENDED" => ("#dbeafe", "#2563eb", "bi-arrow-clockwise"),
+                "LICENSE_EXPIRY_REMINDER" => ("#fef3c7", "#d97706", "bi-clock-fill"),
+                "AMC_EXPIRY_REMINDER"     => ("#fee2e2", "#dc2626", "bi-exclamation-triangle-fill"),
+                _                         => ("#f1f5f9", "#64748b", "bi-envelope")
+            };
+
+            <div class="col-12 col-xl-6">
+                <div class="card h-100" style="border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
+                    <!-- Card header -->
+                    <div class="card-header d-flex align-items-center justify-content-between py-3 px-4"
+                         style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+                        <div class="d-flex align-items-center gap-3">
+                            <div style="width:40px;height:40px;border-radius:10px;background:@keyColor.Item1;display:flex;align-items:center;justify-content:center;color:@keyColor.Item2;font-size:1.1rem;flex-shrink:0;">
+                                <i class="bi @keyColor.Item3"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold" style="font-size:.95rem;color:#0f172a;">@t.TemplateName</div>
+                                <code style="font-size:.72rem;color:#94a3b8;">@t.TemplateKey</code>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            @if (t.IsActive)
+                            {
+                                <span class="badge badge-ok rounded-pill px-3">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-neu rounded-pill px-3">Inactive</span>
+                            }
+                            <a asp-action="Edit" asp-route-id="@t.Id"
+                               class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
+                                <i class="bi bi-pencil me-1"></i> Edit
+                            </a>
+                        </div>
+                    </div>
+                    <!-- Card body -->
+                    <div class="card-body px-4 py-3">
+                        <div class="mb-2">
+                            <span class="text-muted" style="font-size:.73rem;">SUBJECT</span>
+                            <div class="fw-semibold" style="font-size:.875rem;color:#374151;">@t.Subject</div>
+                        </div>
+                        <div>
+                            <span class="text-muted" style="font-size:.73rem;">TRIGGER EVENT</span>
+                            <div style="font-size:.83rem;color:#374151;">
+                                @(t.TemplateKey switch
+                                {
+                                    "LICENSE_ACTIVATED"       => "Sent when a licence is re-activated (IsActive = true)",
+                                    "LICENSE_EXPIRY_EXTENDED" => "Sent when the licence expiry date is extended",
+                                    "LICENSE_EXPIRY_REMINDER" => "Sent daily at 9 AM when expiry is within 7 days",
+                                    "AMC_EXPIRY_REMINDER"     => "Sent daily at 9 AM when AMC expiry is within 7 days",
+                                    _                         => "Manual trigger"
+                                })
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Card footer -->
+                    @if (t.UpdatedAt.HasValue)
+                    {
+                        <div class="card-footer px-4 py-2" style="background:#f8fafc;border-top:1px solid #f1f5f9;">
+                            <span class="text-muted" style="font-size:.73rem;">
+                                <i class="bi bi-pencil-square me-1"></i>Last edited @t.UpdatedAt.Value.ToString("dd MMM yyyy HH:mm")
+                            </span>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

@@ -1,0 +1,193 @@
+@model CentralLicenceApp.Models.ViewModels.ClientLicenseListViewModel
+@{
+    ViewData["Title"] = "Client Licences" + (Model.ProductType != null ? " – " + Model.ProductType : "");
+    var isAdmin = User.IsInRole("Administrator");
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Client Licences</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">@Model.TotalCount registered licence(s)</p>
+    </div>
+    @if (isAdmin)
+    {
+        <a asp-action="Create" asp-route-productType="@Model.ProductType" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;">
+            <i class="bi bi-plus-lg me-1"></i> New Licence
+        </a>
+    }
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <input type="hidden" name="productType" value="@Model.ProductType" />
+            <div class="col-sm-5">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Search</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="search" value="@Model.SearchTerm" class="form-control border-start-0" placeholder="Client name, code or email…" style="border-radius:0 10px 10px 0;" />
+                </div>
+            </div>
+            <div class="col-sm-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Status</label>
+                <select name="status" class="form-select" style="border-radius:10px;">
+                    <option value="">All Status</option>
+                    <option value="active"   selected="@(Model.StatusFilter=="active")">Active</option>
+                    <option value="expired"  selected="@(Model.StatusFilter=="expired")">Expired</option>
+                    <option value="inactive" selected="@(Model.StatusFilter=="inactive")">Inactive</option>
+                </select>
+            </div>
+            <div class="col-sm-auto">
+                <button type="submit" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;">
+                    <i class="bi bi-funnel me-1"></i> Filter
+                </button>
+                <a asp-action="Index" asp-route-productType="@Model.ProductType" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Client</th>
+                        <th>Contact</th>
+                        <th>App URL</th>
+                        <th>License Key</th>
+                        <th>Expiry Date</th>
+                        <th>AMC Expiry</th>
+                        <th>Status</th>
+                        <th class="pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Licenses.Any())
+                    {
+                        <tr><td colspan="9" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No records found</td></tr>
+                    }
+                    @foreach (var lic in Model.Licenses)
+                    {
+                        var isExpired = lic.ExpiryDate < DateTime.Now;
+                        var badgeCls  = !lic.IsActive ? "badge-neu" : isExpired ? "badge-err" : "badge-ok";
+                        var badgeTxt  = !lic.IsActive ? "Inactive" : isExpired ? "Expired" : "Active";
+                        var amcExpired = lic.AMC_Expireddate.HasValue && lic.AMC_Expireddate < DateTime.Now;
+                        <tr>
+                            <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@lic.Id</td>
+                            <td>
+                                <div class="fw-semibold" style="font-size:.875rem;">@lic.ClientName</div>
+                                <div style="font-size:.75rem;color:#6366f1;">@lic.ClientCode</div>
+                                @if (!string.IsNullOrEmpty(lic.EmailID))
+                                {
+                                    <div style="font-size:.73rem;color:#94a3b8;">@lic.EmailID</div>
+                                }
+                            </td>
+                            <td style="font-size:.85rem;">@lic.ContactNumber</td>
+                            <td style="font-size:.82rem;">
+                                @if (!string.IsNullOrEmpty(lic.AppUrl))
+                                {
+                                    <a href="@lic.AppUrl" target="_blank" rel="noopener noreferrer" style="color:#6366f1;word-break:break-all;">@lic.AppUrl</a>
+                                }
+                                else
+                                { <span class="text-muted">—</span> }
+                            </td>
+                            <td>
+                                @{
+                                    var key = lic.LicenseKey ?? "";
+                                    var maskedKey = key.Length >= 4
+                                        ? "XXXX-XXXX-XXXX-" + key[^4..]
+                                        : "XXXX-XXXX-XXXX-XXXX";
+                                }
+                                <div class="d-flex align-items-center gap-1" style="min-width:180px;">
+                                    <code id="lk-@lic.Id" data-key="@lic.LicenseKey"
+                                          style="font-size:.73rem;background:#f1f5f9;padding:.2rem .4rem;border-radius:6px;font-family:monospace;white-space:nowrap;">@maskedKey</code>
+                                    <button type="button"
+                                            onclick="copyLicenseKey('@lic.Id', this)"
+                                            title="Copy license key"
+                                            style="border:none;background:none;padding:.15rem .3rem;cursor:pointer;color:#6366f1;flex-shrink:0;">
+                                        <i class="bi bi-copy" style="font-size:.82rem;"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td style="font-size:.82rem;">
+                                @lic.ExpiryDate.ToString("dd MMM yyyy")
+                                @if (isExpired)
+                                {
+                                    <div style="font-size:.7rem;color:#ef4444;">Expired</div>
+                                }
+                            </td>
+                            <td style="font-size:.82rem;">
+                                @if (lic.AMC_Expireddate.HasValue)
+                                {
+                                    <span class="@(amcExpired ? "text-danger" : "")">@lic.AMC_Expireddate.Value.ToString("dd MMM yyyy")</span>
+                                }
+                                else
+                                { <span class="text-muted">—</span> }
+                            </td>
+                            <td><span class="badge @badgeCls rounded-pill px-2 py-1" style="font-size:.73rem;">@badgeTxt</span></td>
+                            <td class="pe-3">
+                                <div class="d-flex gap-1">
+                                    <a asp-action="Details" asp-route-id="@lic.Id" class="btn btn-sm btn-outline-primary" title="Details" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-eye"></i></a>
+                                    @if (isAdmin)
+                                    {
+                                        <a asp-action="Edit" asp-route-id="@lic.Id" class="btn btn-sm btn-outline-secondary" title="Edit" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
+                                    }
+                                    @{
+                                        var hasDetails = Model.ClientCodesWithDetails.Contains(lic.ClientCode ?? "");
+                                    }
+                                    <a asp-controller="ClientDetails" asp-action="Upsert"
+                                       asp-route-clientCode="@lic.ClientCode"
+                                       asp-route-productType="@Model.ProductType"
+                                       class="btn btn-sm @(hasDetails ? "btn-info" : "btn-outline-info")"
+                                       title="@(hasDetails ? "Edit Client Details" : "Add Client Details")"
+                                       style="border-radius:7px;border-color:#e2e8f0;">
+                                        <i class="bi bi-person-lines-fill"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        @if (Model.TotalPages > 1)
+        {
+            <div class="d-flex align-items-center justify-content-between px-3 py-3 border-top" style="font-size:.82rem;">
+                <span class="text-muted">Showing @((Model.PageNumber - 1) * Model.PageSize + 1)–@(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalCount)) of @Model.TotalCount</span>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        @for (int p = 1; p <= Model.TotalPages; p++)
+                        {
+                            <li class="page-item @(p == Model.PageNumber ? "active" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@p" asp-route-search="@Model.SearchTerm" asp-route-status="@Model.StatusFilter" asp-route-productType="@Model.ProductType">@p</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function copyLicenseKey(id, btn) {
+        var key = document.getElementById('lk-' + id).getAttribute('data-key');
+        navigator.clipboard.writeText(key).then(function () {
+            var icon = btn.querySelector('i');
+            icon.className = 'bi bi-check2';
+            btn.style.color = '#10b981';
+            setTimeout(function () {
+                icon.className = 'bi bi-copy';
+                btn.style.color = '#6366f1';
+            }, 1800);
+        });
+    }
+</script>
+}

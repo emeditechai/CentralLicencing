@@ -1,0 +1,143 @@
+@model CentralLicenceApp.Models.ViewModels.ClientDetailsViewModel
+@{
+    ViewData["Title"] = (Model.IsNew ? "Add" : "Edit") + " Client Details – " + Model.ClientCode;
+    var productType = ViewBag.ProductType as string ?? "";
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-controller="ClientLicense" asp-action="Index" asp-route-productType="@productType"
+       class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">
+            @(Model.IsNew ? "Add Client Details" : "Edit Client Details")
+        </h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">
+            @Model.ClientCode
+            @if (!string.IsNullOrEmpty(Model.ClientName))
+            {
+                <span class="ms-1">— @Model.ClientName</span>
+            }
+        </p>
+    </div>
+</div>
+
+<div class="card" style="max-width:680px;">
+    <div class="card-body p-4">
+        <form asp-action="Upsert" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="ID" />
+            <input type="hidden" asp-for="ClientCode" />
+            <input type="hidden" name="productType" value="@productType" />
+
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.83rem;"></div>
+
+            <div class="row g-3">
+
+                <!-- Contact Person Name -->
+                <div class="col-md-12">
+                    <label asp-for="ClientPersonName" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="ClientPersonName" class="form-control" placeholder="e.g. Rajesh Kumar" style="border-radius:10px;" />
+                    <span asp-validation-for="ClientPersonName" class="text-danger small"></span>
+                </div>
+
+                <!-- Address -->
+                <div class="col-md-12">
+                    <label asp-for="Address" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <textarea asp-for="Address" class="form-control" rows="2" placeholder="Full address…" style="border-radius:10px;"></textarea>
+                </div>
+
+                <!-- Products Purchased — multi-select checkbox dropdown -->
+                <div class="col-md-12">
+                    <label class="form-label fw-semibold" style="font-size:.82rem;">Products Purchased</label>
+                    <div class="dropdown" id="productDropdown">
+                        <button type="button" id="productDropBtn"
+                                class="btn btn-white border w-100 d-flex align-items-center justify-content-between"
+                                style="border-radius:10px;font-size:.875rem;background:#fff;"
+                                onclick="toggleProductDropdown(event)">
+                            <span id="productDropLabel" style="color:#6b7280;">
+                                @(Model.SelectedProducts.Any() ? string.Join(", ", Model.SelectedProducts) : "Select products…")
+                            </span>
+                            <i class="bi bi-chevron-down ms-2" style="font-size:.75rem;color:#94a3b8;"></i>
+                        </button>
+                        <div id="productDropMenu"
+                             style="display:none;position:absolute;z-index:1050;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.1);min-width:260px;padding:.5rem 0;">
+                            @foreach (var product in CentralLicenceApp.Models.ViewModels.ClientDetailsViewModel.AvailableProducts)
+                            {
+                                var isChecked = Model.SelectedProducts.Contains(product);
+                                <label class="d-flex align-items-center gap-2 px-3 py-2 product-option"
+                                       style="cursor:pointer;font-size:.875rem;margin:0;"
+                                       onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                                    <input type="checkbox" name="SelectedProducts" value="@product"
+                                           @(isChecked ? "checked" : "")
+                                           onchange="updateProductLabel()"
+                                           style="width:16px;height:16px;accent-color:#6366f1;cursor:pointer;" />
+                                    <span>@product</span>
+                                </label>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DOB -->
+                <div class="col-md-6">
+                    <label asp-for="DOB" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="DOB" type="date" class="form-control" style="border-radius:10px;" />
+                </div>
+
+                <!-- Anniversary Date -->
+                <div class="col-md-6">
+                    <label asp-for="Anniversarydate" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="Anniversarydate" type="date" class="form-control" style="border-radius:10px;" />
+                </div>
+
+                <!-- Is Active -->
+                <div class="col-md-12">
+                    <div class="form-check">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                        <label asp-for="IsActive" class="form-check-label fw-semibold" style="font-size:.85rem;"></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn text-white px-4" style="background:#6366f1;border:none;border-radius:10px;">
+                    <i class="bi bi-check-lg me-1"></i> @(Model.IsNew ? "Save Details" : "Update Details")
+                </button>
+                <a asp-controller="ClientLicense" asp-action="Index" asp-route-productType="@productType"
+                   class="btn btn-outline-secondary" style="border-radius:10px;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function (e) {
+        var menu = document.getElementById('productDropMenu');
+        if (!document.getElementById('productDropdown').contains(e.target)) {
+            menu.style.display = 'none';
+        }
+    });
+
+    function toggleProductDropdown(e) {
+        e.stopPropagation();
+        var menu = document.getElementById('productDropMenu');
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function updateProductLabel() {
+        var checked = Array.from(document.querySelectorAll('input[name="SelectedProducts"]:checked'))
+                           .map(function(cb) { return cb.value; });
+        var label = document.getElementById('productDropLabel');
+        label.textContent = checked.length ? checked.join(', ') : 'Select products…';
+        label.style.color = checked.length ? '#1e293b' : '#6b7280';
+    }
+
+    // Init label on load
+    updateProductLabel();
+</script>
+}

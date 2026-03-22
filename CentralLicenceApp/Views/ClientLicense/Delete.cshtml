@@ -1,0 +1,43 @@
+@model CentralLicenceApp.Models.ClientAppLicense
+@{
+    ViewData["Title"] = "Delete Licence";
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+    <h4 class="fw-bold mb-0 text-danger">Delete Licence</h4>
+</div>
+
+<div class="card" style="max-width:500px;">
+    <div class="card-body p-4">
+        <div class="text-center mb-4">
+            <div style="width:64px;height:64px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:1.8rem;color:#ef4444;">
+                <i class="bi bi-trash"></i>
+            </div>
+            <h5 class="fw-bold">Are you sure?</h5>
+            <p class="text-muted" style="font-size:.875rem;">This action cannot be undone. The following licence will be permanently deleted.</p>
+        </div>
+
+        <div class="p-3 rounded-3 mb-4" style="background:#f8fafc;border:1px solid #e2e8f0;">
+            <dl class="row mb-0" style="font-size:.875rem;">
+                <dt class="col-sm-5 text-muted fw-normal">Client Code</dt>
+                <dd class="col-sm-7 fw-semibold" style="color:#6366f1;">@Model.ClientCode</dd>
+                <dt class="col-sm-5 text-muted fw-normal">Client Name</dt>
+                <dd class="col-sm-7 fw-semibold">@Model.ClientName</dd>
+                <dt class="col-sm-5 text-muted fw-normal">License Key</dt>
+                <dd class="col-sm-7"><code style="font-size:.75rem;">@(Model.LicenseKey.Length > 20 ? Model.LicenseKey[..20]+"…" : Model.LicenseKey)</code></dd>
+            </dl>
+        </div>
+
+        <form asp-action="Delete" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-danger px-4" style="border-radius:10px;">
+                    <i class="bi bi-trash me-1"></i> Yes, Delete
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary" style="border-radius:10px;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
