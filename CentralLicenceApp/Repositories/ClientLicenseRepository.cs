@@ -131,7 +131,8 @@ namespace CentralLicenceApp.Repositories
                     EmailID          = @EmailID,
                     AMC_Expireddate  = @AMC_Expireddate,
                     AppUrl           = @AppUrl,
-                    ProductType      = @ProductType
+                    ProductType      = @ProductType,
+                    ConnectionString = @ConnectionString
                 WHERE Id = @Id";
             var rows = await conn.ExecuteAsync(sql, license);
             return rows > 0;

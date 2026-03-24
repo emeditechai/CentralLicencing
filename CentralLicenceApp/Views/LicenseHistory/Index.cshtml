@@ -6,20 +6,44 @@
     int total      = ViewBag.Total;
     int totalPages = ViewBag.TotalPages;
     string? productType = ViewBag.ProductType;
+    var selectedPT = productType ?? "";
+    var availableProductTypes = ViewBag.AvailableProductTypes as List<string> ?? new List<string>();
 }
 
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
         <h4 class="fw-bold mb-0" style="color:#1e293b;">Validation History</h4>
-        <p class="text-muted mb-0" style="font-size:.85rem;">@total validation event(s)</p>
+        @if (!string.IsNullOrEmpty(selectedPT))
+        {
+            <p class="text-muted mb-0" style="font-size:.82rem;">Showing data for <strong style="color:#6366f1;">@selectedPT</strong> &mdash; @total event(s)</p>
+        }
+        else
+        {
+            <p class="text-muted mb-0" style="font-size:.85rem;">@total validation event(s)</p>
+        }
     </div>
+    <form method="get" class="d-flex align-items-center gap-2">
+        <label class="fw-semibold mb-0" style="font-size:.82rem;color:#64748b;white-space:nowrap;">Product Type</label>
+        <select name="productType" class="form-select form-select-sm" style="min-width:160px;border-radius:10px;"
+                onchange="this.form.submit()">
+            <option value="">All Products</option>
+            @foreach (var pt in availableProductTypes)
+            {
+                <option value="@pt" selected="@(selectedPT == pt)">@pt</option>
+            }
+        </select>
+        @if (!string.IsNullOrEmpty(selectedPT))
+        {
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;white-space:nowrap;">Clear</a>
+        }
+    </form>
 </div>
 
 <!-- Filters -->
 <div class="card mb-4">
     <div class="card-body py-3">
         <form method="get" class="row g-2 align-items-end">
-            <input type="hidden" name="productType" value="@productType" />
+            <input type="hidden" name="productType" value="@selectedPT" />
             <div class="col-sm-5">
                 <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Client Code / License Key</label>
                 <div class="input-group">
@@ -37,7 +61,7 @@
             </div>
             <div class="col-sm-auto">
                 <button type="submit" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;"><i class="bi bi-funnel me-1"></i> Filter</button>
-                <a asp-action="Index" asp-route-productType="@productType" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
+                <a asp-action="Index" asp-route-productType="@selectedPT" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
             </div>
         </form>
     </div>
@@ -101,7 +125,7 @@
                         @for (int p = 1; p <= totalPages; p++)
                         {
                             <li class="page-item @(p == page ? "active" : "")">
-                                <a class="page-link" asp-action="Index" asp-route-page="@p" asp-route-search="@ViewBag.Search" asp-route-valid="@ViewBag.Valid" asp-route-productType="@productType">@p</a>
+                                <a class="page-link" asp-action="Index" asp-route-page="@p" asp-route-search="@ViewBag.Search" asp-route-valid="@ViewBag.Valid" asp-route-productType="@selectedPT">@p</a>
                             </li>
                         }
                     </ul>

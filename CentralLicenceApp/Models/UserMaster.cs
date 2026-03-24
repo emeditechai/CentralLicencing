@@ -9,10 +9,16 @@ namespace CentralLicenceApp.Models
         public string Email { get; set; } = string.Empty;
         public string PasswordHash { get; set; } = string.Empty;
         public string? FullName { get; set; }
+        public string? PhoneNumber { get; set; }
         public int RoleId { get; set; }
         public string? RoleName { get; set; }
+        public int? LocationId { get; set; }
+        public string? LocationName { get; set; }
+        public bool IsEmployee { get; set; }
+        public string? EmployeeCode { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; }
         public DateTime? LastLoginDate { get; set; }
     }
 }
+

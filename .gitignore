@@ -1,0 +1,15 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.swp
+
+## Publish output
+/Publish/
+
+## Secrets / local config
+appsettings.Development.json
+*.pfx
+*.p12

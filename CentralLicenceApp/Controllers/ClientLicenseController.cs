@@ -35,6 +35,7 @@ namespace CentralLicenceApp.Controllers
                 SearchTerm              = search,
                 StatusFilter            = status,
                 ProductType             = productType,
+                AvailableProductTypes   = (await _repo.GetDistinctProductTypesAsync()).ToList(),
                 PageNumber              = page,
                 PageSize                = pageSize,
                 TotalCount              = total,
@@ -108,7 +109,8 @@ namespace CentralLicenceApp.Controllers
                 ExpiryDate      = license.ExpiryDate,
                 AMC_Expireddate = license.AMC_Expireddate,
                 IsActive        = license.IsActive,
-                ProductType     = license.ProductType
+                ProductType     = license.ProductType,
+                ConnectionString = license.ConnectionString
             };
             return View(vm);
         }
@@ -135,6 +137,7 @@ namespace CentralLicenceApp.Controllers
             existing.AMC_Expireddate = vm.AMC_Expireddate;
             existing.IsActive        = vm.IsActive;
             existing.ProductType     = vm.ProductType;
+            existing.ConnectionString = vm.ConnectionString;
 
             await _repo.UpdateAsync(existing);
 

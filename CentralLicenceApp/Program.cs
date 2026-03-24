@@ -14,6 +14,7 @@ builder.Services.AddScoped<IClientLicenseRepository>(_ => new ClientLicenseRepos
 builder.Services.AddScoped<ILicenseHistoryRepository>(_ => new LicenseHistoryRepository(connStr));
 builder.Services.AddScoped<IUserRepository>(_ => new UserRepository(connStr));
 builder.Services.AddScoped<IRoleRepository>(_ => new RoleRepository(connStr));
+builder.Services.AddScoped<ILocationRepository>(_ => new LocationRepository(connStr));
 builder.Services.AddScoped<IMailConfigRepository>(_ => new MailConfigRepository(connStr));
 builder.Services.AddScoped<IEmailTemplateRepository>(_ => new EmailTemplateRepository(connStr));
 builder.Services.AddScoped<IReminderRepository>(_ => new ReminderRepository(connStr));

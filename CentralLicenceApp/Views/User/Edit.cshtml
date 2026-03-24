@@ -11,9 +11,9 @@
     </div>
 </div>
 
-<div class="card" style="max-width:560px;">
+<div class="card" style="max-width:680px;">
     <div class="card-body p-4">
-        <form asp-action="Edit" method="post">
+        <form asp-action="Edit" method="post" id="userForm">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
             <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.83rem;"></div>
@@ -24,24 +24,48 @@
             </div>
 
             <div class="row g-3">
-                <div class="col-md-12">
+                <div class="col-md-6">
                     <label asp-for="FullName" class="form-label fw-semibold" style="font-size:.82rem;"></label>
                     <input asp-for="FullName" class="form-control" style="border-radius:10px;" />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="PhoneNumber" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="PhoneNumber" class="form-control" style="border-radius:10px;" placeholder="e.g. +91 98765 43210" />
+                    <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
                 </div>
                 <div class="col-md-12">
                     <label asp-for="Email" class="form-label fw-semibold" style="font-size:.82rem;"></label>
                     <input asp-for="Email" class="form-control" type="email" style="border-radius:10px;" />
                     <span asp-validation-for="Email" class="text-danger small"></span>
                 </div>
+
+                <!-- Password with show/hide (optional on edit) -->
                 <div class="col-md-6">
                     <label asp-for="Password" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <input asp-for="Password" type="password" class="form-control" style="border-radius:10px;" placeholder="Leave blank to keep current" autocomplete="new-password" />
+                    <div class="input-group">
+                        <input asp-for="Password" type="password" id="pwField" class="form-control"
+                               style="border-radius:10px 0 0 10px;" placeholder="Leave blank to keep current"
+                               autocomplete="new-password" />
+                        <button type="button" class="btn btn-outline-secondary" onclick="togglePw('pwField','pwEye')"
+                                style="border-radius:0 10px 10px 0;">
+                            <i id="pwEye" class="bi bi-eye"></i>
+                        </button>
+                    </div>
                     <div style="font-size:.72rem;color:#94a3b8;">Leave blank to keep existing password</div>
                 </div>
                 <div class="col-md-6">
                     <label asp-for="ConfirmPassword" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <input asp-for="ConfirmPassword" type="password" class="form-control" style="border-radius:10px;" autocomplete="new-password" />
+                    <div class="input-group">
+                        <input asp-for="ConfirmPassword" type="password" id="cpwField" class="form-control"
+                               style="border-radius:10px 0 0 10px;" autocomplete="new-password" />
+                        <button type="button" class="btn btn-outline-secondary" onclick="togglePw('cpwField','cpwEye')"
+                                style="border-radius:0 10px 10px 0;">
+                            <i id="cpwEye" class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <div id="pwMatchMsg" style="font-size:.75rem;display:none;"></div>
                 </div>
+
                 <div class="col-md-6">
                     <label asp-for="RoleId" class="form-label fw-semibold" style="font-size:.82rem;"></label>
                     <select asp-for="RoleId" class="form-select" style="border-radius:10px;"
@@ -49,11 +73,34 @@
                     </select>
                     <span asp-validation-for="RoleId" class="text-danger small"></span>
                 </div>
-                <div class="col-md-6 d-flex align-items-end">
-                    <div class="form-check pb-1">
+                <div class="col-md-6">
+                    <label asp-for="LocationId" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <select asp-for="LocationId" class="form-select" style="border-radius:10px;"
+                            asp-items="@(new SelectList(Model.Locations, "Id", "Name", Model.LocationId))">
+                        <option value="">-- Select Location --</option>
+                    </select>
+                </div>
+
+                <!-- Is Active + Is Employee -->
+                <div class="col-md-6 d-flex align-items-center gap-4 pt-2">
+                    <div class="form-check">
                         <input asp-for="IsActive" class="form-check-input" type="checkbox" />
                         <label asp-for="IsActive" class="form-check-label fw-semibold" style="font-size:.85rem;"></label>
                     </div>
+                    <div class="form-check">
+                        <input asp-for="IsEmployee" class="form-check-input" type="checkbox" id="IsEmployee"
+                               onchange="toggleEmployeeCode()" />
+                        <label asp-for="IsEmployee" class="form-check-label fw-semibold" style="font-size:.85rem;"></label>
+                    </div>
+                </div>
+
+                <!-- Employee Code (conditional) -->
+                <div class="col-md-6" id="empCodeSection" style="display:none;">
+                    <label asp-for="EmployeeCode" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="EmployeeCode" id="EmployeeCode" class="form-control" style="border-radius:10px;"
+                           placeholder="Unique employee code" />
+                    <span asp-validation-for="EmployeeCode" class="text-danger small"></span>
+                    <div id="empCodeMsg" style="font-size:.75rem;display:none;"></div>
                 </div>
             </div>
 
@@ -69,4 +116,63 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+<script>
+    var currentUserId = @Model.Id;
+
+    // Show/hide password
+    function togglePw(fieldId, eyeId) {
+        var f = document.getElementById(fieldId);
+        var e = document.getElementById(eyeId);
+        if (f.type === 'password') { f.type = 'text'; e.className = 'bi bi-eye-slash'; }
+        else                       { f.type = 'password'; e.className = 'bi bi-eye'; }
+    }
+
+    // Client-side password match indicator
+    function checkPwMatch() {
+        var pw  = document.getElementById('pwField').value;
+        var cpw = document.getElementById('cpwField').value;
+        var msg = document.getElementById('pwMatchMsg');
+        if (!cpw && !pw) { msg.style.display = 'none'; return; }
+        if (!cpw) { msg.style.display = 'none'; return; }
+        if (pw === cpw) {
+            msg.style.display = 'block'; msg.style.color = '#16a34a';
+            msg.textContent   = '✓ Passwords match';
+        } else {
+            msg.style.display = 'block'; msg.style.color = '#ef4444';
+            msg.textContent   = '✗ Passwords do not match';
+        }
+    }
+    document.getElementById('pwField').addEventListener('input', checkPwMatch);
+    document.getElementById('cpwField').addEventListener('input', checkPwMatch);
+
+    // Toggle Employee Code field
+    function toggleEmployeeCode() {
+        var checked = document.getElementById('IsEmployee').checked;
+        var sec = document.getElementById('empCodeSection');
+        sec.style.display = checked ? 'block' : 'none';
+        if (!checked) {
+            document.getElementById('EmployeeCode').value = '';
+            document.getElementById('empCodeMsg').style.display = 'none';
+        }
+    }
+    // Restore state on page load
+    if (document.getElementById('IsEmployee').checked) toggleEmployeeCode();
+
+    // Async uniqueness check for EmployeeCode
+    document.getElementById('EmployeeCode').addEventListener('blur', async function () {
+        var code = this.value.trim();
+        var msg  = document.getElementById('empCodeMsg');
+        if (!code) { msg.style.display = 'none'; return; }
+        var resp = await fetch('/User/CheckEmployeeCode?code=' + encodeURIComponent(code) + '&excludeId=' + currentUserId);
+        var isUnique = await resp.json();
+        msg.style.display = 'block';
+        if (isUnique) {
+            msg.style.color = '#16a34a'; msg.textContent = '✓ Employee Code is available';
+            this.classList.remove('is-invalid'); this.classList.add('is-valid');
+        } else {
+            msg.style.color = '#ef4444'; msg.textContent = '✗ Employee Code already exists';
+            this.classList.remove('is-valid'); this.classList.add('is-invalid');
+        }
+    });
+</script>
 }

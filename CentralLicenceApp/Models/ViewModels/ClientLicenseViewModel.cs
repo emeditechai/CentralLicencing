@@ -47,6 +47,9 @@ namespace CentralLicenceApp.Models.ViewModels
 
         [Display(Name = "Is Active")]
         public bool IsActive { get; set; } = true;
+
+        [Display(Name = "Connection String")]
+        public string? ConnectionString { get; set; }
     }
 
     public class ClientLicenseListViewModel
@@ -55,6 +58,7 @@ namespace CentralLicenceApp.Models.ViewModels
         public string? SearchTerm { get; set; }
         public string? StatusFilter { get; set; }
         public string? ProductType { get; set; }
+        public List<string> AvailableProductTypes { get; set; } = new();
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;
         public int TotalCount { get; set; }

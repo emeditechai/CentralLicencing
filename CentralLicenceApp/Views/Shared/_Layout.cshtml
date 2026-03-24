@@ -17,7 +17,6 @@
     var initials = fullName.Length > 0 ? fullName[0].ToString().ToUpper() : "U";
     var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
     var currentProductType = Context.Request.Query["productType"].ToString();
-    var eRestoPOSOpen = (ctrl == "ClientLicense" || ctrl == "LicenseHistory") && currentProductType == "eRestoPOS";
     <div id="sidebar-overlay" onclick="closeSidebar()"></div>
     <div id="sidebar">
         <div class="brand">
@@ -40,46 +39,8 @@
                 <i class="bi bi-chevron-down nav-lbl-arrow @(licencesOpen ? "rotated" : "")"></i>
             </a>
             <div class="collapse @(licencesOpen ? "show" : "")" id="section-licences">
-            <div id="licences-accordion">
-
-            <!-- eRestoPOS -->
-            <div class="nav-item">
-                <a href="#menu-erestopos" data-bs-toggle="collapse" data-bs-parent="#licences-accordion"
-                   class="@(eRestoPOSOpen ? "active" : "")" aria-expanded="@(eRestoPOSOpen ? "true" : "false")">
-                    <i class="bi bi-receipt"></i> eRestoPOS
-                    <i class="bi bi-chevron-down submenu-arrow"></i>
-                </a>
-                <div class="collapse @(eRestoPOSOpen ? "show" : "")" id="menu-erestopos">
-                    <div class="nav-sub-item"><a asp-controller="ClientLicense" asp-action="Index" asp-route-productType="eRestoPOS" class="@(ctrl=="ClientLicense" && currentProductType=="eRestoPOS" ? "active" : "")"><i class="bi bi-card-checklist"></i> Client Licences</a></div>
-                    <div class="nav-sub-item"><a asp-controller="LicenseHistory" asp-action="Index" asp-route-productType="eRestoPOS" class="@(ctrl=="LicenseHistory" && currentProductType=="eRestoPOS" ? "active" : "")"><i class="bi bi-clock-history"></i> Validation History</a></div>
-                </div>
-            </div>
-
-            <!-- eLUXstay -->
-            <div class="nav-item">
-                <a href="#menu-eluxstay" data-bs-toggle="collapse" data-bs-parent="#licences-accordion"
-                   aria-expanded="false">
-                    <i class="bi bi-building"></i> eLUXstay
-                    <i class="bi bi-chevron-down submenu-arrow"></i>
-                </a>
-                <div class="collapse" id="menu-eluxstay">
-                    <div style="padding:.5rem 1.5rem .5rem 3rem;font-size:.77rem;color:#475569;"><i class="bi bi-hourglass-split me-2"></i>Coming Soon</div>
-                </div>
-            </div>
-
-            <!-- e360Pluscare -->
-            <div class="nav-item">
-                <a href="#menu-e360" data-bs-toggle="collapse" data-bs-parent="#licences-accordion"
-                   aria-expanded="false">
-                    <i class="bi bi-heart-pulse"></i> e360Pluscare
-                    <i class="bi bi-chevron-down submenu-arrow"></i>
-                </a>
-                <div class="collapse" id="menu-e360">
-                    <div style="padding:.5rem 1.5rem .5rem 3rem;font-size:.77rem;color:#475569;"><i class="bi bi-hourglass-split me-2"></i>Coming Soon</div>
-                </div>
-            </div>
-
-            </div><!-- /licences-accordion -->
+            <div class="nav-item"><a asp-controller="ClientLicense" asp-action="Index" class="@Act("ClientLicense")"><i class="bi bi-card-checklist"></i> Client Licences</a></div>
+            <div class="nav-item"><a asp-controller="LicenseHistory" asp-action="Index" class="@Act("LicenseHistory")"><i class="bi bi-clock-history"></i> Validation History</a></div>
             </div><!-- /section-licences collapse -->
 
             @if (role == "Administrator")

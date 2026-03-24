@@ -93,6 +93,18 @@
                 </div>
             </div>
         </div>
+
+        @if (!string.IsNullOrEmpty(Model.ConnectionString))
+        {
+            <div class="card mt-3">
+                <div class="card-header"><i class="bi bi-database me-2" style="color:#6366f1;"></i>Connection String</div>
+                <div class="card-body">
+                    <div class="p-3 rounded-3" style="background:#f8fafc;border:1px dashed #e2e8f0;">
+                        <code style="font-size:.78rem;word-break:break-all;color:#334155;">@Model.ConnectionString</code>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
 </div>
 

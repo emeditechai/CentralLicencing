@@ -22,8 +22,11 @@
                     <tr>
                         <th class="ps-3">#</th>
                         <th>User</th>
+                        <th>Phone</th>
                         <th>Email</th>
                         <th>Role</th>
+                        <th>Location</th>
+                        <th>Employee</th>
                         <th>Status</th>
                         <th>Last Login</th>
                         <th>Created</th>
@@ -46,6 +49,7 @@
                                     </div>
                                 </div>
                             </td>
+                            <td style="font-size:.82rem;">@(u.PhoneNumber ?? "—")</td>
                             <td style="font-size:.85rem;">@u.Email</td>
                             <td>
                                 @if (u.RoleName == "Administrator")
@@ -55,6 +59,17 @@
                                 else
                                 {
                                     <span class="badge" style="background:#f1f5f9;color:#475569;font-size:.73rem;border-radius:20px;padding:.3rem .7rem;"><i class="bi bi-person me-1"></i>@u.RoleName</span>
+                                }
+                            </td>
+                            <td style="font-size:.82rem;">@(u.LocationName ?? "—")</td>
+                            <td>
+                                @if (u.IsEmployee)
+                                {
+                                    <span class="badge rounded-pill px-2 py-1" style="background:#dcfce7;color:#166534;font-size:.72rem;"><i class="bi bi-person-badge me-1"></i>@(u.EmployeeCode ?? "Yes")</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted" style="font-size:.78rem;">—</span>
                                 }
                             </td>
                             <td>
@@ -89,3 +104,4 @@
         </div>
     </div>
 </div>
+

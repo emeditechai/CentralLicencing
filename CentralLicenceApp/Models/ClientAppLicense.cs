@@ -22,6 +22,7 @@ namespace CentralLicenceApp.Models
         public string? EmailID { get; set; }
         public DateTime? AMC_Expireddate { get; set; }
         public string? AppUrl { get; set; }
+        public string? ConnectionString { get; set; }
         public string ProductType { get; set; } = "eRestoPOS";
     }
 }

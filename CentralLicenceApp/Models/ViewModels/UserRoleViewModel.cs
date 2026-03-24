@@ -20,6 +20,13 @@ namespace CentralLicenceApp.Models.ViewModels
         [Display(Name = "Full Name")]
         public string? FullName { get; set; }
 
+        [Display(Name = "Phone Number")]
+        [Phone(ErrorMessage = "Enter a valid phone number")]
+        public string? PhoneNumber { get; set; }
+
+        [Display(Name = "Location")]
+        public int? LocationId { get; set; }
+
         [Display(Name = "Password")]
         [DataType(DataType.Password)]
         [StringLength(50, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters")]
@@ -37,7 +44,15 @@ namespace CentralLicenceApp.Models.ViewModels
         [Display(Name = "Is Active")]
         public bool IsActive { get; set; } = true;
 
+        [Display(Name = "Is Employee")]
+        public bool IsEmployee { get; set; }
+
+        [Display(Name = "Employee Code")]
+        [StringLength(50)]
+        public string? EmployeeCode { get; set; }
+
         public List<RoleMaster> Roles { get; set; } = new();
+        public List<LocationMaster> Locations { get; set; } = new();
     }
 
     public class RoleFormViewModel
@@ -57,3 +72,4 @@ namespace CentralLicenceApp.Models.ViewModels
         public bool IsActive { get; set; } = true;
     }
 }
+

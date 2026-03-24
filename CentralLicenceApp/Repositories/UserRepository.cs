@@ -23,9 +23,10 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             return await conn.QueryAsync<UserMaster>(@"
-                SELECT u.*, r.RoleName
+                SELECT u.*, r.RoleName, l.Name AS LocationName
                 FROM UserMaster u
                 INNER JOIN RoleMaster r ON u.RoleId = r.Id
+                LEFT JOIN LocationMaster l ON u.LocationId = l.Id
                 ORDER BY u.CreatedAt DESC");
         }
 
@@ -33,9 +34,10 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             return await conn.QuerySingleOrDefaultAsync<UserMaster>(@"
-                SELECT u.*, r.RoleName
+                SELECT u.*, r.RoleName, l.Name AS LocationName
                 FROM UserMaster u
                 INNER JOIN RoleMaster r ON u.RoleId = r.Id
+                LEFT JOIN LocationMaster l ON u.LocationId = l.Id
                 WHERE u.Id = @Id", new { Id = id });
         }
 
@@ -43,9 +45,10 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             return await conn.QuerySingleOrDefaultAsync<UserMaster>(@"
-                SELECT u.*, r.RoleName
+                SELECT u.*, r.RoleName, l.Name AS LocationName
                 FROM UserMaster u
                 INNER JOIN RoleMaster r ON u.RoleId = r.Id
+                LEFT JOIN LocationMaster l ON u.LocationId = l.Id
                 WHERE u.Username = @Username AND u.IsActive = 1", new { Username = username });
         }
 
@@ -53,8 +56,12 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             var sql = @"
-                INSERT INTO UserMaster (Username, Email, PasswordHash, FullName, RoleId, IsActive, CreatedAt)
-                VALUES (@Username, @Email, @PasswordHash, @FullName, @RoleId, @IsActive, @CreatedAt);
+                INSERT INTO UserMaster
+                    (Username, Email, PasswordHash, FullName, PhoneNumber, RoleId,
+                     LocationId, IsEmployee, EmployeeCode, IsActive, CreatedAt)
+                VALUES
+                    (@Username, @Email, @PasswordHash, @FullName, @PhoneNumber, @RoleId,
+                     @LocationId, @IsEmployee, @EmployeeCode, @IsActive, @CreatedAt);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);";
             user.CreatedAt = DateTime.Now;
             return await conn.ExecuteScalarAsync<int>(sql, user);
@@ -67,7 +74,11 @@ namespace CentralLicenceApp.Repositories
                 UPDATE UserMaster SET
                     Email        = @Email,
                     FullName     = @FullName,
+                    PhoneNumber  = @PhoneNumber,
                     RoleId       = @RoleId,
+                    LocationId   = @LocationId,
+                    IsEmployee   = @IsEmployee,
+                    EmployeeCode = @EmployeeCode,
                     IsActive     = @IsActive
                 WHERE Id = @Id";
             var rows = await conn.ExecuteAsync(sql, user);
@@ -98,6 +109,17 @@ namespace CentralLicenceApp.Repositories
                 "UPDATE UserMaster SET LastLoginDate = @Now WHERE Id = @Id",
                 new { Now = DateTime.Now, Id = userId });
             return rows > 0;
+        }
+
+        public async Task<bool> CheckEmployeeCodeUniqueAsync(string employeeCode, int? excludeUserId = null)
+        {
+            using var conn = CreateConnection();
+            var sql = excludeUserId.HasValue
+                ? "SELECT COUNT(1) FROM UserMaster WHERE EmployeeCode = @Code AND Id <> @ExcludeId"
+                : "SELECT COUNT(1) FROM UserMaster WHERE EmployeeCode = @Code";
+            var count = await conn.ExecuteScalarAsync<int>(sql,
+                new { Code = employeeCode, ExcludeId = excludeUserId ?? 0 });
+            return count == 0;
         }
     }
 
