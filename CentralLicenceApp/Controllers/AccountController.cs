@@ -53,6 +53,7 @@ namespace CentralLicenceApp.Controllers
                 new(ClaimTypes.Email,          user.Email),
                 new("FullName",                user.FullName ?? user.Username),
                 new(ClaimTypes.Role,           user.RoleName ?? "Staff"),
+                new("ProfileImagePath",       user.ProfileImagePath ?? string.Empty),
             };
 
             var identity  = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

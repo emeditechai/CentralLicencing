@@ -34,6 +34,11 @@ else
     {
         var badgeCls = cfg.IsActive ? "badge-ok" : "badge-neu";
         var badgeTxt = cfg.IsActive ? "Active" : "Inactive";
+        var toggleTitle = cfg.IsActive ? "Deactivate Configuration?" : "Activate Configuration?";
+        var toggleMessage = cfg.IsActive
+            ? $"Configuration <strong>{cfg.FromName}</strong> will be marked inactive and stop being used for email sending."
+            : $"Configuration <strong>{cfg.FromName}</strong> will be activated and available for email sending.";
+        var toggleButton = cfg.IsActive ? "Yes, deactivate" : "Yes, activate";
         <div class="card mb-4" style="border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;">
 
             <!-- Header -->
@@ -52,7 +57,11 @@ else
                     <a asp-action="Edit" asp-route-id="@cfg.Id" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
                         <i class="bi bi-pencil me-1"></i> Edit
                     </a>
-                    <form asp-action="ToggleActive" method="post" class="d-inline">
+                      <form asp-action="ToggleActive" method="post" class="d-inline"
+                          data-swal-confirm="true"
+                          data-swal-title="@toggleTitle"
+                          data-swal-text="@toggleMessage"
+                          data-swal-confirm-button="@toggleButton">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="id" value="@cfg.Id" />
                         <input type="hidden" name="isActive" value="@(!cfg.IsActive ? "true" : "false")" />

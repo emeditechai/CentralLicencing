@@ -3,176 +3,235 @@
     ViewData["Title"] = "Edit User";
 }
 
-<div class="d-flex align-items-center gap-3 mb-4">
-    <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+<div class="uf-header mb-4">
+    <a asp-action="Index" class="uf-back-btn"><i class="bi bi-arrow-left"></i></a>
     <div>
-        <h4 class="fw-bold mb-0" style="color:#1e293b;">Edit User</h4>
-        <p class="text-muted mb-0" style="font-size:.85rem;">@@@Model.Username</p>
+        <h4 class="uf-title">Edit User</h4>
+        <p class="uf-sub">@@@Model.Username</p>
     </div>
 </div>
 
-<div class="card" style="max-width:680px;">
-    <div class="card-body p-4">
-        <form asp-action="Edit" method="post" id="userForm">
-            @Html.AntiForgeryToken()
-            <input type="hidden" asp-for="Id" />
-            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.83rem;"></div>
+<form asp-action="Edit" method="post" enctype="multipart/form-data" id="userForm" class="uf-form" autocomplete="off">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 px-3 rounded-3 mb-4" style="font-size:.83rem;"></div>
 
-            <div class="mb-3 p-3 rounded-3" style="background:#f8fafc;border:1px solid #e2e8f0;">
-                <div style="font-size:.75rem;color:#64748b;font-weight:600;">USERNAME</div>
-                <div class="fw-semibold">@@@Model.Username</div>
+    <!-- Username badge -->
+    <div class="uf-username-badge mb-2">
+        <i class="bi bi-person-circle"></i>
+        <div>
+            <div class="uf-username-label">USERNAME</div>
+            <div class="uf-username-val">@@@Model.Username</div>
+        </div>
+    </div>
+
+    <!-- Section: Account Info -->
+    <div class="uf-section">
+        <div class="uf-section-title"><i class="bi bi-person-badge"></i> Account Information</div>
+        <div class="uf-photo-block mb-3">
+            <div class="uf-photo-preview-wrap">
+                <img id="profilePreview" src="@(string.IsNullOrWhiteSpace(Model.ExistingProfileImagePath) ? "https://placehold.co/120x120/e2e8f0/64748b?text=Photo" : Url.Content(Model.ExistingProfileImagePath))" alt="Profile preview" class="uf-photo-preview" />
             </div>
+            <div class="flex-grow-1">
+                <label asp-for="ProfileImage" class="uf-label"></label>
+                <input asp-for="ProfileImage" type="file" class="form-control uf-input" accept=".jpg,.jpeg,.png,.gif,.webp" onchange="previewProfileImage(this)" />
+                <div class="uf-hint">Upload a new image to replace the current profile picture.</div>
+            </div>
+        </div>
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <label asp-for="FullName" class="uf-label"></label>
+                <input asp-for="FullName" class="form-control uf-input" />
+                <span asp-validation-for="FullName" class="uf-err"></span>
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="PhoneNumber" class="uf-label"></label>
+                <input asp-for="PhoneNumber" class="form-control uf-input" placeholder="+91 98765 43210" />
+                <span asp-validation-for="PhoneNumber" class="uf-err"></span>
+            </div>
+            <div class="col-sm-12">
+                <label asp-for="Email" class="uf-label"></label>
+                <input asp-for="Email" class="form-control uf-input" type="email" />
+                <span asp-validation-for="Email" class="uf-err"></span>
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="Password" class="uf-label"></label>
+                <div class="input-group">
+                    <input asp-for="Password" type="password" id="pwField" class="form-control uf-input" placeholder="Leave blank to keep current" autocomplete="new-password" />
+                    <button type="button" class="uf-eye-btn" onclick="togglePw('pwField','pwEye')"><i id="pwEye" class="bi bi-eye"></i></button>
+                </div>
+                <div class="uf-hint">Leave blank to keep existing password</div>
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="ConfirmPassword" class="uf-label"></label>
+                <div class="input-group">
+                    <input asp-for="ConfirmPassword" type="password" id="cpwField" class="form-control uf-input" autocomplete="new-password" />
+                    <button type="button" class="uf-eye-btn" onclick="togglePw('cpwField','cpwEye')"><i id="cpwEye" class="bi bi-eye"></i></button>
+                </div>
+                <div id="pwMatchMsg" class="uf-hint" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
 
+    <!-- Section: Role & Location -->
+    <div class="uf-section">
+        <div class="uf-section-title"><i class="bi bi-shield-lock"></i> Role & Location</div>
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <label asp-for="RoleId" class="uf-label"></label>
+                <select asp-for="RoleId" class="form-select uf-input" asp-items="@(new SelectList(Model.Roles, "Id", "RoleName", Model.RoleId))">
+                </select>
+                <span asp-validation-for="RoleId" class="uf-err"></span>
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="LocationId" class="uf-label"></label>
+                <select asp-for="LocationId" class="form-select uf-input" asp-items="@(new SelectList(Model.Locations, "Id", "Name", Model.LocationId))">
+                    <option value="">-- Select Location --</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section: Status & Employment -->
+    <div class="uf-section">
+        <div class="uf-section-title"><i class="bi bi-toggles"></i> Status & Employment</div>
+
+        <div class="uf-toggle-row mb-3">
+            <label class="uf-toggle-item">
+                <input asp-for="IsActive" type="checkbox" class="uf-toggle-chk" />
+                <span class="uf-toggle-pill"></span>
+                <span class="uf-toggle-lbl">Active</span>
+            </label>
+            <label class="uf-toggle-item">
+                <input asp-for="IsEmployee" type="checkbox" class="uf-toggle-chk" id="chkIsEmployee" onchange="onEmployeeToggle()" />
+                <span class="uf-toggle-pill"></span>
+                <span class="uf-toggle-lbl">Is Employee</span>
+            </label>
+            <label class="uf-toggle-item" id="chkCoreMemberWrap" style="display:none;">
+                <input asp-for="IsCoreMember" type="checkbox" class="uf-toggle-chk" id="chkIsCoreMember" onchange="onCoreMemberToggle()" />
+                <span class="uf-toggle-pill"></span>
+                <span class="uf-toggle-lbl">Core Member</span>
+            </label>
+        </div>
+
+        <div id="empSection" style="display:none;">
             <div class="row g-3">
-                <div class="col-md-6">
-                    <label asp-for="FullName" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <input asp-for="FullName" class="form-control" style="border-radius:10px;" />
+                <div class="col-sm-6">
+                    <label asp-for="EmployeeCode" class="uf-label"></label>
+                    <input asp-for="EmployeeCode" id="EmployeeCode" class="form-control uf-input" placeholder="Unique employee code" />
+                    <span asp-validation-for="EmployeeCode" class="uf-err"></span>
+                    <div id="empCodeMsg" class="uf-hint" style="display:none;"></div>
                 </div>
-                <div class="col-md-6">
-                    <label asp-for="PhoneNumber" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <input asp-for="PhoneNumber" class="form-control" style="border-radius:10px;" placeholder="e.g. +91 98765 43210" />
-                    <span asp-validation-for="PhoneNumber" class="text-danger small"></span>
-                </div>
-                <div class="col-md-12">
-                    <label asp-for="Email" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <input asp-for="Email" class="form-control" type="email" style="border-radius:10px;" />
-                    <span asp-validation-for="Email" class="text-danger small"></span>
-                </div>
-
-                <!-- Password with show/hide (optional on edit) -->
-                <div class="col-md-6">
-                    <label asp-for="Password" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <div class="input-group">
-                        <input asp-for="Password" type="password" id="pwField" class="form-control"
-                               style="border-radius:10px 0 0 10px;" placeholder="Leave blank to keep current"
-                               autocomplete="new-password" />
-                        <button type="button" class="btn btn-outline-secondary" onclick="togglePw('pwField','pwEye')"
-                                style="border-radius:0 10px 10px 0;">
-                            <i id="pwEye" class="bi bi-eye"></i>
-                        </button>
-                    </div>
-                    <div style="font-size:.72rem;color:#94a3b8;">Leave blank to keep existing password</div>
-                </div>
-                <div class="col-md-6">
-                    <label asp-for="ConfirmPassword" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <div class="input-group">
-                        <input asp-for="ConfirmPassword" type="password" id="cpwField" class="form-control"
-                               style="border-radius:10px 0 0 10px;" autocomplete="new-password" />
-                        <button type="button" class="btn btn-outline-secondary" onclick="togglePw('cpwField','cpwEye')"
-                                style="border-radius:0 10px 10px 0;">
-                            <i id="cpwEye" class="bi bi-eye"></i>
-                        </button>
-                    </div>
-                    <div id="pwMatchMsg" style="font-size:.75rem;display:none;"></div>
-                </div>
-
-                <div class="col-md-6">
-                    <label asp-for="RoleId" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <select asp-for="RoleId" class="form-select" style="border-radius:10px;"
-                            asp-items="@(new SelectList(Model.Roles, "Id", "RoleName", Model.RoleId))">
+                <div class="col-sm-6" id="managerWrap">
+                    <label asp-for="ManagerId" class="uf-label">Manager <span id="managerReqStar" class="text-danger">*</span></label>
+                    <select asp-for="ManagerId" id="ManagerId" class="form-select uf-input"
+                            asp-items="@(new SelectList(Model.Managers, "Id", "FullName", Model.ManagerId))">
+                        <option value="">-- Select Manager --</option>
                     </select>
-                    <span asp-validation-for="RoleId" class="text-danger small"></span>
+                    <span asp-validation-for="ManagerId" class="uf-err"></span>
                 </div>
-                <div class="col-md-6">
-                    <label asp-for="LocationId" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <select asp-for="LocationId" class="form-select" style="border-radius:10px;"
-                            asp-items="@(new SelectList(Model.Locations, "Id", "Name", Model.LocationId))">
-                        <option value="">-- Select Location --</option>
+                <div class="col-sm-6">
+                    <label asp-for="DepartmentId" class="uf-label"></label>
+                    <select asp-for="DepartmentId" id="DepartmentId" class="form-select uf-input"
+                            asp-items="@(new SelectList(Model.Departments, "Id", "DepartmentName", Model.DepartmentId))">
+                        <option value="">-- Select Department --</option>
                     </select>
+                    <span asp-validation-for="DepartmentId" class="uf-err"></span>
                 </div>
-
-                <!-- Is Active + Is Employee -->
-                <div class="col-md-6 d-flex align-items-center gap-4 pt-2">
-                    <div class="form-check">
-                        <input asp-for="IsActive" class="form-check-input" type="checkbox" />
-                        <label asp-for="IsActive" class="form-check-label fw-semibold" style="font-size:.85rem;"></label>
-                    </div>
-                    <div class="form-check">
-                        <input asp-for="IsEmployee" class="form-check-input" type="checkbox" id="IsEmployee"
-                               onchange="toggleEmployeeCode()" />
-                        <label asp-for="IsEmployee" class="form-check-label fw-semibold" style="font-size:.85rem;"></label>
-                    </div>
+                <div class="col-sm-6">
+                    <label asp-for="DesignationId" class="uf-label"></label>
+                    <select asp-for="DesignationId" id="DesignationId" class="form-select uf-input"
+                            asp-items="@(new SelectList(Model.Designations, "Id", "DesignationName", Model.DesignationId))">
+                        <option value="">-- Select Designation --</option>
+                    </select>
+                    <span asp-validation-for="DesignationId" class="uf-err"></span>
                 </div>
-
-                <!-- Employee Code (conditional) -->
-                <div class="col-md-6" id="empCodeSection" style="display:none;">
-                    <label asp-for="EmployeeCode" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <input asp-for="EmployeeCode" id="EmployeeCode" class="form-control" style="border-radius:10px;"
-                           placeholder="Unique employee code" />
-                    <span asp-validation-for="EmployeeCode" class="text-danger small"></span>
-                    <div id="empCodeMsg" style="font-size:.75rem;display:none;"></div>
+                <div class="col-sm-6">
+                    <label asp-for="EmployeeTypeId" class="uf-label"></label>
+                    <select asp-for="EmployeeTypeId" id="EmployeeTypeId" class="form-select uf-input"
+                            asp-items="@(new SelectList(Model.EmployeeTypes, "Id", "TypeName", Model.EmployeeTypeId))">
+                        <option value="">-- Select Employee Type --</option>
+                    </select>
+                    <span asp-validation-for="EmployeeTypeId" class="uf-err"></span>
                 </div>
             </div>
-
-            <div class="d-flex gap-2 mt-4">
-                <button type="submit" class="btn text-white px-4" style="background:#6366f1;border:none;border-radius:10px;">
-                    <i class="bi bi-check-lg me-1"></i> Save Changes
-                </button>
-                <a asp-action="Index" class="btn btn-outline-secondary" style="border-radius:10px;">Cancel</a>
-            </div>
-        </form>
+        </div>
     </div>
-</div>
+
+    <!-- Actions -->
+    <div class="uf-actions">
+        <button type="submit" class="btn uf-btn-primary">
+            <i class="bi bi-check-lg me-1"></i> Save Changes
+        </button>
+        <a asp-action="Index" class="btn uf-btn-cancel">Cancel</a>
+    </div>
+</form>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+<partial name="_ValidationScriptsPartial" />
 <script>
     var currentUserId = @Model.Id;
 
-    // Show/hide password
-    function togglePw(fieldId, eyeId) {
-        var f = document.getElementById(fieldId);
-        var e = document.getElementById(eyeId);
-        if (f.type === 'password') { f.type = 'text'; e.className = 'bi bi-eye-slash'; }
-        else                       { f.type = 'password'; e.className = 'bi bi-eye'; }
+    function previewProfileImage(input) {
+        var preview = document.getElementById('profilePreview');
+        if (!input.files || !input.files[0]) {
+            return;
+        }
+        preview.src = URL.createObjectURL(input.files[0]);
     }
 
-    // Client-side password match indicator
+    function togglePw(fId, eId) {
+        var f = document.getElementById(fId), e = document.getElementById(eId);
+        f.type = (f.type === 'password') ? 'text' : 'password';
+        e.className = (f.type === 'text') ? 'bi bi-eye-slash' : 'bi bi-eye';
+    }
+
+    document.getElementById('pwField').addEventListener('input', checkPwMatch);
+    document.getElementById('cpwField').addEventListener('input', checkPwMatch);
     function checkPwMatch() {
-        var pw  = document.getElementById('pwField').value;
+        var pw = document.getElementById('pwField').value;
         var cpw = document.getElementById('cpwField').value;
         var msg = document.getElementById('pwMatchMsg');
         if (!cpw && !pw) { msg.style.display = 'none'; return; }
         if (!cpw) { msg.style.display = 'none'; return; }
-        if (pw === cpw) {
-            msg.style.display = 'block'; msg.style.color = '#16a34a';
-            msg.textContent   = '✓ Passwords match';
-        } else {
-            msg.style.display = 'block'; msg.style.color = '#ef4444';
-            msg.textContent   = '✗ Passwords do not match';
-        }
+        msg.style.display = 'block';
+        if (pw === cpw) { msg.style.color = '#16a34a'; msg.textContent = '✓ Passwords match'; }
+        else            { msg.style.color = '#ef4444'; msg.textContent = '✗ Passwords do not match'; }
     }
-    document.getElementById('pwField').addEventListener('input', checkPwMatch);
-    document.getElementById('cpwField').addEventListener('input', checkPwMatch);
 
-    // Toggle Employee Code field
-    function toggleEmployeeCode() {
-        var checked = document.getElementById('IsEmployee').checked;
-        var sec = document.getElementById('empCodeSection');
-        sec.style.display = checked ? 'block' : 'none';
-        if (!checked) {
+    function onEmployeeToggle() {
+        var isEmp = document.getElementById('chkIsEmployee').checked;
+        document.getElementById('empSection').style.display        = isEmp ? 'block' : 'none';
+        document.getElementById('chkCoreMemberWrap').style.display = isEmp ? 'flex' : 'none';
+        if (!isEmp) {
+            document.getElementById('chkIsCoreMember').checked = false;
             document.getElementById('EmployeeCode').value = '';
             document.getElementById('empCodeMsg').style.display = 'none';
+            document.getElementById('ManagerId').value = '';
+            document.getElementById('DepartmentId').value = '';
+            document.getElementById('DesignationId').value = '';
+            document.getElementById('EmployeeTypeId').value = '';
+            onCoreMemberToggle();
         }
     }
-    // Restore state on page load
-    if (document.getElementById('IsEmployee').checked) toggleEmployeeCode();
 
-    // Async uniqueness check for EmployeeCode
+    function onCoreMemberToggle() {
+        var isCore = document.getElementById('chkIsCoreMember').checked;
+        document.getElementById('managerReqStar').style.display = isCore ? 'none' : 'inline';
+    }
+
     document.getElementById('EmployeeCode').addEventListener('blur', async function () {
         var code = this.value.trim();
-        var msg  = document.getElementById('empCodeMsg');
+        var msg = document.getElementById('empCodeMsg');
         if (!code) { msg.style.display = 'none'; return; }
-        var resp = await fetch('/User/CheckEmployeeCode?code=' + encodeURIComponent(code) + '&excludeId=' + currentUserId);
-        var isUnique = await resp.json();
+        var r = await fetch('/User/CheckEmployeeCode?code=' + encodeURIComponent(code) + '&excludeId=' + currentUserId);
+        var ok = await r.json();
         msg.style.display = 'block';
-        if (isUnique) {
-            msg.style.color = '#16a34a'; msg.textContent = '✓ Employee Code is available';
-            this.classList.remove('is-invalid'); this.classList.add('is-valid');
-        } else {
-            msg.style.color = '#ef4444'; msg.textContent = '✗ Employee Code already exists';
-            this.classList.remove('is-valid'); this.classList.add('is-invalid');
-        }
+        if (ok) { msg.style.color = '#16a34a'; msg.textContent = '✓ Employee Code available'; this.classList.remove('is-invalid'); this.classList.add('is-valid'); }
+        else    { msg.style.color = '#ef4444'; msg.textContent = '✗ Employee Code already exists'; this.classList.remove('is-valid'); this.classList.add('is-invalid'); }
     });
+
+    if (document.getElementById('chkIsEmployee').checked) onEmployeeToggle();
+    onCoreMemberToggle();
 </script>
 }

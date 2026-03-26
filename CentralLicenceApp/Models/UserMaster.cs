@@ -14,8 +14,18 @@ namespace CentralLicenceApp.Models
         public string? RoleName { get; set; }
         public int? LocationId { get; set; }
         public string? LocationName { get; set; }
+        public int? DepartmentId { get; set; }
+        public string? DepartmentName { get; set; }
+        public int? DesignationId { get; set; }
+        public string? DesignationName { get; set; }
+        public int? EmployeeTypeId { get; set; }
+        public string? EmployeeTypeName { get; set; }
         public bool IsEmployee { get; set; }
         public string? EmployeeCode { get; set; }
+        public bool IsCoreMember { get; set; }
+        public int? ManagerId { get; set; }
+        public string? ManagerName { get; set; }
+        public string? ProfileImagePath { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; }
         public DateTime? LastLoginDate { get; set; }

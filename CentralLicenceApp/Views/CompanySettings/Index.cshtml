@@ -1,0 +1,106 @@
+@model List<CentralLicenceApp.Models.CompanySetting>
+@{
+    ViewData["Title"] = "Company Settings";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Company Settings</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">@Model.Count company record(s) configured</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
+        <i class="bi bi-plus-lg me-1"></i> New Company
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Company</th>
+                        <th>Code</th>
+                        <th>Type</th>
+                        <th>Website</th>
+                        <th>Email</th>
+                        <th>Contact</th>
+                        <th>Location</th>
+                        <th>Parent</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th class="pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@item.Id</td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (!string.IsNullOrWhiteSpace(item.CompanyLogoPath))
+                                    {
+                                        <img src="@Url.Content(item.CompanyLogoPath)" alt="@item.CompanyName" style="width:38px;height:38px;border-radius:10px;object-fit:cover;border:1px solid #e2e8f0;" />
+                                    }
+                                    else
+                                    {
+                                        <div style="width:38px;height:38px;background:#ede9fe;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#6d28d9;font-size:1rem;">
+                                            <i class="bi bi-buildings"></i>
+                                        </div>
+                                    }
+                                    <div>
+                                        <div class="fw-semibold" style="font-size:.875rem;">@item.CompanyName</div>
+                                        <div class="text-muted" style="font-size:.78rem;">@(string.IsNullOrWhiteSpace(item.Address) ? "No address" : item.Address)</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="fw-semibold" style="font-size:.84rem;">@item.CompanyCode</td>
+                            <td class="text-muted" style="font-size:.84rem;">@item.CompanyTypeName</td>
+                            <td class="text-muted" style="font-size:.84rem;">@(string.IsNullOrWhiteSpace(item.Website) ? "—" : item.Website)</td>
+                            <td class="text-muted" style="font-size:.84rem;">@(string.IsNullOrWhiteSpace(item.EmailId) ? "—" : item.EmailId)</td>
+                            <td class="text-muted" style="font-size:.84rem;">@(string.IsNullOrWhiteSpace(item.ContactNo) ? "—" : item.ContactNo)</td>
+                            <td class="text-muted" style="font-size:.84rem;">@string.Join(", ", new[] { item.City, item.State, item.Country }.Where(v => !string.IsNullOrWhiteSpace(v)))</td>
+                            <td>
+                                @if (item.IsParentCompany)
+                                {
+                                    <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:#dcfce7;color:#166534;">Yes</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-neu rounded-pill px-2 py-1" style="font-size:.73rem;">No</span>
+                                }
+                            </td>
+                            <td>
+                                @if (item.IsActive)
+                                {
+                                    <span class="badge badge-ok rounded-pill px-2 py-1" style="font-size:.73rem;">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-neu rounded-pill px-2 py-1" style="font-size:.73rem;">Inactive</span>
+                                }
+                            </td>
+                            <td style="font-size:.82rem;">@item.CreatedAt.ToString("dd MMM yyyy")</td>
+                            <td class="pe-3">
+                                <div class="d-flex gap-1">
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" title="Edit" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
+                                    <form asp-action="Delete" method="post"
+                                          data-swal-confirm="true"
+                                          data-swal-title="Delete Company?"
+                                          data-swal-text="Company <strong>@item.CompanyName</strong> will be deleted permanently."
+                                          data-swal-confirm-button="Yes, delete company">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" style="border-radius:7px;"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

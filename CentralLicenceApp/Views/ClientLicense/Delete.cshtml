@@ -29,7 +29,11 @@
             </dl>
         </div>
 
-        <form asp-action="Delete" method="post">
+          <form asp-action="Delete" method="post"
+              data-swal-confirm="true"
+              data-swal-title="Delete Licence?"
+              data-swal-text="Licence for <strong>@Model.ClientName</strong> will be deleted permanently."
+              data-swal-confirm-button="Yes, delete licence">
             @Html.AntiForgeryToken()
             <input type="hidden" name="id" value="@Model.Id" />
             <div class="d-flex gap-2">

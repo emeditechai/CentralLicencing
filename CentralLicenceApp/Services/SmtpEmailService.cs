@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Mail;
 using System.Threading.Tasks;
 using CentralLicenceApp.Repositories;
+using CentralLicenceApp.Models;
 using Microsoft.Extensions.Logging;
 
 namespace CentralLicenceApp.Services
@@ -12,15 +13,18 @@ namespace CentralLicenceApp.Services
     {
         private readonly IMailConfigRepository _mailConfigRepo;
         private readonly IEmailTemplateRepository _templateRepo;
+        private readonly ICompanySettingsRepository _companySettingsRepo;
         private readonly ILogger<SmtpEmailService> _logger;
 
         public SmtpEmailService(
             IMailConfigRepository mailConfigRepo,
             IEmailTemplateRepository templateRepo,
+            ICompanySettingsRepository companySettingsRepo,
             ILogger<SmtpEmailService> logger)
         {
             _mailConfigRepo = mailConfigRepo;
             _templateRepo   = templateRepo;
+            _companySettingsRepo = companySettingsRepo;
             _logger         = logger;
         }
 
@@ -75,10 +79,30 @@ namespace CentralLicenceApp.Services
                 return;
             }
 
-            var subject = ReplacePlaceholders(template.Subject, placeholders);
-            var body    = ReplacePlaceholders(template.Body, placeholders);
+            var company = await _companySettingsRepo.GetParentCompanyAsync();
+            var companyName = ResolveCompanyName(company);
+            placeholders["CompanyName"] = companyName;
+            placeholders["AppName"] = companyName;
+
+            var subject = ReplaceBranding(ReplacePlaceholders(template.Subject, placeholders), companyName);
+            var body = ReplaceBranding(ReplacePlaceholders(template.Body, placeholders), companyName);
 
             await SendAsync(toEmail, toName, subject, body);
+        }
+
+        private static string ResolveCompanyName(CompanySetting? company)
+        {
+            return string.IsNullOrWhiteSpace(company?.CompanyName) ? "Emeditech Plus LLP" : company.CompanyName.Trim();
+        }
+
+        private static string ReplaceBranding(string text, string companyName)
+        {
+            return text
+                .Replace("Emeditech Plus LLP", companyName, StringComparison.OrdinalIgnoreCase)
+                .Replace("EMEDITECH PLUS LLP", companyName.ToUpperInvariant(), StringComparison.Ordinal)
+            .Replace("EMEDITECHPLUS LLP", companyName.ToUpperInvariant(), StringComparison.Ordinal)
+            .Replace("Central Licence Policy", companyName, StringComparison.OrdinalIgnoreCase)
+            .Replace("Central Licence", companyName, StringComparison.OrdinalIgnoreCase);
         }
 
         private static string ReplacePlaceholders(string text, Dictionary<string, string> placeholders)

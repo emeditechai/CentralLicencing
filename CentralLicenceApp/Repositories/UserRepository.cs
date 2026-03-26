@@ -23,10 +23,18 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             return await conn.QueryAsync<UserMaster>(@"
-                SELECT u.*, r.RoleName, l.Name AS LocationName
+                  SELECT u.*, r.RoleName, l.Name AS LocationName,
+                      d.DepartmentName,
+                      g.DesignationName,
+                                            et.TypeName AS EmployeeTypeName,
+                       m.FullName AS ManagerName
                 FROM UserMaster u
                 INNER JOIN RoleMaster r ON u.RoleId = r.Id
                 LEFT JOIN LocationMaster l ON u.LocationId = l.Id
+                  LEFT JOIN EmployeeDepartmentMaster d ON u.DepartmentId = d.Id
+                  LEFT JOIN EmployeeDesignationMaster g ON u.DesignationId = g.Id
+                                    LEFT JOIN EmployeeTypeMaster et ON u.EmployeeTypeId = et.Id
+                LEFT JOIN UserMaster m ON u.ManagerId = m.Id
                 ORDER BY u.CreatedAt DESC");
         }
 
@@ -34,10 +42,18 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             return await conn.QuerySingleOrDefaultAsync<UserMaster>(@"
-                SELECT u.*, r.RoleName, l.Name AS LocationName
+                  SELECT u.*, r.RoleName, l.Name AS LocationName,
+                      d.DepartmentName,
+                      g.DesignationName,
+                                            et.TypeName AS EmployeeTypeName,
+                       m.FullName AS ManagerName
                 FROM UserMaster u
                 INNER JOIN RoleMaster r ON u.RoleId = r.Id
                 LEFT JOIN LocationMaster l ON u.LocationId = l.Id
+                  LEFT JOIN EmployeeDepartmentMaster d ON u.DepartmentId = d.Id
+                  LEFT JOIN EmployeeDesignationMaster g ON u.DesignationId = g.Id
+                                    LEFT JOIN EmployeeTypeMaster et ON u.EmployeeTypeId = et.Id
+                LEFT JOIN UserMaster m ON u.ManagerId = m.Id
                 WHERE u.Id = @Id", new { Id = id });
         }
 
@@ -45,10 +61,18 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             return await conn.QuerySingleOrDefaultAsync<UserMaster>(@"
-                SELECT u.*, r.RoleName, l.Name AS LocationName
+                  SELECT u.*, r.RoleName, l.Name AS LocationName,
+                      d.DepartmentName,
+                      g.DesignationName,
+                                            et.TypeName AS EmployeeTypeName,
+                       m.FullName AS ManagerName
                 FROM UserMaster u
                 INNER JOIN RoleMaster r ON u.RoleId = r.Id
                 LEFT JOIN LocationMaster l ON u.LocationId = l.Id
+                  LEFT JOIN EmployeeDepartmentMaster d ON u.DepartmentId = d.Id
+                  LEFT JOIN EmployeeDesignationMaster g ON u.DesignationId = g.Id
+                                    LEFT JOIN EmployeeTypeMaster et ON u.EmployeeTypeId = et.Id
+                LEFT JOIN UserMaster m ON u.ManagerId = m.Id
                 WHERE u.Username = @Username AND u.IsActive = 1", new { Username = username });
         }
 
@@ -58,10 +82,10 @@ namespace CentralLicenceApp.Repositories
             var sql = @"
                 INSERT INTO UserMaster
                     (Username, Email, PasswordHash, FullName, PhoneNumber, RoleId,
-                     LocationId, IsEmployee, EmployeeCode, IsActive, CreatedAt)
+                     LocationId, DepartmentId, DesignationId, EmployeeTypeId, IsEmployee, EmployeeCode, IsCoreMember, ManagerId, ProfileImagePath, IsActive, CreatedAt)
                 VALUES
                     (@Username, @Email, @PasswordHash, @FullName, @PhoneNumber, @RoleId,
-                     @LocationId, @IsEmployee, @EmployeeCode, @IsActive, @CreatedAt);
+                     @LocationId, @DepartmentId, @DesignationId, @EmployeeTypeId, @IsEmployee, @EmployeeCode, @IsCoreMember, @ManagerId, @ProfileImagePath, @IsActive, @CreatedAt);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);";
             user.CreatedAt = DateTime.Now;
             return await conn.ExecuteScalarAsync<int>(sql, user);
@@ -77,8 +101,14 @@ namespace CentralLicenceApp.Repositories
                     PhoneNumber  = @PhoneNumber,
                     RoleId       = @RoleId,
                     LocationId   = @LocationId,
+                    DepartmentId = @DepartmentId,
+                    DesignationId = @DesignationId,
+                    EmployeeTypeId = @EmployeeTypeId,
                     IsEmployee   = @IsEmployee,
                     EmployeeCode = @EmployeeCode,
+                    IsCoreMember = @IsCoreMember,
+                    ManagerId    = @ManagerId,
+                    ProfileImagePath = @ProfileImagePath,
                     IsActive     = @IsActive
                 WHERE Id = @Id";
             var rows = await conn.ExecuteAsync(sql, user);
@@ -120,6 +150,13 @@ namespace CentralLicenceApp.Repositories
             var count = await conn.ExecuteScalarAsync<int>(sql,
                 new { Code = employeeCode, ExcludeId = excludeUserId ?? 0 });
             return count == 0;
+        }
+
+        public async Task<IEnumerable<UserMaster>> GetEmployeesAsync()
+        {
+            using var conn = CreateConnection();
+            return await conn.QueryAsync<UserMaster>(
+                "SELECT Id, FullName, Username FROM UserMaster WHERE IsEmployee = 1 AND IsActive = 1 ORDER BY FullName");
         }
     }
 

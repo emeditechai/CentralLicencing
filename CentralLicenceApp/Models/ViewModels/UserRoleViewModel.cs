@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace CentralLicenceApp.Models.ViewModels
 {
@@ -27,6 +28,15 @@ namespace CentralLicenceApp.Models.ViewModels
         [Display(Name = "Location")]
         public int? LocationId { get; set; }
 
+        [Display(Name = "Department")]
+        public int? DepartmentId { get; set; }
+
+        [Display(Name = "Designation")]
+        public int? DesignationId { get; set; }
+
+        [Display(Name = "Employee Type")]
+        public int? EmployeeTypeId { get; set; }
+
         [Display(Name = "Password")]
         [DataType(DataType.Password)]
         [StringLength(50, MinimumLength = 6, ErrorMessage = "Password must be at least 6 characters")]
@@ -51,8 +61,23 @@ namespace CentralLicenceApp.Models.ViewModels
         [StringLength(50)]
         public string? EmployeeCode { get; set; }
 
+        [Display(Name = "Is Core Member")]
+        public bool IsCoreMember { get; set; }
+
+        [Display(Name = "Manager")]
+        public int? ManagerId { get; set; }
+
+        [Display(Name = "Profile Picture")]
+        public IFormFile? ProfileImage { get; set; }
+
+        public string? ExistingProfileImagePath { get; set; }
+
         public List<RoleMaster> Roles { get; set; } = new();
         public List<LocationMaster> Locations { get; set; } = new();
+        public List<UserMaster> Managers { get; set; } = new();
+        public List<EmployeeDepartmentMaster> Departments { get; set; } = new();
+        public List<EmployeeDesignationMaster> Designations { get; set; } = new();
+        public List<EmployeeTypeMaster> EmployeeTypes { get; set; } = new();
     }
 
     public class RoleFormViewModel

@@ -1,0 +1,128 @@
+@model CentralLicenceApp.Models.UserMaster
+@{
+    ViewData["Title"] = "User Details";
+}
+
+<div class="uf-header mb-4">
+    <a asp-action="Index" class="uf-back-btn"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h4 class="uf-title">User Details</h4>
+        <p class="uf-sub">Complete profile and account information</p>
+    </div>
+</div>
+
+<div class="uf-form">
+    <div class="uf-section">
+        <div class="d-flex flex-wrap align-items-center gap-3">
+            @if (!string.IsNullOrWhiteSpace(Model.ProfileImagePath))
+            {
+                <img src="@Url.Content(Model.ProfileImagePath)" alt="@Model.FullName" class="user-details-photo" />
+            }
+            else
+            {
+                <div class="user-details-photo user-details-fallback">
+                    @((Model.FullName?.Length > 0 ? Model.FullName[0] : Model.Username[0]).ToString().ToUpper())
+                </div>
+            }
+            <div>
+                <div class="fw-bold" style="font-size:1.2rem;color:#1e293b;">@(Model.FullName ?? Model.Username)</div>
+                <div class="text-muted" style="font-size:.9rem;">@@@Model.Username</div>
+                <div class="mt-2 d-flex flex-wrap gap-2">
+                    @if (Model.IsActive)
+                    {
+                        <span class="badge badge-ok rounded-pill px-2 py-1">Active</span>
+                    }
+                    else
+                    {
+                        <span class="badge badge-neu rounded-pill px-2 py-1">Inactive</span>
+                    }
+
+                    @if (Model.IsEmployee)
+                    {
+                        <span class="badge rounded-pill px-2 py-1" style="background:#dcfce7;color:#166534;">Employee</span>
+                    }
+
+                    @if (Model.IsCoreMember)
+                    {
+                        <span class="badge rounded-pill px-2 py-1" style="background:#ede9fe;color:#6d28d9;">Core Member</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="uf-section h-100">
+                <div class="uf-section-title"><i class="bi bi-person-lines-fill"></i> Basic Information</div>
+                <div class="user-detail-grid">
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Email</span>
+                        <span class="user-detail-value">@Model.Email</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Phone</span>
+                        <span class="user-detail-value">@(Model.PhoneNumber ?? "—")</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Role</span>
+                        <span class="user-detail-value">@(Model.RoleName ?? "—")</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Location</span>
+                        <span class="user-detail-value">@(Model.LocationName ?? "—")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="uf-section h-100">
+                <div class="uf-section-title"><i class="bi bi-briefcase"></i> Employment Information</div>
+                <div class="user-detail-grid">
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Employee Code</span>
+                        <span class="user-detail-value">@(Model.EmployeeCode ?? "—")</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Department</span>
+                        <span class="user-detail-value">@(Model.DepartmentName ?? "—")</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Designation</span>
+                        <span class="user-detail-value">@(Model.DesignationName ?? "—")</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Employee Type</span>
+                        <span class="user-detail-value">@(Model.EmployeeTypeName ?? "—")</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Manager</span>
+                        <span class="user-detail-value">@(Model.ManagerName ?? "—")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-12">
+            <div class="uf-section">
+                <div class="uf-section-title"><i class="bi bi-clock-history"></i> Audit Information</div>
+                <div class="user-detail-grid user-detail-grid-wide">
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Created At</span>
+                        <span class="user-detail-value">@Model.CreatedAt.ToString("dd MMM yyyy hh:mm tt")</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Last Login</span>
+                        <span class="user-detail-value">@(Model.LastLoginDate.HasValue ? Model.LastLoginDate.Value.ToString("dd MMM yyyy hh:mm tt") : "—")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="uf-actions">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn uf-btn-primary"><i class="bi bi-pencil me-1"></i> Edit User</a>
+        <a asp-action="Index" class="btn uf-btn-cancel">Back to List</a>
+    </div>
+</div>
