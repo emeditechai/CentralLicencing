@@ -43,10 +43,38 @@ namespace CentralLicenceApp.Controllers
             _logger = logger;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string? search, string? status, int? roleId, int page = 1)
         {
-            var users = await _userRepo.GetAllAsync();
-            return View(users.ToList());
+            const int pageSize = 10;
+            page = page < 1 ? 1 : page;
+            search = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+            status = string.IsNullOrWhiteSpace(status) ? null : status.Trim();
+            roleId = roleId.HasValue && roleId.Value > 0 ? roleId : null;
+
+            var roles = (await _roleRepo.GetAllAsync()).ToList();
+
+            var (items, totalCount) = await _userRepo.GetPagedAsync(search, status, roleId, page, pageSize);
+            var totalPages = totalCount > 0 ? (int)Math.Ceiling((double)totalCount / pageSize) : 1;
+
+            if (page > totalPages)
+            {
+                page = totalPages;
+                (items, totalCount) = await _userRepo.GetPagedAsync(search, status, roleId, page, pageSize);
+            }
+
+            var vm = new UserListViewModel
+            {
+                Users = items.ToList(),
+                SearchTerm = search,
+                StatusFilter = status,
+                RoleId = roleId,
+                AvailableRoles = roles,
+                PageNumber = page,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+
+            return View(vm);
         }
 
         public async Task<IActionResult> Details(int id)
@@ -112,6 +140,8 @@ namespace CentralLicenceApp.Controllers
                 Email         = vm.Email.Trim(),
                 FullName      = vm.FullName?.Trim(),
                 PhoneNumber   = vm.PhoneNumber?.Trim(),
+                DateOfBirth   = vm.DateOfBirth,
+                DateOfJoining = vm.DateOfJoining,
                 RoleId        = vm.RoleId,
                 LocationId    = vm.LocationId,
                 DepartmentId  = vm.IsEmployee ? vm.DepartmentId : null,
@@ -140,6 +170,9 @@ namespace CentralLicenceApp.Controllers
             var user = await _userRepo.GetByIdAsync(id);
             if (user == null) return NotFound();
 
+            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var isSelfEdit = currentUserIdClaim == id.ToString();
+
             var vm = new UserFormViewModel
             {
                 Id           = user.Id,
@@ -147,6 +180,8 @@ namespace CentralLicenceApp.Controllers
                 Email        = user.Email,
                 FullName     = user.FullName,
                 PhoneNumber  = user.PhoneNumber,
+                DateOfBirth  = user.DateOfBirth,
+                DateOfJoining = user.DateOfJoining,
                 RoleId       = user.RoleId,
                 LocationId   = user.LocationId,
                 DepartmentId = user.DepartmentId,
@@ -158,6 +193,7 @@ namespace CentralLicenceApp.Controllers
                 ManagerId    = user.ManagerId,
                 ExistingProfileImagePath = user.ProfileImagePath,
                 IsActive     = user.IsActive,
+                DisableActiveToggle = isSelfEdit,
                 Roles        = (await _roleRepo.GetAllAsync()).ToList(),
                 Locations    = (await _locationRepo.GetAllActiveAsync()).ToList(),
                 Managers     = (await _userRepo.GetEmployeesAsync()).ToList(),
@@ -178,9 +214,19 @@ namespace CentralLicenceApp.Controllers
             vm.Designations = (await _designationRepo.GetAllActiveAsync()).ToList();
             vm.EmployeeTypes = (await _employeeTypeRepo.GetAllActiveAsync()).ToList();
 
+            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var isSelfEdit = currentUserIdClaim == id.ToString();
+            vm.DisableActiveToggle = isSelfEdit;
+
             ModelState.Remove("Username");
             ModelState.Remove("Password");
             ModelState.Remove("ConfirmPassword");
+
+            if (isSelfEdit && !vm.IsActive)
+            {
+                vm.IsActive = true;
+                ModelState.AddModelError("IsActive", "You cannot deactivate your own account.");
+            }
 
             if (vm.IsEmployee)
             {
@@ -211,6 +257,8 @@ namespace CentralLicenceApp.Controllers
             existing.Email        = vm.Email.Trim();
             existing.FullName     = vm.FullName?.Trim();
             existing.PhoneNumber  = vm.PhoneNumber?.Trim();
+            existing.DateOfBirth  = vm.DateOfBirth;
+            existing.DateOfJoining = vm.DateOfJoining;
             existing.RoleId       = vm.RoleId;
             existing.LocationId   = vm.LocationId;
             existing.DepartmentId = vm.IsEmployee ? vm.DepartmentId : null;
@@ -232,9 +280,16 @@ namespace CentralLicenceApp.Controllers
                 await ((UserRepository)_userRepo).UpdatePasswordAsync(id, newHash);
             }
 
-            var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (currentUserIdClaim == id.ToString())
+            {
+                if (!existing.IsActive)
+                {
+                    await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return RedirectToAction("Login", "Account");
+                }
+
                 await RefreshCurrentUserClaimsAsync(existing);
+            }
 
             TempData["Success"] = "User updated successfully.";
             return RedirectToAction(nameof(Index));

@@ -1,17 +1,56 @@
-@model List<CentralLicenceApp.Models.UserMaster>
+@model CentralLicenceApp.Models.ViewModels.UserListViewModel
 @{
     ViewData["Title"] = "User Management";
     var currentUserId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+    var hasFilters = !string.IsNullOrWhiteSpace(Model.SearchTerm) || !string.IsNullOrWhiteSpace(Model.StatusFilter) || Model.RoleId.HasValue;
 }
 
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
         <h4 class="fw-bold mb-0" style="color:#1e293b;">User Management</h4>
-        <p class="text-muted mb-0" style="font-size:.85rem;">@Model.Count system user(s)</p>
+        <p class="text-muted mb-0" style="font-size:.85rem;">@Model.TotalCount @(hasFilters ? "matching" : "system") user(s)</p>
     </div>
     <a asp-action="Create" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;">
         <i class="bi bi-plus-lg me-1"></i> New User
     </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Search</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="search" value="@Model.SearchTerm" class="form-control border-start-0" placeholder="Name, username, email, phone or employee code..." style="border-radius:0 10px 10px 0;" />
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Status</label>
+                <select name="status" class="form-select" style="border-radius:10px;">
+                    <option value="">All Status</option>
+                    <option value="active" selected="@(Model.StatusFilter == "active")">Active</option>
+                    <option value="inactive" selected="@(Model.StatusFilter == "inactive")">Inactive</option>
+                </select>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Role</label>
+                <select name="roleId" class="form-select" style="border-radius:10px;">
+                    <option value="">All Roles</option>
+                    @foreach (var role in Model.AvailableRoles)
+                    {
+                        <option value="@role.Id" selected="@(Model.RoleId == role.Id)">@role.RoleName</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;">
+                    <i class="bi bi-funnel me-1"></i> Filter
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <div class="card">
@@ -33,7 +72,13 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var u in Model)
+                    @if (!Model.Users.Any())
+                    {
+                        <tr>
+                            <td colspan="10" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No users found</td>
+                        </tr>
+                    }
+                    @foreach (var u in Model.Users)
                     {
                         <tr>
                             <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@u.Id</td>
@@ -105,6 +150,28 @@
                 </tbody>
             </table>
         </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="d-flex align-items-center justify-content-between px-3 py-3 border-top" style="font-size:.82rem;">
+                <span class="text-muted">Showing @((Model.PageNumber - 1) * Model.PageSize + 1)–@(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalCount)) of @Model.TotalCount</span>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        @for (int p = 1; p <= Model.TotalPages; p++)
+                        {
+                            <li class="page-item @(p == Model.PageNumber ? "active" : "")">
+                                <a class="page-link"
+                                   asp-action="Index"
+                                   asp-route-page="@p"
+                                   asp-route-search="@Model.SearchTerm"
+                                   asp-route-status="@Model.StatusFilter"
+                                   asp-route-roleId="@Model.RoleId">@p</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        }
     </div>
 </div>
 

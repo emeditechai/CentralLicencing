@@ -76,7 +76,9 @@ namespace CentralLicenceApp.Services
                         [Email]         NVARCHAR(200)  NOT NULL,
                         [PasswordHash]  NVARCHAR(500)  NOT NULL,
                         [FullName]      NVARCHAR(200)  NULL,
-                [PhoneNumber]   NVARCHAR(20)   NULL,
+                    [PhoneNumber]   NVARCHAR(20)   NULL,
+                    [DateOfBirth]   DATE           NULL,
+                    [DateOfJoining] DATE           NULL,
                         [RoleId]        INT            NOT NULL REFERENCES [dbo].[RoleMaster]([Id]),
                 [LocationId]    INT            NULL REFERENCES [dbo].[LocationMaster]([Id]),
                 [DepartmentId]  INT            NULL REFERENCES [dbo].[EmployeeDepartmentMaster]([Id]),
@@ -96,6 +98,10 @@ namespace CentralLicenceApp.Services
             BEGIN
               IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('UserMaster') AND name = 'PhoneNumber')
                 ALTER TABLE [dbo].[UserMaster] ADD [PhoneNumber] NVARCHAR(20) NULL;
+              IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('UserMaster') AND name = 'DateOfBirth')
+                ALTER TABLE [dbo].[UserMaster] ADD [DateOfBirth] DATE NULL;
+              IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('UserMaster') AND name = 'DateOfJoining')
+                ALTER TABLE [dbo].[UserMaster] ADD [DateOfJoining] DATE NULL;
               IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('UserMaster') AND name = 'LocationId')
                 ALTER TABLE [dbo].[UserMaster] ADD [LocationId] INT NULL REFERENCES [dbo].[LocationMaster]([Id]);
               IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('UserMaster') AND name = 'DepartmentId')

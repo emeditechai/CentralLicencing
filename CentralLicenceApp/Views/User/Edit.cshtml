@@ -73,6 +73,22 @@
         </div>
     </div>
 
+    <div class="uf-section">
+        <div class="uf-section-title"><i class="bi bi-calendar3"></i> Personal Dates</div>
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <label asp-for="DateOfBirth" class="uf-label"></label>
+                <input asp-for="DateOfBirth" type="date" class="form-control uf-input" />
+                <span asp-validation-for="DateOfBirth" class="uf-err"></span>
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="DateOfJoining" class="uf-label"></label>
+                <input asp-for="DateOfJoining" type="date" class="form-control uf-input" />
+                <span asp-validation-for="DateOfJoining" class="uf-err"></span>
+            </div>
+        </div>
+    </div>
+
     <!-- Section: Role & Location -->
     <div class="uf-section">
         <div class="uf-section-title"><i class="bi bi-shield-lock"></i> Role & Location</div>
@@ -98,9 +114,13 @@
 
         <div class="uf-toggle-row mb-3">
             <label class="uf-toggle-item">
-                <input asp-for="IsActive" type="checkbox" class="uf-toggle-chk" />
+                <input asp-for="IsActive" type="checkbox" class="uf-toggle-chk" id="chkIsActive" onchange="onActiveToggle()" disabled="@(Model.DisableActiveToggle ? "disabled" : null)" />
+                @if (Model.DisableActiveToggle)
+                {
+                    <input type="hidden" asp-for="IsActive" />
+                }
                 <span class="uf-toggle-pill"></span>
-                <span class="uf-toggle-lbl">Active</span>
+                <span class="uf-toggle-lbl" id="activeToggleLabel">@(Model.IsActive ? "Active" : "Inactive")</span>
             </label>
             <label class="uf-toggle-item">
                 <input asp-for="IsEmployee" type="checkbox" class="uf-toggle-chk" id="chkIsEmployee" onchange="onEmployeeToggle()" />
@@ -113,6 +133,11 @@
                 <span class="uf-toggle-lbl">Core Member</span>
             </label>
         </div>
+
+        @if (Model.DisableActiveToggle)
+        {
+            <div class="uf-hint mb-3">You cannot deactivate your own account.</div>
+        }
 
         <div id="empSection" style="display:none;">
             <div class="row g-3">
@@ -199,6 +224,11 @@
         else            { msg.style.color = '#ef4444'; msg.textContent = '✗ Passwords do not match'; }
     }
 
+    function onActiveToggle() {
+        var isActive = document.getElementById('chkIsActive').checked;
+        document.getElementById('activeToggleLabel').textContent = isActive ? 'Active' : 'Inactive';
+    }
+
     function onEmployeeToggle() {
         var isEmp = document.getElementById('chkIsEmployee').checked;
         document.getElementById('empSection').style.display        = isEmp ? 'block' : 'none';
@@ -231,6 +261,7 @@
         else    { msg.style.color = '#ef4444'; msg.textContent = '✗ Employee Code already exists'; this.classList.remove('is-valid'); this.classList.add('is-invalid'); }
     });
 
+    onActiveToggle();
     if (document.getElementById('chkIsEmployee').checked) onEmployeeToggle();
     onCoreMemberToggle();
 </script>

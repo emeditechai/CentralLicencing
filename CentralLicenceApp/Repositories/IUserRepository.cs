@@ -7,6 +7,7 @@ namespace CentralLicenceApp.Repositories
     public interface IUserRepository
     {
         Task<IEnumerable<UserMaster>> GetAllAsync();
+        Task<(IEnumerable<UserMaster> Items, int TotalCount)> GetPagedAsync(string? search, string? status, int? roleId, int page, int pageSize);
         Task<UserMaster?> GetByIdAsync(int id);
         Task<UserMaster?> GetByUsernameAsync(string username);
         Task<int> CreateAsync(UserMaster user);

@@ -69,6 +69,22 @@
         </div>
     </div>
 
+    <div class="uf-section">
+        <div class="uf-section-title"><i class="bi bi-calendar3"></i> Personal Dates</div>
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <label asp-for="DateOfBirth" class="uf-label"></label>
+                <input asp-for="DateOfBirth" type="date" class="form-control uf-input" />
+                <span asp-validation-for="DateOfBirth" class="uf-err"></span>
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="DateOfJoining" class="uf-label"></label>
+                <input asp-for="DateOfJoining" type="date" class="form-control uf-input" />
+                <span asp-validation-for="DateOfJoining" class="uf-err"></span>
+            </div>
+        </div>
+    </div>
+
     <!-- Section: Role & Location -->
     <div class="uf-section">
         <div class="uf-section-title"><i class="bi bi-shield-lock"></i> Role & Location</div>

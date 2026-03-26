@@ -65,6 +65,14 @@
                         <span class="user-detail-value">@(Model.PhoneNumber ?? "—")</span>
                     </div>
                     <div class="user-detail-item">
+                        <span class="user-detail-label">Date Of Birth</span>
+                        <span class="user-detail-value">@(Model.DateOfBirth.HasValue ? Model.DateOfBirth.Value.ToString("dd MMM yyyy") : "—")</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Date Of Joining</span>
+                        <span class="user-detail-value">@(Model.DateOfJoining.HasValue ? Model.DateOfJoining.Value.ToString("dd MMM yyyy") : "—")</span>
+                    </div>
+                    <div class="user-detail-item">
                         <span class="user-detail-label">Role</span>
                         <span class="user-detail-value">@(Model.RoleName ?? "—")</span>
                     </div>

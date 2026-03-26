@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
@@ -24,6 +25,14 @@ namespace CentralLicenceApp.Models.ViewModels
         [Display(Name = "Phone Number")]
         [Phone(ErrorMessage = "Enter a valid phone number")]
         public string? PhoneNumber { get; set; }
+
+        [Display(Name = "Date Of Birth")]
+        [DataType(DataType.Date)]
+        public DateTime? DateOfBirth { get; set; }
+
+        [Display(Name = "Date Of Joining")]
+        [DataType(DataType.Date)]
+        public DateTime? DateOfJoining { get; set; }
 
         [Display(Name = "Location")]
         public int? LocationId { get; set; }
@@ -53,6 +62,8 @@ namespace CentralLicenceApp.Models.ViewModels
 
         [Display(Name = "Is Active")]
         public bool IsActive { get; set; } = true;
+
+        public bool DisableActiveToggle { get; set; }
 
         [Display(Name = "Is Employee")]
         public bool IsEmployee { get; set; }
@@ -95,6 +106,19 @@ namespace CentralLicenceApp.Models.ViewModels
 
         [Display(Name = "Is Active")]
         public bool IsActive { get; set; } = true;
+    }
+
+    public class UserListViewModel
+    {
+        public List<UserMaster> Users { get; set; } = new();
+        public string? SearchTerm { get; set; }
+        public string? StatusFilter { get; set; }
+        public int? RoleId { get; set; }
+        public List<RoleMaster> AvailableRoles { get; set; } = new();
+        public int PageNumber { get; set; } = 1;
+        public int PageSize { get; set; } = 10;
+        public int TotalCount { get; set; }
+        public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
     }
 }
 
