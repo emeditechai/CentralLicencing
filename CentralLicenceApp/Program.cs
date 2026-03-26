@@ -2,6 +2,7 @@ using CentralLicenceApp.Repositories;
 using CentralLicenceApp.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,8 @@ builder.Services.AddScoped<IRoleRepository>(_ => new RoleRepository(connStr));
 builder.Services.AddScoped<IEmployeeDepartmentRepository>(_ => new EmployeeDepartmentRepository(connStr));
 builder.Services.AddScoped<IEmployeeDesignationRepository>(_ => new EmployeeDesignationRepository(connStr));
 builder.Services.AddScoped<IEmployeeTypeRepository>(_ => new EmployeeTypeRepository(connStr));
+builder.Services.AddScoped<IExpenseCategoryRepository>(_ => new ExpenseCategoryRepository(connStr));
+builder.Services.AddScoped<IExpenseRequestRepository>(_ => new ExpenseRequestRepository(connStr));
 builder.Services.AddScoped<ICompanySettingsRepository>(_ => new CompanySettingsRepository(connStr));
 builder.Services.AddScoped<ILocationRepository>(_ => new LocationRepository(connStr));
 builder.Services.AddScoped<IMailConfigRepository>(_ => new MailConfigRepository(connStr));
@@ -28,6 +31,8 @@ builder.Services.AddScoped<IClientDetailsRepository>(_ => new ClientDetailsRepos
 
 // Email service
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddTransient<IClaimsTransformation, AdminClaimsTransformation>();
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, AdminAuthorizationMiddlewareResultHandler>();
 
 // Background reminder service
 builder.Services.AddHostedService<ExpiryReminderService>();
@@ -70,7 +75,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Administrator"));
-    options.AddPolicy("AllUsers",  policy => policy.RequireRole("Administrator", "Staff"));
+    options.AddPolicy("AllUsers",  policy => policy.RequireRole("Administrator", "Staff", "Finance"));
 });
 
 var app = builder.Build();

@@ -1,0 +1,229 @@
+@model CentralLicenceApp.Models.ViewModels.ExpenseRequestManageViewModel
+@{
+    ViewData["Title"] = "Manage Request";
+    var draftReadOnly = Model.CanEdit ? null : "readonly";
+}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+        <div>
+            <h4 class="fw-bold mb-0" style="color:#1e293b;">@Model.Request.RequestNumber</h4>
+            <p class="text-muted mb-0" style="font-size:.85rem;">Draft request management for expense and advance booking items.</p>
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="badge badge-neu rounded-pill px-3 py-2" style="font-size:.78rem;">@Model.Request.Status</span>
+        @if (Model.CanEdit)
+        {
+            <a asp-action="AddLine" asp-route-requestId="@Model.Request.Id" class="btn btn-outline-primary" style="border-radius:10px;">
+                <i class="bi bi-plus-lg me-1"></i> Add Expense / Booking
+            </a>
+        }
+        @if (Model.CanSubmit)
+        {
+            <form asp-action="Submit" method="post" class="d-inline"
+                  data-swal-confirm="true"
+                  data-swal-title="Submit Request?"
+                  data-swal-text="The request will move into the approval workflow after submission."
+                  data-swal-confirm-button="Yes, submit request">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Request.Id" />
+                <button type="submit" class="btn text-white" style="background:#180a3c;border:none;border-radius:10px;">
+                    <i class="bi bi-send-check me-1"></i> Submit Request
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="card mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <h6 class="fw-bold mb-1" style="color:#1e293b;">Request Summary</h6>
+                        <p class="text-muted mb-0" style="font-size:.8rem;">Keep the request note aligned with the supporting transactions below.</p>
+                    </div>
+                    <div class="text-end" style="font-size:.8rem;">
+                        <div class="text-muted">Items</div>
+                        <div class="fw-semibold">@Model.Request.ItemCount</div>
+                    </div>
+                </div>
+                <form asp-action="UpdateDraft" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="RequestForm.Id" />
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label asp-for="RequestForm.PurposeOfTravel" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                            <input asp-for="RequestForm.PurposeOfTravel" class="form-control" style="border-radius:10px;" readonly="@draftReadOnly" />
+                            <span asp-validation-for="RequestForm.PurposeOfTravel" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="RequestForm.EmployeeRemarks" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                            <textarea asp-for="RequestForm.EmployeeRemarks" rows="4" class="form-control" style="border-radius:10px;" readonly="@draftReadOnly"></textarea>
+                            <span asp-validation-for="RequestForm.EmployeeRemarks" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    @if (Model.CanEdit)
+                    {
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-outline-secondary" style="border-radius:10px;">Update Draft</button>
+                        </div>
+                    }
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="d-flex align-items-center justify-content-between px-4 pt-4 pb-3">
+                    <div>
+                        <h6 class="fw-bold mb-1" style="color:#1e293b;">Cash Advance and Travel Bookings</h6>
+                        <p class="text-muted mb-0" style="font-size:.8rem;">The transaction lines that form part of this request.</p>
+                    </div>
+                    <div class="fw-semibold" style="font-size:.88rem;color:#180a3c;">INR @Model.Request.TotalAmount.ToString("N2")</div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table tbl-clean mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Type</th>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Receipt</th>
+                                <th class="pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (!Model.Lines.Any())
+                            {
+                                <tr>
+                                    <td colspan="7" class="px-4 py-4">
+                                        <div class="alert alert-info mb-0" style="font-size:.82rem;">There are no expenses under this advance request. Add one to proceed.</div>
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var line in Model.Lines)
+                                {
+                                    <tr>
+                                        <td class="ps-4"><span class="badge badge-neu rounded-pill px-2 py-1">@line.ItemType</span></td>
+                                        <td>
+                                            <div class="fw-semibold" style="font-size:.84rem;">@line.Title</div>
+                                            @if (!string.IsNullOrWhiteSpace(line.ProjectOrCostCenter))
+                                            {
+                                                <div class="text-muted" style="font-size:.73rem;">@line.ProjectOrCostCenter</div>
+                                            }
+                                        </td>
+                                        <td style="font-size:.82rem;">@(line.ExpenseCategoryName ?? "-")</td>
+                                        <td style="font-size:.82rem;">@line.ExpenseDate.ToString("dd MMM yyyy")</td>
+                                        <td style="font-size:.82rem;font-weight:600;">@line.CurrencyCode @line.Amount.ToString("N2")</td>
+                                        <td style="font-size:.82rem;">
+                                            @if (line.Attachments.Any())
+                                            {
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    @foreach (var attachment in line.Attachments)
+                                                    {
+                                                        <a href="@Url.Content(attachment.FilePath)" target="_blank" class="btn btn-sm btn-outline-secondary" style="border-radius:7px;">@((string.IsNullOrWhiteSpace(attachment.OriginalFileName) ? System.IO.Path.GetFileName(attachment.FilePath) : attachment.OriginalFileName))</a>
+                                                    }
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">-</span>
+                                            }
+                                        </td>
+                                        <td class="pe-4">
+                                            @if (Model.CanEdit)
+                                            {
+                                                <div class="d-flex gap-1">
+                                                    <a asp-action="EditLine" asp-route-id="@line.Id" class="btn btn-sm btn-outline-secondary" style="border-radius:7px;"><i class="bi bi-pencil"></i></a>
+                                                    <form asp-action="DeleteLine" method="post"
+                                                          data-swal-confirm="true"
+                                                          data-swal-title="Delete Line?"
+                                                          data-swal-text="This transaction line will be removed from the request."
+                                                          data-swal-confirm-button="Yes, delete line">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@line.Id" />
+                                                        <input type="hidden" name="requestId" value="@Model.Request.Id" />
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius:7px;"><i class="bi bi-trash"></i></button>
+                                                    </form>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">Locked</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card mb-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3" style="color:#1e293b;">Workflow Snapshot</h6>
+                <div class="er-mini-stat mb-3">
+                    <span class="er-mini-label">Approver</span>
+                    <span class="er-mini-value">@(string.IsNullOrWhiteSpace(Model.Request.ApproverName) ? "Auto / Not Assigned" : Model.Request.ApproverName)</span>
+                </div>
+                <div class="er-mini-stat mb-3">
+                    <span class="er-mini-label">Created</span>
+                    <span class="er-mini-value">@Model.Request.CreatedAt.ToString("dd MMM yyyy hh:mm tt")</span>
+                </div>
+                <div class="er-mini-stat mb-3">
+                    <span class="er-mini-label">Submitted</span>
+                    <span class="er-mini-value">@(Model.Request.SubmittedAt.HasValue ? Model.Request.SubmittedAt.Value.ToString("dd MMM yyyy hh:mm tt") : "Not yet submitted")</span>
+                </div>
+                <div class="er-mini-stat">
+                    <span class="er-mini-label">Status</span>
+                    <span class="er-mini-value">@Model.Request.Status</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3" style="color:#1e293b;">Activity Timeline</h6>
+                @if (!Model.History.Any())
+                {
+                    <div class="text-muted" style="font-size:.82rem;">No workflow activity recorded yet.</div>
+                }
+                else
+                {
+                    <div class="er-history-list">
+                        @foreach (var entry in Model.History)
+                        {
+                            <div class="er-history-item">
+                                <div class="er-history-dot"></div>
+                                <div>
+                                    <div class="fw-semibold" style="font-size:.84rem;">@entry.ActionTaken</div>
+                                    <div class="text-muted" style="font-size:.74rem;">@(string.IsNullOrWhiteSpace(entry.ActionByName) ? "System" : entry.ActionByName) &middot; @entry.ActionAt.ToString("dd MMM yyyy hh:mm tt")</div>
+                                    @if (!string.IsNullOrWhiteSpace(entry.Remarks))
+                                    {
+                                        <div class="text-muted mt-1" style="font-size:.78rem;">@entry.Remarks</div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

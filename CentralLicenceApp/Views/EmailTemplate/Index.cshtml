@@ -23,7 +23,7 @@
             <span class="fw-semibold" style="font-size:.82rem;text-transform:uppercase;letter-spacing:.04em;">Available Placeholders</span>
         </div>
         <div class="d-flex flex-wrap gap-2" style="font-size:.78rem;">
-            @foreach (var ph in new[] { "{{ClientName}}", "{{ClientCode}}", "{{ExpiryDate}}", "{{AmcExpiryDate}}", "{{DaysRemaining}}", "{{AppName}}", "{{AppUrl}}" })
+            @foreach (var ph in new[] { "{{ClientName}}", "{{ClientCode}}", "{{ExpiryDate}}", "{{AmcExpiryDate}}", "{{DaysRemaining}}", "{{AppName}}", "{{AppUrl}}", "{{RequestNumber}}", "{{EmployeeName}}", "{{EmployeeCode}}", "{{PurposeOfTravel}}", "{{TotalAmount}}", "{{ItemCount}}", "{{SubmittedAt}}", "{{CurrentStatus}}", "{{ApproverName}}", "{{DetailsUrl}}", "{{SettlementReceiptNumber}}", "{{SettlementDate}}", "{{SettlementAmount}}", "{{SettlementMode}}", "{{SettlementReferenceNo}}", "{{SettlementReceiptUrl}}" })
             {
                 <code style="background:#ede9fe;color:#6d28d9;border-radius:6px;padding:2px 8px;">@ph</code>
             }
@@ -51,6 +51,8 @@ else
                 "LICENSE_EXPIRY_EXTENDED" => ("#dbeafe", "#2563eb", "bi-arrow-clockwise"),
                 "LICENSE_EXPIRY_REMINDER" => ("#fef3c7", "#d97706", "bi-clock-fill"),
                 "AMC_EXPIRY_REMINDER"     => ("#fee2e2", "#dc2626", "bi-exclamation-triangle-fill"),
+                "EXPENSE_REQUEST_SUBMITTED" => ("#dbeafe", "#1d4ed8", "bi-receipt-cutoff"),
+                "EXPENSE_SETTLEMENT_COMPLETED" => ("#dcfce7", "#166534", "bi-cash-coin"),
                 _                         => ("#f1f5f9", "#64748b", "bi-envelope")
             };
 
@@ -98,6 +100,8 @@ else
                                     "LICENSE_EXPIRY_EXTENDED" => "Sent when the licence expiry date is extended",
                                     "LICENSE_EXPIRY_REMINDER" => "Sent daily at 9 AM when expiry is within 7 days",
                                     "AMC_EXPIRY_REMINDER"     => "Sent daily at 9 AM when AMC expiry is within 7 days",
+                                    "EXPENSE_REQUEST_SUBMITTED" => "Sent when an expense or advance request is submitted",
+                                    "EXPENSE_SETTLEMENT_COMPLETED" => "Sent to the requester after settlement is completed",
                                     _                         => "Manual trigger"
                                 })
                             </div>

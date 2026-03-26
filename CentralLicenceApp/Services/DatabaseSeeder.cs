@@ -29,6 +29,8 @@ namespace CentralLicenceApp.Services
                 await EnsureEmployeeDepartmentMasterAsync(conn);
                 await EnsureEmployeeDesignationMasterAsync(conn);
                 await EnsureEmployeeTypeMasterAsync(conn);
+                await EnsureExpenseCategoryMasterAsync(conn);
+                await EnsureExpenseRequestTablesAsync(conn);
                 await EnsureUserMasterAsync(conn);
                 await SeedDefaultUsersAsync(conn);
                 await EnsureCompanySettingsTablesAsync(conn);
@@ -61,7 +63,10 @@ namespace CentralLicenceApp.Services
                     INSERT INTO RoleMaster(RoleName,Description,IsActive) VALUES('Administrator','Full access',1);
 
                 IF NOT EXISTS (SELECT 1 FROM RoleMaster WHERE RoleName='Staff')
-                    INSERT INTO RoleMaster(RoleName,Description,IsActive) VALUES('Staff','Read-only access',1);";
+                  INSERT INTO RoleMaster(RoleName,Description,IsActive) VALUES('Staff','Read-only access',1);
+
+                IF NOT EXISTS (SELECT 1 FROM RoleMaster WHERE RoleName='Finance')
+                  INSERT INTO RoleMaster(RoleName,Description,IsActive) VALUES('Finance','Expense reimbursement and settlement access',1);";
             await conn.ExecuteAsync(sql);
         }
 
@@ -246,6 +251,194 @@ namespace CentralLicenceApp.Services
             IF NOT EXISTS (SELECT 1 FROM EmployeeTypeMaster WHERE TypeName = 'Free lancer')
               INSERT INTO EmployeeTypeMaster (TypeName, Description, IsActive, CreatedAt)
               VALUES ('Free lancer', 'Freelance staff', 1, GETDATE());
+          ");
+        }
+
+        private static async Task EnsureExpenseCategoryMasterAsync(SqlConnection conn)
+        {
+          await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='ExpenseCategoryMaster')
+            BEGIN
+              CREATE TABLE [dbo].[ExpenseCategoryMaster] (
+                [Id]           INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                [CategoryName] NVARCHAR(100)  NOT NULL,
+                [Description]  NVARCHAR(200)  NULL,
+                [IsActive]     BIT            NOT NULL DEFAULT 1,
+                [CreatedAt]    DATETIME       NOT NULL DEFAULT GETDATE()
+              );
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.indexes
+              WHERE name = 'UX_ExpenseCategoryMaster_CategoryName'
+                AND object_id = OBJECT_ID('ExpenseCategoryMaster'))
+            BEGIN
+              CREATE UNIQUE INDEX UX_ExpenseCategoryMaster_CategoryName
+                ON dbo.ExpenseCategoryMaster(CategoryName);
+            END
+
+            IF NOT EXISTS (SELECT 1 FROM ExpenseCategoryMaster WHERE CategoryName = 'Travel')
+              INSERT INTO ExpenseCategoryMaster (CategoryName, Description, IsActive, CreatedAt)
+              VALUES ('Travel', 'Outstation and intercity travel expenses', 1, GETDATE());
+
+            IF NOT EXISTS (SELECT 1 FROM ExpenseCategoryMaster WHERE CategoryName = 'Hotel')
+              INSERT INTO ExpenseCategoryMaster (CategoryName, Description, IsActive, CreatedAt)
+              VALUES ('Hotel', 'Accommodation and stay expenses', 1, GETDATE());
+
+            IF NOT EXISTS (SELECT 1 FROM ExpenseCategoryMaster WHERE CategoryName = 'Local Travel')
+              INSERT INTO ExpenseCategoryMaster (CategoryName, Description, IsActive, CreatedAt)
+              VALUES ('Local Travel', 'Taxi, cab, metro, and local conveyance expenses', 1, GETDATE());
+
+            IF NOT EXISTS (SELECT 1 FROM ExpenseCategoryMaster WHERE CategoryName = 'Meals')
+              INSERT INTO ExpenseCategoryMaster (CategoryName, Description, IsActive, CreatedAt)
+              VALUES ('Meals', 'Food and refreshment expenses during work travel', 1, GETDATE());
+
+            IF NOT EXISTS (SELECT 1 FROM ExpenseCategoryMaster WHERE CategoryName = 'Office Supplies')
+              INSERT INTO ExpenseCategoryMaster (CategoryName, Description, IsActive, CreatedAt)
+              VALUES ('Office Supplies', 'Stationery and office purchase expenses', 1, GETDATE());
+          ");
+        }
+
+        private static async Task EnsureExpenseRequestTablesAsync(SqlConnection conn)
+        {
+          await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='ExpenseRequest')
+            BEGIN
+              CREATE TABLE [dbo].[ExpenseRequest] (
+                [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                [RequestNumber] NVARCHAR(30) NOT NULL,
+                [EmployeeId] INT NOT NULL REFERENCES [dbo].[UserMaster]([Id]),
+                [ApproverId] INT NULL REFERENCES [dbo].[UserMaster]([Id]),
+                [PurposeOfTravel] NVARCHAR(200) NOT NULL,
+                [EmployeeRemarks] NVARCHAR(500) NULL,
+                [Status] NVARCHAR(30) NOT NULL,
+                [TotalAmount] DECIMAL(18,2) NOT NULL DEFAULT 0,
+                [ItemCount] INT NOT NULL DEFAULT 0,
+                [CreatedAt] DATETIME NOT NULL DEFAULT GETDATE(),
+                [SubmittedAt] DATETIME NULL,
+                [ApprovedAt] DATETIME NULL,
+                [RejectedAt] DATETIME NULL,
+                [ApprovalRemarks] NVARCHAR(500) NULL,
+                [ApprovedById] INT NULL REFERENCES [dbo].[UserMaster]([Id]),
+                [ReimbursementStartedAt] DATETIME NULL,
+                [ReimbursementStartedById] INT NULL REFERENCES [dbo].[UserMaster]([Id]),
+                [ReimbursementRemarks] NVARCHAR(500) NULL,
+                [SettlementAmount] DECIMAL(18,2) NULL,
+                [SettlementDate] DATE NULL,
+                [SettledAt] DATETIME NULL,
+                [SettledById] INT NULL REFERENCES [dbo].[UserMaster]([Id]),
+                [SettlementMode] NVARCHAR(30) NULL,
+                [SettlementReferenceNo] NVARCHAR(100) NULL,
+                [SettlementRemarks] NVARCHAR(500) NULL,
+                [SettlementReceiptNumber] NVARCHAR(40) NULL
+              );
+            END
+            ELSE
+            BEGIN
+              IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ExpenseRequest') AND name = 'ReimbursementStartedAt')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD [ReimbursementStartedAt] DATETIME NULL;
+              IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ExpenseRequest') AND name = 'ReimbursementStartedById')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD [ReimbursementStartedById] INT NULL;
+              IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ExpenseRequest') AND name = 'ReimbursementRemarks')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD [ReimbursementRemarks] NVARCHAR(500) NULL;
+              IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ExpenseRequest') AND name = 'SettlementAmount')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD [SettlementAmount] DECIMAL(18,2) NULL;
+              IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ExpenseRequest') AND name = 'SettlementDate')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD [SettlementDate] DATE NULL;
+              IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ExpenseRequest') AND name = 'SettledAt')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD [SettledAt] DATETIME NULL;
+              IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ExpenseRequest') AND name = 'SettledById')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD [SettledById] INT NULL;
+              IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ExpenseRequest') AND name = 'SettlementMode')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD [SettlementMode] NVARCHAR(30) NULL;
+              IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ExpenseRequest') AND name = 'SettlementReferenceNo')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD [SettlementReferenceNo] NVARCHAR(100) NULL;
+              IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ExpenseRequest') AND name = 'SettlementRemarks')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD [SettlementRemarks] NVARCHAR(500) NULL;
+              IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ExpenseRequest') AND name = 'SettlementReceiptNumber')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD [SettlementReceiptNumber] NVARCHAR(40) NULL;
+
+              IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_ExpenseRequest_ReimbursementStartedBy')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD CONSTRAINT [FK_ExpenseRequest_ReimbursementStartedBy] FOREIGN KEY ([ReimbursementStartedById]) REFERENCES [dbo].[UserMaster]([Id]);
+              IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_ExpenseRequest_SettledBy')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD CONSTRAINT [FK_ExpenseRequest_SettledBy] FOREIGN KEY ([SettledById]) REFERENCES [dbo].[UserMaster]([Id]);
+            END
+
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='ExpenseRequestLine')
+            BEGIN
+              CREATE TABLE [dbo].[ExpenseRequestLine] (
+                [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                [RequestId] INT NOT NULL REFERENCES [dbo].[ExpenseRequest]([Id]) ON DELETE CASCADE,
+                [ItemType] NVARCHAR(30) NOT NULL,
+                [ExpenseCategoryId] INT NULL REFERENCES [dbo].[ExpenseCategoryMaster]([Id]),
+                [Title] NVARCHAR(150) NOT NULL,
+                [ProjectOrCostCenter] NVARCHAR(120) NULL,
+                [ExpenseDate] DATE NOT NULL,
+                [CurrencyCode] NVARCHAR(10) NOT NULL,
+                [Amount] DECIMAL(18,2) NOT NULL,
+                [PayableAmountInr] DECIMAL(18,2) NULL,
+                [AccommodationCountry] NVARCHAR(100) NULL,
+                [AccommodationCity] NVARCHAR(100) NULL,
+                [CheckInDate] DATE NULL,
+                [CheckOutDate] DATE NULL,
+                [ReceiptPath] NVARCHAR(300) NULL,
+                [Notes] NVARCHAR(500) NULL,
+                [CreatedAt] DATETIME NOT NULL DEFAULT GETDATE()
+              );
+            END
+
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='ExpenseRequestLineAttachment')
+            BEGIN
+              CREATE TABLE [dbo].[ExpenseRequestLineAttachment] (
+                [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                [RequestLineId] INT NOT NULL REFERENCES [dbo].[ExpenseRequestLine]([Id]) ON DELETE CASCADE,
+                [FilePath] NVARCHAR(300) NOT NULL,
+                [OriginalFileName] NVARCHAR(260) NULL,
+                [CreatedAt] DATETIME NOT NULL DEFAULT GETDATE()
+              );
+            END
+
+            INSERT INTO ExpenseRequestLineAttachment (RequestLineId, FilePath, OriginalFileName, CreatedAt)
+            SELECT l.Id,
+                   l.ReceiptPath,
+                   RIGHT(l.ReceiptPath, CHARINDEX('/', REVERSE(l.ReceiptPath) + '/') - 1),
+                   ISNULL(l.CreatedAt, GETDATE())
+            FROM ExpenseRequestLine l
+            WHERE l.ReceiptPath IS NOT NULL
+              AND LTRIM(RTRIM(l.ReceiptPath)) <> ''
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM ExpenseRequestLineAttachment a
+                  WHERE a.RequestLineId = l.Id
+                    AND a.FilePath = l.ReceiptPath
+              );
+
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='ExpenseRequestApprovalHistory')
+            BEGIN
+              CREATE TABLE [dbo].[ExpenseRequestApprovalHistory] (
+                [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                [RequestId] INT NOT NULL REFERENCES [dbo].[ExpenseRequest]([Id]) ON DELETE CASCADE,
+                [ActionTaken] NVARCHAR(50) NOT NULL,
+                [ActionByUserId] INT NULL REFERENCES [dbo].[UserMaster]([Id]),
+                [Remarks] NVARCHAR(500) NULL,
+                [ActionAt] DATETIME NOT NULL DEFAULT GETDATE()
+              );
+            END
+
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='UX_ExpenseRequest_RequestNumber' AND object_id = OBJECT_ID('ExpenseRequest'))
+              CREATE UNIQUE INDEX UX_ExpenseRequest_RequestNumber ON dbo.ExpenseRequest(RequestNumber);
+
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_ExpenseRequest_Employee_Status' AND object_id = OBJECT_ID('ExpenseRequest'))
+              CREATE INDEX IX_ExpenseRequest_Employee_Status ON dbo.ExpenseRequest(EmployeeId, Status, CreatedAt DESC);
+
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_ExpenseRequest_Approver_Status' AND object_id = OBJECT_ID('ExpenseRequest'))
+              CREATE INDEX IX_ExpenseRequest_Approver_Status ON dbo.ExpenseRequest(ApproverId, Status, SubmittedAt DESC);
+
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_ExpenseRequestLine_RequestId' AND object_id = OBJECT_ID('ExpenseRequestLine'))
+              CREATE INDEX IX_ExpenseRequestLine_RequestId ON dbo.ExpenseRequestLine(RequestId, ExpenseDate DESC);
+
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_ExpenseRequestLineAttachment_RequestLineId' AND object_id = OBJECT_ID('ExpenseRequestLineAttachment'))
+              CREATE INDEX IX_ExpenseRequestLineAttachment_RequestLineId ON dbo.ExpenseRequestLineAttachment(RequestLineId, CreatedAt DESC);
           ");
         }
 
@@ -449,6 +642,119 @@ namespace CentralLicenceApp.Services
       <tr>
         <td style=""background:#f8fafc;padding:16px 40px;text-align:center;border-top:1px solid #f1f5f9;"">
           <p style=""margin:0;color:#94a3b8;font-size:12px;"">&#169; 2026 {{CompanyName}} &middot; Tech Driven HealthCare</p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>";
+
+            const string settlementCompletedHtml = @"<!DOCTYPE html><html><head><meta charset=""utf-8""/></head>
+<body style=""margin:0;padding:0;background:#f4f7fb;font-family:Segoe UI,Arial,sans-serif;"">
+<table width=""100%"" cellpadding=""0"" cellspacing=""0"">
+  <tr><td align=""center"" style=""padding:28px 14px;"">
+    <table width=""620"" cellpadding=""0"" cellspacing=""0"" style=""background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 10px 28px rgba(15,23,42,.08);"">
+      <tr>
+        <td style=""background:linear-gradient(135deg,#14532d 0%,#0f766e 100%);padding:28px 34px;"">
+          <p style=""margin:0 0 8px;color:#ccfbf1;font-size:12px;letter-spacing:2px;text-transform:uppercase;"">{{CompanyName}}</p>
+          <h1 style=""margin:0;color:#ffffff;font-size:24px;font-weight:700;"">Expense Settlement Completed</h1>
+          <p style=""margin:8px 0 0;color:#d1fae5;font-size:13px;line-height:1.6;"">Your approved request has been processed and settled successfully.</p>
+        </td>
+      </tr>
+      <tr>
+        <td style=""padding:30px 34px;"">
+          <p style=""margin:0 0 16px;color:#334155;font-size:14px;line-height:1.75;"">Dear <strong>{{EmployeeName}}</strong>, your request <strong>{{RequestNumber}}</strong> has been settled. The payment summary is below.</p>
+          <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background:#f8fafc;border:1px solid #dbe3ef;border-radius:12px;margin-bottom:20px;"">
+            <tr><td style=""padding:18px 20px;"">
+              <table width=""100%"" cellpadding=""6"" cellspacing=""0"" style=""font-size:13px;color:#334155;"">
+                <tr><td style=""width:42%;color:#64748b;border-bottom:1px solid #e2e8f0;"">Receipt No</td><td style=""font-weight:700;border-bottom:1px solid #e2e8f0;"">{{SettlementReceiptNumber}}</td></tr>
+                <tr><td style=""color:#64748b;border-bottom:1px solid #e2e8f0;"">Settlement Date</td><td style=""font-weight:700;border-bottom:1px solid #e2e8f0;"">{{SettlementDate}}</td></tr>
+                <tr><td style=""color:#64748b;border-bottom:1px solid #e2e8f0;"">Settled Amount</td><td style=""font-weight:700;border-bottom:1px solid #e2e8f0;"">{{SettlementAmount}}</td></tr>
+                <tr><td style=""color:#64748b;border-bottom:1px solid #e2e8f0;"">Payment Mode</td><td style=""font-weight:700;border-bottom:1px solid #e2e8f0;"">{{SettlementMode}}</td></tr>
+                <tr><td style=""color:#64748b;"">Reference No</td><td style=""font-weight:700;"">{{SettlementReferenceNo}}</td></tr>
+              </table>
+            </td></tr>
+          </table>
+          <p style=""margin:0 0 14px;color:#475569;font-size:13px;line-height:1.7;"">Purpose: <strong>{{PurposeOfTravel}}</strong></p>
+          <a href=""{{SettlementReceiptUrl}}"" style=""display:inline-block;background:#14532d;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:700;"">View Settlement Receipt</a>
+        </td>
+      </tr>
+      <tr>
+        <td style=""background:#f8fafc;padding:14px 34px;border-top:1px solid #e2e8f0;text-align:center;"">
+          <p style=""margin:0;color:#94a3b8;font-size:12px;"">© 2026 {{CompanyName}} · Tech Driven HealthCare</p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>";
+
+            const string expenseSubmittedHtml = @"<!DOCTYPE html><html><head><meta charset=""utf-8""/></head>
+<body style=""margin:0;padding:0;background:#f3f6fb;font-family:Segoe UI,Arial,sans-serif;"">
+<table width=""100%"" cellpadding=""0"" cellspacing=""0"">
+  <tr><td align=""center"" style=""padding:28px 14px;"">
+    <table width=""620"" cellpadding=""0"" cellspacing=""0"" style=""background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,.08);"">
+      <tr>
+        <td style=""background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%);padding:28px 36px;"">
+          <table width=""100%"" cellpadding=""0"" cellspacing=""0""><tr>
+            <td>
+              <p style=""margin:0 0 8px;color:#bfdbfe;font-size:12px;letter-spacing:2px;text-transform:uppercase;"">{{CompanyName}}</p>
+              <h1 style=""margin:0;color:#ffffff;font-size:24px;font-weight:700;line-height:1.3;"">Expense or Advance Request Submitted</h1>
+              <p style=""margin:8px 0 0;color:#dbeafe;font-size:13px;line-height:1.6;"">A new request has entered the workflow and is ready for core-team visibility.</p>
+            </td>
+            <td align=""right"" style=""vertical-align:top;"">
+              <div style=""display:inline-block;padding:8px 12px;border:1px solid rgba(255,255,255,.22);border-radius:999px;color:#eff6ff;font-size:12px;font-weight:600;"">{{CurrentStatus}}</div>
+            </td>
+          </tr></table>
+        </td>
+      </tr>
+      <tr>
+        <td style=""padding:30px 36px;"">
+          <p style=""margin:0 0 18px;color:#334155;font-size:14px;line-height:1.75;"">Request <strong>{{RequestNumber}}</strong> was submitted by <strong>{{EmployeeName}}</strong>. The summary is below for review and tracking.</p>
+
+          <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""border-collapse:separate;border-spacing:0 12px;margin-bottom:22px;"">
+            <tr>
+              <td width=""50%"" style=""padding-right:8px;vertical-align:top;"">
+                <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background:#f8fafc;border:1px solid #dbe3f0;border-radius:12px;"">
+                  <tr><td style=""padding:18px 20px;"">
+                    <div style=""margin:0 0 12px;color:#0f172a;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;"">Request Snapshot</div>
+                    <table width=""100%"" cellpadding=""5"" cellspacing=""0"" style=""color:#334155;font-size:13px;"">
+                      <tr><td style=""color:#64748b;width:46%;border-bottom:1px solid #e2e8f0;"">Request No</td><td style=""font-weight:700;border-bottom:1px solid #e2e8f0;"">{{RequestNumber}}</td></tr>
+                      <tr><td style=""color:#64748b;border-bottom:1px solid #e2e8f0;"">Submitted By</td><td style=""font-weight:700;border-bottom:1px solid #e2e8f0;"">{{EmployeeName}}</td></tr>
+                      <tr><td style=""color:#64748b;border-bottom:1px solid #e2e8f0;"">Employee Code</td><td style=""font-weight:700;border-bottom:1px solid #e2e8f0;"">{{EmployeeCode}}</td></tr>
+                      <tr><td style=""color:#64748b;"">Submitted On</td><td style=""font-weight:700;"">{{SubmittedAt}}</td></tr>
+                    </table>
+                  </td></tr>
+                </table>
+              </td>
+              <td width=""50%"" style=""padding-left:8px;vertical-align:top;"">
+                <table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background:#f8fafc;border:1px solid #dbe3f0;border-radius:12px;"">
+                  <tr><td style=""padding:18px 20px;"">
+                    <div style=""margin:0 0 12px;color:#0f172a;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;"">Review Context</div>
+                    <table width=""100%"" cellpadding=""5"" cellspacing=""0"" style=""color:#334155;font-size:13px;"">
+                      <tr><td style=""color:#64748b;width:46%;border-bottom:1px solid #e2e8f0;"">Current Status</td><td style=""font-weight:700;border-bottom:1px solid #e2e8f0;"">{{CurrentStatus}}</td></tr>
+                      <tr><td style=""color:#64748b;border-bottom:1px solid #e2e8f0;"">Approver</td><td style=""font-weight:700;border-bottom:1px solid #e2e8f0;"">{{ApproverName}}</td></tr>
+                      <tr><td style=""color:#64748b;border-bottom:1px solid #e2e8f0;"">Line Items</td><td style=""font-weight:700;border-bottom:1px solid #e2e8f0;"">{{ItemCount}}</td></tr>
+                      <tr><td style=""color:#64748b;"">Total Amount</td><td style=""font-weight:700;color:#0f766e;"">{{TotalAmount}}</td></tr>
+                    </table>
+                  </td></tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+
+          <div style=""background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 18px;margin-bottom:24px;"">
+            <div style=""margin:0 0 8px;color:#1d4ed8;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;"">Purpose</div>
+            <p style=""margin:0;color:#1e293b;font-size:14px;line-height:1.75;"">{{PurposeOfTravel}}</p>
+          </div>
+
+          <a href=""{{DetailsUrl}}"" style=""display:inline-block;background:#0f172a;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-size:13px;font-weight:700;"">Open Request Details</a>
+          <p style=""margin:16px 0 0;color:#64748b;font-size:12px;line-height:1.7;"">You are receiving this notification because you are marked as a core member in {{AppName}}.</p>
+        </td>
+      </tr>
+      <tr>
+        <td style=""background:#f8fafc;padding:14px 36px;border-top:1px solid #e2e8f0;text-align:center;"">
+          <p style=""margin:0;color:#94a3b8;font-size:12px;"">© 2026 {{CompanyName}} · Tech Driven HealthCare</p>
         </td>
       </tr>
     </table>
@@ -684,7 +990,13 @@ namespace CentralLicenceApp.Services
                  amcExpiryHtml),
                 ("USER_ONBOARDING",         "New User Onboarding",
                  "Welcome to {{AppName}} - Your Account Details",
-                 userOnboardingHtml)
+                  userOnboardingHtml),
+                 ("EXPENSE_REQUEST_SUBMITTED", "Expense Request Submitted",
+                  "Expense Request {{RequestNumber}} Submitted by {{EmployeeName}}",
+                  expenseSubmittedHtml),
+                 ("EXPENSE_SETTLEMENT_COMPLETED", "Expense Settlement Completed",
+                  "Settlement completed for request {{RequestNumber}}",
+                  settlementCompletedHtml)
             };
 
             foreach (var (key, name, subject, body) in templates)

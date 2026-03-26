@@ -13,3 +13,6 @@ obj/
 appsettings.Development.json
 *.pfx
 *.p12
+
+## Runtime uploads
+CentralLicenceApp/wwwroot/uploads/

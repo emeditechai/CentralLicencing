@@ -232,6 +232,16 @@ namespace CentralLicenceApp.Repositories
             return await conn.QueryAsync<UserMaster>(
                 "SELECT Id, FullName, Username FROM UserMaster WHERE IsEmployee = 1 AND IsActive = 1 ORDER BY FullName");
         }
+
+        public async Task<IEnumerable<UserMaster>> GetCoreMembersAsync()
+        {
+            using var conn = CreateConnection();
+            return await conn.QueryAsync<UserMaster>(@"
+                SELECT Id, Username, Email, FullName, EmployeeCode, IsEmployee, IsCoreMember, IsActive
+                FROM UserMaster
+                WHERE IsCoreMember = 1 AND IsActive = 1 AND ISNULL(Email, '') <> ''
+                ORDER BY ISNULL(FullName, Username)");
+        }
     }
 
     public class RoleRepository : IRoleRepository

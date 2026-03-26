@@ -35,4 +35,21 @@ namespace CentralLicenceApp.Models.ViewModels
         [Display(Name = "Is Active")]
         public bool IsActive { get; set; } = true;
     }
+
+    public class ExpenseCategoryFormViewModel
+    {
+        public int Id { get; set; }
+
+        [Required(ErrorMessage = "Category Name is required")]
+        [Display(Name = "Category Name")]
+        [StringLength(100)]
+        public string CategoryName { get; set; } = string.Empty;
+
+        [Display(Name = "Description")]
+        [StringLength(200)]
+        public string? Description { get; set; }
+
+        [Display(Name = "Is Active")]
+        public bool IsActive { get; set; } = true;
+    }
 }

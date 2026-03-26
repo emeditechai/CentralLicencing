@@ -1,0 +1,68 @@
+@model CentralLicenceApp.Models.ViewModels.ExpenseRequestListPageViewModel
+@{
+    ViewData["Title"] = Model.PageTitle;
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">@Model.PageTitle</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Requests awaiting your review and approval.</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Request No.</th>
+                        <th>Employee</th>
+                        <th>Purpose</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Submitted</th>
+                        <th class="pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Requests.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="bi bi-check2-circle fs-1 d-block mb-2"></i>
+                                <div class="fw-semibold mb-1">@Model.EmptyStateTitle</div>
+                                <div style="font-size:.85rem;">@Model.EmptyStateDescription</div>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.Requests)
+                        {
+                            <tr>
+                                <td class="ps-3 fw-semibold" style="font-size:.84rem;">@item.RequestNumber</td>
+                                <td>
+                                    <div class="fw-semibold" style="font-size:.85rem;">@item.EmployeeName</div>
+                                    <div class="text-muted" style="font-size:.73rem;">@(item.EmployeeCode ?? "Employee")</div>
+                                </td>
+                                <td style="font-size:.84rem;">@item.PurposeOfTravel</td>
+                                <td style="font-size:.82rem;">@item.ItemCount</td>
+                                <td style="font-size:.82rem;font-weight:600;">INR @item.TotalAmount.ToString("N2")</td>
+                                <td style="font-size:.82rem;">@(item.SubmittedAt.HasValue ? item.SubmittedAt.Value.ToString("dd MMM yyyy hh:mm tt") : "-")</td>
+                                <td class="pe-3">
+                                    <div class="d-flex gap-1">
+                                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" style="border-radius:7px;">Review</a>
+                                        <a asp-action="Print" asp-route-id="@item.Id" target="_blank" class="btn btn-sm btn-outline-secondary" style="border-radius:7px;" title="Print Request">
+                                            <i class="bi bi-printer"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

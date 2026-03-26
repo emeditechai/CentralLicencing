@@ -7,6 +7,8 @@
         "LICENSE_EXPIRY_EXTENDED" => ("License Expiry Extended",             "bi-arrow-clockwise",   "#2563eb", "#dbeafe"),
         "LICENSE_EXPIRY_REMINDER" => ("License Expiry Reminder",             "bi-clock-fill",        "#d97706", "#fef3c7"),
         "AMC_EXPIRY_REMINDER"     => ("AMC Expiry Reminder",                 "bi-exclamation-triangle-fill", "#dc2626", "#fee2e2"),
+        "EXPENSE_REQUEST_SUBMITTED" => ("Expense Request Submitted",          "bi-receipt-cutoff",   "#1d4ed8", "#dbeafe"),
+        "EXPENSE_SETTLEMENT_COMPLETED" => ("Expense Settlement Completed",    "bi-cash-coin",        "#166534", "#dcfce7"),
         _                         => (Model.TemplateName,                    "bi-envelope",          "#64748b", "#f1f5f9")
     };
 }
@@ -127,6 +129,22 @@
                         <tr><td><code>{{DaysRemaining}}</code></td><td>Days until expiry</td></tr>
                         <tr><td><code>{{AppName}}</code></td><td>Application name (eRestoPOS)</td></tr>
                         <tr><td><code>{{AppUrl}}</code></td><td>Application URL</td></tr>
+                        <tr><td><code>{{RequestNumber}}</code></td><td>Expense request number</td></tr>
+                        <tr><td><code>{{EmployeeName}}</code></td><td>Employee full name</td></tr>
+                        <tr><td><code>{{EmployeeCode}}</code></td><td>Employee code</td></tr>
+                        <tr><td><code>{{PurposeOfTravel}}</code></td><td>Travel or advance purpose</td></tr>
+                        <tr><td><code>{{TotalAmount}}</code></td><td>Total request amount</td></tr>
+                        <tr><td><code>{{ItemCount}}</code></td><td>Number of request lines</td></tr>
+                        <tr><td><code>{{SubmittedAt}}</code></td><td>Submission timestamp</td></tr>
+                        <tr><td><code>{{CurrentStatus}}</code></td><td>Current workflow status</td></tr>
+                        <tr><td><code>{{ApproverName}}</code></td><td>Assigned approver name</td></tr>
+                        <tr><td><code>{{DetailsUrl}}</code></td><td>Absolute request details link</td></tr>
+                        <tr><td><code>{{SettlementReceiptNumber}}</code></td><td>Settlement receipt number</td></tr>
+                        <tr><td><code>{{SettlementDate}}</code></td><td>Settlement completion date</td></tr>
+                        <tr><td><code>{{SettlementAmount}}</code></td><td>Final settled amount</td></tr>
+                        <tr><td><code>{{SettlementMode}}</code></td><td>Mode of reimbursement payment</td></tr>
+                        <tr><td><code>{{SettlementReferenceNo}}</code></td><td>Settlement payment reference</td></tr>
+                        <tr><td><code>{{SettlementReceiptUrl}}</code></td><td>Absolute settlement receipt link</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -163,7 +181,23 @@
             '{{AmcExpiryDate}}': '31 Mar 2026',
             '{{DaysRemaining}}': '7',
             '{{AppName}}': 'eRestoPOS',
-            '{{AppUrl}}': 'http://198.38.81.123:2001'
+            '{{AppUrl}}': 'http://198.38.81.123:2001',
+            '{{RequestNumber}}': 'EXP-20260326-0007',
+            '{{EmployeeName}}': 'Abhik Porel',
+            '{{EmployeeCode}}': 'EMP-104',
+            '{{PurposeOfTravel}}': 'Client implementation visit and advance booking for travel and accommodation.',
+            '{{TotalAmount}}': '18,750.00',
+            '{{ItemCount}}': '4',
+            '{{SubmittedAt}}': '26 Mar 2026 10:30 AM',
+            '{{CurrentStatus}}': 'Pending Approval',
+            '{{ApproverName}}': 'Operations Manager',
+            '{{DetailsUrl}}': 'http://your-app-url/ExpenseRequest/Details/7',
+            '{{SettlementReceiptNumber}}': 'SET-20260326-0007',
+            '{{SettlementDate}}': '26 Mar 2026',
+            '{{SettlementAmount}}': '18,750.00',
+            '{{SettlementMode}}': 'Bank Transfer',
+            '{{SettlementReferenceNo}}': 'UTR0045892361',
+            '{{SettlementReceiptUrl}}': 'http://your-app-url/ExpenseRequest/SettlementReceipt/7'
         };
         for (var key in samples) {
             html = html.split(key).join(samples[key]);

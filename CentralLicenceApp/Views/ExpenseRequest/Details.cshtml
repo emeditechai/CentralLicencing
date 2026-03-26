@@ -1,0 +1,412 @@
+@model CentralLicenceApp.Models.ViewModels.ExpenseRequestManageViewModel
+@{
+    ViewData["Title"] = "Request Details";
+    var canApprove = Model.Request.Status == CentralLicenceApp.Models.ExpenseRequestStatus.PendingApproval && !Model.IsEmployeeOwner;
+    var canViewFinanceDesk = (User.IsInRole("Finance") || string.Equals(User.Identity?.Name, "admin", System.StringComparison.OrdinalIgnoreCase))
+        && (Model.Request.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Approved || Model.Request.Status == CentralLicenceApp.Models.ExpenseRequestStatus.ReimbursementInProcess || Model.Request.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Settled);
+    var backAction = canViewFinanceDesk ? "FinanceDesk" : "Index";
+    var badgeClass = Model.Request.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Settled
+        ? "badge-ok"
+        : Model.Request.Status == CentralLicenceApp.Models.ExpenseRequestStatus.ReimbursementInProcess
+            ? "badge-warn"
+            : Model.Request.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Approved
+                ? "badge-ok"
+                : Model.Request.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Rejected
+                    ? "badge-err"
+                    : Model.Request.Status == CentralLicenceApp.Models.ExpenseRequestStatus.PendingApproval
+                        ? "badge-warn"
+                        : "badge-neu";
+
+    static bool IsImageReceipt(string? receiptPath)
+    {
+        if (string.IsNullOrWhiteSpace(receiptPath)) return false;
+        var extension = System.IO.Path.GetExtension(receiptPath).ToLowerInvariant();
+        return extension == ".jpg" || extension == ".jpeg" || extension == ".png" || extension == ".webp" || extension == ".gif";
+    }
+
+    static bool IsPdfReceipt(string? receiptPath)
+    {
+        if (string.IsNullOrWhiteSpace(receiptPath)) return false;
+        return string.Equals(System.IO.Path.GetExtension(receiptPath), ".pdf", System.StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+<div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <a asp-action="@backAction" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+        <div>
+            <h4 class="fw-bold mb-0" style="color:#1e293b;">@Model.Request.RequestNumber</h4>
+            <p class="text-muted mb-0" style="font-size:.85rem;">Request details and approval trail.</p>
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        @if (Model.CanViewSettlementReceipt)
+        {
+            <a asp-action="SettlementReceipt" asp-route-id="@Model.Request.Id" target="_blank" class="btn btn-sm btn-outline-success" style="border-radius:8px;">
+                <i class="bi bi-receipt me-1"></i> Settlement Receipt
+            </a>
+        }
+        <a asp-action="Print" asp-route-id="@Model.Request.Id" target="_blank" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
+            <i class="bi bi-printer me-1"></i> Print
+        </a>
+        <span class="badge @badgeClass rounded-pill px-3 py-2" style="font-size:.78rem;">@Model.Request.Status</span>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="card mb-4">
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="er-mini-stat">
+                            <span class="er-mini-label">Employee</span>
+                            <span class="er-mini-value">@Model.Request.EmployeeName</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="er-mini-stat">
+                            <span class="er-mini-label">Approver</span>
+                            <span class="er-mini-value">@(string.IsNullOrWhiteSpace(Model.Request.ApproverName) ? "Auto / Not Assigned" : Model.Request.ApproverName)</span>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="er-mini-stat">
+                            <span class="er-mini-label">Purpose</span>
+                            <span class="er-mini-value">@Model.Request.PurposeOfTravel</span>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="er-mini-stat">
+                            <span class="er-mini-label">Employee Note</span>
+                            <span class="er-mini-value">@(string.IsNullOrWhiteSpace(Model.Request.EmployeeRemarks) ? "-" : Model.Request.EmployeeRemarks)</span>
+                        </div>
+                    </div>
+                    @if (Model.Request.ReimbursementStartedAt.HasValue)
+                    {
+                        <div class="col-md-6">
+                            <div class="er-mini-stat">
+                                <span class="er-mini-label">Reimbursement Started</span>
+                                <span class="er-mini-value">@Model.Request.ReimbursementStartedAt.Value.ToString("dd MMM yyyy hh:mm tt")</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="er-mini-stat">
+                                <span class="er-mini-label">Processed By</span>
+                                <span class="er-mini-value">@(string.IsNullOrWhiteSpace(Model.Request.ReimbursementStartedByName) ? "Administrator" : Model.Request.ReimbursementStartedByName)</span>
+                            </div>
+                        </div>
+                    }
+                    @if (Model.Request.SettledAt.HasValue)
+                    {
+                        <div class="col-md-6">
+                            <div class="er-mini-stat">
+                                <span class="er-mini-label">Settlement Date</span>
+                                <span class="er-mini-value">@((Model.Request.SettlementDate ?? Model.Request.SettledAt)?.ToString("dd MMM yyyy"))</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="er-mini-stat">
+                                <span class="er-mini-label">Settled Amount</span>
+                                <span class="er-mini-value">INR @((Model.Request.SettlementAmount ?? 0).ToString("N2"))</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="er-mini-stat">
+                                <span class="er-mini-label">Payment Mode</span>
+                                <span class="er-mini-value">@(string.IsNullOrWhiteSpace(Model.Request.SettlementMode) ? "-" : Model.Request.SettlementMode)</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="er-mini-stat">
+                                <span class="er-mini-label">Reference No.</span>
+                                <span class="er-mini-value">@(string.IsNullOrWhiteSpace(Model.Request.SettlementReferenceNo) ? "-" : Model.Request.SettlementReferenceNo)</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="d-flex align-items-center justify-content-between px-4 pt-4 pb-3">
+                    <h6 class="fw-bold mb-0" style="color:#1e293b;">Transactions</h6>
+                    <div class="fw-semibold" style="font-size:.88rem;color:#180a3c;">INR @Model.Request.TotalAmount.ToString("N2")</div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table tbl-clean mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Type</th>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th class="pe-4">Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var line in Model.Lines)
+                            {
+                                <tr>
+                                    <td class="ps-4"><span class="badge badge-neu rounded-pill px-2 py-1">@line.ItemType</span></td>
+                                    <td>
+                                        <div class="fw-semibold" style="font-size:.84rem;">@line.Title</div>
+                                        @if (!string.IsNullOrWhiteSpace(line.ProjectOrCostCenter))
+                                        {
+                                            <div class="text-muted" style="font-size:.73rem;">@line.ProjectOrCostCenter</div>
+                                        }
+                                    </td>
+                                    <td style="font-size:.82rem;">@(line.ExpenseCategoryName ?? "-")</td>
+                                    <td style="font-size:.82rem;">@line.ExpenseDate.ToString("dd MMM yyyy")</td>
+                                    <td style="font-size:.82rem;font-weight:600;">@line.CurrencyCode @line.Amount.ToString("N2")</td>
+                                    <td class="pe-4" style="font-size:.82rem;min-width:220px;">
+                                        @if (line.Attachments.Any())
+                                        {
+                                            <div class="d-flex flex-column align-items-start" style="gap:.75rem;">
+                                                @foreach (var attachment in line.Attachments)
+                                                {
+                                                    var receiptUrl = Url.Content(attachment.FilePath);
+                                                    var receiptTitle = $"Receipt for {line.Title}: {(string.IsNullOrWhiteSpace(attachment.OriginalFileName) ? System.IO.Path.GetFileName(attachment.FilePath) : attachment.OriginalFileName)}";
+                                                    <div class="d-flex flex-column align-items-start" style="gap:.45rem;">
+                                                        <a href="@receiptUrl" target="_blank" class="d-inline-flex align-items-center gap-1 text-decoration-none fw-semibold">
+                                                            <i class="bi bi-paperclip"></i>
+                                                            <span>@(string.IsNullOrWhiteSpace(attachment.OriginalFileName) ? System.IO.Path.GetFileName(attachment.FilePath) : attachment.OriginalFileName)</span>
+                                                        </a>
+
+                                                        @if (IsImageReceipt(attachment.FilePath))
+                                                        {
+                                                            <button type="button"
+                                                                    class="btn btn-sm btn-outline-primary receipt-preview-trigger"
+                                                                    data-bs-toggle="modal"
+                                                                    data-bs-target="#receiptPreviewModal"
+                                                                    data-receipt-url="@receiptUrl"
+                                                                    data-receipt-title="@receiptTitle"
+                                                                    data-receipt-type="image"
+                                                                    style="border-radius:8px;">
+                                                                Preview Larger
+                                                            </button>
+                                                            <button type="button"
+                                                                    class="receipt-preview-trigger p-0 border-0 bg-transparent"
+                                                                    data-bs-toggle="modal"
+                                                                    data-bs-target="#receiptPreviewModal"
+                                                                    data-receipt-url="@receiptUrl"
+                                                                    data-receipt-title="@receiptTitle"
+                                                                    data-receipt-type="image"
+                                                                    aria-label="Preview @receiptTitle">
+                                                                <span style="display:block;border:1px solid #dbe3ef;border-radius:10px;overflow:hidden;background:#fff;max-width:180px;">
+                                                                    <img src="@receiptUrl" alt="@receiptTitle" style="width:100%;height:auto;display:block;" />
+                                                                </span>
+                                                            </button>
+                                                        }
+                                                        else if (IsPdfReceipt(attachment.FilePath))
+                                                        {
+                                                            <button type="button"
+                                                                    class="btn btn-sm btn-outline-primary receipt-preview-trigger"
+                                                                    data-bs-toggle="modal"
+                                                                    data-bs-target="#receiptPreviewModal"
+                                                                    data-receipt-url="@receiptUrl"
+                                                                    data-receipt-title="@receiptTitle"
+                                                                    data-receipt-type="pdf"
+                                                                    style="border-radius:8px;">
+                                                                Preview Larger
+                                                            </button>
+                                                            <button type="button"
+                                                                    class="receipt-preview-trigger p-0 border-0 bg-transparent"
+                                                                    data-bs-toggle="modal"
+                                                                    data-bs-target="#receiptPreviewModal"
+                                                                    data-receipt-url="@receiptUrl"
+                                                                    data-receipt-title="@receiptTitle"
+                                                                    data-receipt-type="pdf"
+                                                                    aria-label="Preview @receiptTitle">
+                                                                <span style="display:block;border:1px solid #dbe3ef;border-radius:10px;overflow:hidden;background:#fff;max-width:180px;">
+                                                                    <iframe src="@receiptUrl" title="@receiptTitle" style="width:180px;height:220px;border:none;display:block;"></iframe>
+                                                                </span>
+                                                            </button>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        @if (canApprove)
+        {
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3" style="color:#1e293b;">Approval Action</h6>
+                    <form asp-action="Approve" method="post" class="mb-3">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="RequestId" value="@Model.Request.Id" />
+                        <label class="form-label fw-semibold" style="font-size:.82rem;">Approval Remarks</label>
+                        <textarea name="Remarks" rows="3" class="form-control mb-3" style="border-radius:10px;"></textarea>
+                        <button type="submit" class="btn text-white w-100" style="background:#166534;border:none;border-radius:10px;">Approve Request</button>
+                    </form>
+                    <form asp-action="Reject" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="RequestId" value="@Model.Request.Id" />
+                        <label class="form-label fw-semibold" style="font-size:.82rem;">Rejection Remarks</label>
+                        <textarea name="Remarks" rows="3" class="form-control mb-3" style="border-radius:10px;" required></textarea>
+                        <button type="submit" class="btn btn-outline-danger w-100" style="border-radius:10px;">Reject Request</button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        @if (Model.CanStartReimbursement)
+        {
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3" style="color:#1e293b;">Reimbursement Action</h6>
+                    <p class="text-muted mb-3" style="font-size:.82rem;">Only approved requests can be moved into reimbursement processing.</p>
+                    <form asp-action="StartReimbursement" method="post"
+                          data-swal-confirm="true"
+                          data-swal-title="Start Reimbursement?"
+                          data-swal-text="The request will move to reimbursement in process."
+                          data-swal-confirm-button="Yes, start reimbursement">
+                        @Html.AntiForgeryToken()
+                        <input asp-for="ReimbursementForm.RequestId" type="hidden" />
+                        <label asp-for="ReimbursementForm.Remarks" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                        <textarea asp-for="ReimbursementForm.Remarks" rows="3" class="form-control mb-3" style="border-radius:10px;" required></textarea>
+                        <button type="submit" class="btn btn-outline-primary w-100" style="border-radius:10px;">Start Reimbursement</button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        @if (Model.CanSettle || Model.Request.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Settled)
+        {
+            <div class="card mb-4">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3" style="color:#1e293b;">Settlement Summary</h6>
+                    <div class="er-mini-stat mb-3">
+                        <span class="er-mini-label">Receipt No.</span>
+                        <span class="er-mini-value">@(string.IsNullOrWhiteSpace(Model.Request.SettlementReceiptNumber) ? "Pending generation" : Model.Request.SettlementReceiptNumber)</span>
+                    </div>
+                    <div class="er-mini-stat mb-3">
+                        <span class="er-mini-label">Settlement Remarks</span>
+                        <span class="er-mini-value">@(string.IsNullOrWhiteSpace(Model.Request.SettlementRemarks) ? (string.IsNullOrWhiteSpace(Model.Request.ReimbursementRemarks) ? "-" : Model.Request.ReimbursementRemarks) : Model.Request.SettlementRemarks)</span>
+                    </div>
+                    @if (Model.CanSettle)
+                    {
+                        <a asp-action="Settle" asp-route-id="@Model.Request.Id" class="btn btn-success w-100" style="border-radius:10px;">Complete Settlement</a>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="card">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3" style="color:#1e293b;">Activity Timeline</h6>
+                <div class="er-history-list">
+                    @foreach (var entry in Model.History)
+                    {
+                        <div class="er-history-item">
+                            <div class="er-history-dot"></div>
+                            <div>
+                                <div class="fw-semibold" style="font-size:.84rem;">@entry.ActionTaken</div>
+                                <div class="text-muted" style="font-size:.74rem;">@(string.IsNullOrWhiteSpace(entry.ActionByName) ? "System" : entry.ActionByName) &middot; @entry.ActionAt.ToString("dd MMM yyyy hh:mm tt")</div>
+                                @if (!string.IsNullOrWhiteSpace(entry.Remarks))
+                                {
+                                    <div class="text-muted mt-1" style="font-size:.78rem;">@entry.Remarks</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="receiptPreviewModal" tabindex="-1" aria-labelledby="receiptPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius:18px;overflow:hidden;">
+            <div class="modal-header" style="background:#f8fafc;">
+                <h5 class="modal-title fw-bold" id="receiptPreviewModalLabel">Receipt Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="background:#e2e8f0;padding:1rem;">
+                <div id="receiptPreviewModalImageWrap" class="d-none justify-content-center align-items-center" style="min-height:70vh;">
+                    <img id="receiptPreviewModalImage" src="" alt="Receipt preview" style="max-width:100%;max-height:70vh;border-radius:14px;background:#fff;padding:.35rem;box-shadow:0 10px 30px rgba(15,23,42,.12);" />
+                </div>
+                <div id="receiptPreviewModalPdfWrap" class="d-none" style="min-height:70vh;">
+                    <iframe id="receiptPreviewModalPdf" src="" title="Receipt preview" style="width:100%;height:70vh;border:none;border-radius:14px;background:#fff;"></iframe>
+                </div>
+            </div>
+            <div class="modal-footer" style="background:#f8fafc;justify-content:space-between;">
+                <a id="receiptPreviewModalOpenLink" href="#" target="_blank" class="btn btn-outline-primary" style="border-radius:10px;">Open In New Tab</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:10px;">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const receiptPreviewModal = document.getElementById('receiptPreviewModal');
+            if (!receiptPreviewModal) {
+                return;
+            }
+
+            const modalTitle = document.getElementById('receiptPreviewModalLabel');
+            const imageWrap = document.getElementById('receiptPreviewModalImageWrap');
+            const imageElement = document.getElementById('receiptPreviewModalImage');
+            const pdfWrap = document.getElementById('receiptPreviewModalPdfWrap');
+            const pdfElement = document.getElementById('receiptPreviewModalPdf');
+            const openLink = document.getElementById('receiptPreviewModalOpenLink');
+
+            receiptPreviewModal.addEventListener('show.bs.modal', (event) => {
+                const trigger = event.relatedTarget;
+                if (!trigger) {
+                    return;
+                }
+
+                const receiptUrl = trigger.getAttribute('data-receipt-url') || '';
+                const receiptTitle = trigger.getAttribute('data-receipt-title') || 'Receipt Preview';
+                const receiptType = trigger.getAttribute('data-receipt-type') || '';
+
+                modalTitle.textContent = receiptTitle;
+                openLink.href = receiptUrl;
+
+                if (receiptType === 'image') {
+                    imageWrap.classList.remove('d-none');
+                    imageWrap.classList.add('d-flex');
+                    pdfWrap.classList.add('d-none');
+                    imageElement.src = receiptUrl;
+                    imageElement.alt = receiptTitle;
+                    pdfElement.src = '';
+                    return;
+                }
+
+                imageWrap.classList.add('d-none');
+                imageWrap.classList.remove('d-flex');
+                pdfWrap.classList.remove('d-none');
+                pdfElement.src = receiptUrl;
+                imageElement.src = '';
+                imageElement.alt = 'Receipt preview';
+            });
+
+            receiptPreviewModal.addEventListener('hidden.bs.modal', () => {
+                imageElement.src = '';
+                pdfElement.src = '';
+                openLink.href = '#';
+            });
+        })();
+    </script>
+}

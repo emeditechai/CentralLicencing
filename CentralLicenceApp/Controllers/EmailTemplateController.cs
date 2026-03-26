@@ -62,7 +62,23 @@ namespace CentralLicenceApp.Controllers
                 ["AmcExpiryDate"] = System.DateTime.Today.AddMonths(1).ToString("dd MMM yyyy"),
                 ["DaysRemaining"] = "7",
                 ["AppName"]       = "eRestoPOS",
-                ["AppUrl"]        = "http://your-app-url"
+                ["AppUrl"]        = "http://your-app-url",
+                ["RequestNumber"] = "EXP-20260326-0007",
+                ["EmployeeName"] = "Abhik Porel",
+                ["EmployeeCode"] = "EMP-104",
+                ["PurposeOfTravel"] = "Client implementation visit and advance booking for travel and accommodation.",
+                ["TotalAmount"] = "18,750.00",
+                ["ItemCount"] = "4",
+                ["SubmittedAt"] = System.DateTime.Now.ToString("dd MMM yyyy hh:mm tt"),
+                ["CurrentStatus"] = "Pending Approval",
+                ["ApproverName"] = "Operations Manager",
+                ["DetailsUrl"] = "http://your-app-url/ExpenseRequest/Details/7",
+                ["SettlementReceiptNumber"] = "SET-20260326-0007",
+                ["SettlementDate"] = System.DateTime.Today.ToString("dd MMM yyyy"),
+                ["SettlementAmount"] = "18,750.00",
+                ["SettlementMode"] = "Bank Transfer",
+                ["SettlementReferenceNo"] = "UTR0045892361",
+                ["SettlementReceiptUrl"] = "http://your-app-url/ExpenseRequest/SettlementReceipt/7"
             };
 
             await _emailService.SendTemplatedAsync(template.TemplateKey, testEmail, "Test", placeholders);

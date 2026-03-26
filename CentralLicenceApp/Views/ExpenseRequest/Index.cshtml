@@ -1,0 +1,112 @@
+@model CentralLicenceApp.Models.ViewModels.ExpenseRequestListPageViewModel
+@{
+    ViewData["Title"] = Model.PageTitle;
+    var subtitle = Model.ShowFinanceActions
+        ? "Process approved requests through reimbursement and final settlement."
+        : "Track your draft, submitted, approved, reimbursed, and settled expense requests.";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">@Model.PageTitle</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">@subtitle</p>
+    </div>
+    @if (Model.ShowCreateButton)
+    {
+        <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
+            <i class="bi bi-plus-lg me-1"></i> New Request
+        </a>
+    }
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Request No.</th>
+                        <th>Purpose</th>
+                        <th>Approver</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th class="pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Requests.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="bi bi-wallet2 fs-1 d-block mb-2"></i>
+                                <div class="fw-semibold mb-1">@Model.EmptyStateTitle</div>
+                                <div style="font-size:.85rem;">@Model.EmptyStateDescription</div>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.Requests)
+                        {
+                            var badgeClass = item.Status switch
+                            {
+                                "Settled" => "badge-ok",
+                                "Reimbursement In Process" => "badge-warn",
+                                "Approved" => "badge-ok",
+                                "Rejected" => "badge-err",
+                                "Pending Approval" => "badge-warn",
+                                _ => "badge-neu"
+                            };
+
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="fw-semibold" style="font-size:.86rem;">@item.RequestNumber</div>
+                                    <div class="text-muted" style="font-size:.73rem;">@item.EmployeeName</div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold" style="font-size:.85rem;">@item.PurposeOfTravel</div>
+                                    @if (!string.IsNullOrWhiteSpace(item.EmployeeRemarks))
+                                    {
+                                        <div class="text-muted" style="font-size:.74rem;">@item.EmployeeRemarks</div>
+                                    }
+                                </td>
+                                <td style="font-size:.82rem;">@(string.IsNullOrWhiteSpace(item.ApproverName) ? "Auto / Not Assigned" : item.ApproverName)</td>
+                                <td style="font-size:.82rem;">@item.ItemCount</td>
+                                <td style="font-size:.82rem;font-weight:600;">INR @item.TotalAmount.ToString("N2")</td>
+                                <td><span class="badge @badgeClass rounded-pill px-2 py-1" style="font-size:.73rem;">@item.Status</span></td>
+                                <td style="font-size:.82rem;">@((item.SettlementDate ?? item.SubmittedAt ?? item.CreatedAt).ToString("dd MMM yyyy"))</td>
+                                <td class="pe-3">
+                                    <div class="d-flex gap-1">
+                                        @if (item.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Draft)
+                                        {
+                                            <a asp-action="Manage" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" style="border-radius:7px;">Open</a>
+                                        }
+                                        else
+                                        {
+                                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" style="border-radius:7px;">View</a>
+                                        }
+                                        @if (Model.ShowFinanceActions && item.Status == CentralLicenceApp.Models.ExpenseRequestStatus.ReimbursementInProcess)
+                                        {
+                                            <a asp-action="Settle" asp-route-id="@item.Id" class="btn btn-sm btn-outline-success" style="border-radius:7px;">Settle</a>
+                                        }
+                                        @if (item.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Settled)
+                                        {
+                                            <a asp-action="SettlementReceipt" asp-route-id="@item.Id" target="_blank" class="btn btn-sm btn-outline-success" style="border-radius:7px;" title="Settlement Receipt">
+                                                <i class="bi bi-receipt"></i>
+                                            </a>
+                                        }
+                                        <a asp-action="Print" asp-route-id="@item.Id" target="_blank" class="btn btn-sm btn-outline-secondary" style="border-radius:7px;" title="Print Request">
+                                            <i class="bi bi-printer"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

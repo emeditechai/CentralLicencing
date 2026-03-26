@@ -76,6 +76,36 @@
     </div>
 </div>
 
+<div class="row g-3 mb-4">
+    <div class="col-sm-4">
+        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#16a34a,#15803d);">
+            <div class="stat-ico"><i class="bi bi-patch-check"></i></div>
+            <div>
+                <div class="stat-val">@Model.ApprovedExpenseRequests</div>
+                <div class="stat-lbl">Approved Requests</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
+            <div class="stat-ico"><i class="bi bi-hourglass-split"></i></div>
+            <div>
+                <div class="stat-val">@Model.ReimbursementInProcessRequests</div>
+                <div class="stat-lbl">In Reimbursement</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#0f766e,#0d9488);">
+            <div class="stat-ico"><i class="bi bi-cash-coin"></i></div>
+            <div>
+                <div class="stat-val">@Model.SettledExpenseRequests</div>
+                <div class="stat-lbl">Settled Requests</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Second row: Validation stats -->
 <div class="row g-3 mb-4">
     <div class="col-sm-4">

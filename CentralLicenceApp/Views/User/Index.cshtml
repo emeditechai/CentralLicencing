@@ -89,7 +89,15 @@
                                     </div>
                                     <div>
                                         <div class="fw-semibold" style="font-size:.875rem;">@(u.FullName ?? u.Username)</div>
-                                        <div class="text-muted" style="font-size:.75rem;">@@@u.Username</div>
+                                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                                            <div class="text-muted" style="font-size:.75rem;">@@@u.Username</div>
+                                            @if (string.Equals(u.Username, "admin", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span style="display:inline-flex;align-items:center;gap:.3rem;background:#fef3c7;color:#92400e;border-radius:999px;padding:.12rem .45rem;font-size:.64rem;font-weight:700;line-height:1;">
+                                                    <i class="bi bi-stars"></i> Super Admin
+                                                </span>
+                                            }
+                                        </div>
                                     </div>
                                 </div>
                             </td>
@@ -99,6 +107,10 @@
                                 @if (u.RoleName == "Administrator")
                                 {
                                     <span class="badge" style="background:#ede9fe;color:#6d28d9;font-size:.73rem;border-radius:20px;padding:.3rem .7rem;"><i class="bi bi-shield-fill me-1"></i>@u.RoleName</span>
+                                }
+                                else if (u.RoleName == "Finance")
+                                {
+                                    <span class="badge" style="background:#dcfce7;color:#166534;font-size:.73rem;border-radius:20px;padding:.3rem .7rem;"><i class="bi bi-cash-coin me-1"></i>@u.RoleName</span>
                                 }
                                 else
                                 {

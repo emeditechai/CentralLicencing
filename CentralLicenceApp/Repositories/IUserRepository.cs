@@ -16,6 +16,7 @@ namespace CentralLicenceApp.Repositories
         Task<bool> UpdateLastLoginAsync(int userId);
         Task<bool> CheckEmployeeCodeUniqueAsync(string employeeCode, int? excludeUserId = null);
         Task<IEnumerable<UserMaster>> GetEmployeesAsync();
+        Task<IEnumerable<UserMaster>> GetCoreMembersAsync();
     }
 
     public interface IRoleRepository

@@ -1,0 +1,103 @@
+@model CentralLicenceApp.Models.ViewModels.ExpenseSettlementViewModel
+@{
+    ViewData["Title"] = "Complete Settlement";
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="Details" asp-route-id="@Model.RequestId" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Complete Settlement</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Capture final reimbursement details for @Model.RequestNumber.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="card">
+            <div class="card-body p-4">
+                <form asp-action="Settle" method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="RequestId" type="hidden" />
+                    <input asp-for="RequestNumber" type="hidden" />
+                    <input asp-for="RequestTotalAmount" type="hidden" />
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-4" style="border-radius:10px;"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="SettlementDate" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                            <input asp-for="SettlementDate" type="date" class="form-control" style="border-radius:10px;" />
+                            <span asp-validation-for="SettlementDate" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="SettlementAmount" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                            <input asp-for="SettlementAmount" type="number" step="0.01" class="form-control" style="border-radius:10px;" />
+                            <span asp-validation-for="SettlementAmount" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="SettlementMode" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                            <select asp-for="SettlementMode" class="form-select" style="border-radius:10px;">
+                                <option value="">Select payment mode</option>
+                                @foreach (var mode in Model.AvailablePaymentModes)
+                                {
+                                    <option value="@mode">@mode</option>
+                                }
+                            </select>
+                            <span asp-validation-for="SettlementMode" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="SettlementReferenceNo" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                            <input asp-for="SettlementReferenceNo" class="form-control" style="border-radius:10px;" placeholder="UTR / Ref / Instrument No." />
+                            <span asp-validation-for="SettlementReferenceNo" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="SettlementRemarks" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                            <textarea asp-for="SettlementRemarks" rows="4" class="form-control" style="border-radius:10px;" placeholder="Required if settled amount differs from approved total."></textarea>
+                            <span asp-validation-for="SettlementRemarks" class="text-danger small"></span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-success" style="border-radius:10px;">
+                            <i class="bi bi-check2-circle me-1"></i> Complete Settlement
+                        </button>
+                        <a asp-action="Details" asp-route-id="@Model.RequestId" class="btn btn-outline-secondary" style="border-radius:10px;">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4">
+        <div class="card">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3" style="color:#1e293b;">Validation Rules</h6>
+                <ul class="mb-0 ps-3 text-muted" style="font-size:.82rem;line-height:1.8;">
+                    <li>Only approved requests that entered reimbursement processing can be settled.</li>
+                    <li>Settlement date cannot be in the future.</li>
+                    <li>Settlement amount must be positive and cannot exceed the approved total.</li>
+                    <li>Payment mode and payment reference are mandatory.</li>
+                    <li>Remarks are mandatory when the settled amount differs from the approved amount.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3" style="color:#1e293b;">Request Snapshot</h6>
+                <div class="er-mini-stat mb-3">
+                    <span class="er-mini-label">Request No.</span>
+                    <span class="er-mini-value">@Model.RequestNumber</span>
+                </div>
+                <div class="er-mini-stat">
+                    <span class="er-mini-label">Approved Total</span>
+                    <span class="er-mini-value">INR @Model.RequestTotalAmount.ToString("N2")</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,453 @@
+@model CentralLicenceApp.Models.ViewModels.ExpenseRequestManageViewModel
+@using CentralLicenceApp.Models
+@using CentralLicenceApp.Repositories
+@inject ICompanySettingsRepository CompanySettingsRepo
+@{
+    Layout = null;
+    var company = ViewBag.ParentCompany as CompanySetting ?? await CompanySettingsRepo.GetParentCompanyAsync();
+    var brandName = string.IsNullOrWhiteSpace(company?.CompanyName) ? "Emeditech Plus LLP" : company.CompanyName.Trim();
+    var brandLogoPath = string.IsNullOrWhiteSpace(company?.CompanyLogoPath) ? null : Url.Content(company.CompanyLogoPath);
+    var statusTone = Model.Request.Status == ExpenseRequestStatus.Approved
+        ? "#166534"
+        : Model.Request.Status == ExpenseRequestStatus.Rejected
+            ? "#b91c1c"
+            : Model.Request.Status == ExpenseRequestStatus.PendingApproval
+                ? "#b45309"
+                : "#475569";
+
+    static bool IsImageReceipt(string? receiptPath)
+    {
+        if (string.IsNullOrWhiteSpace(receiptPath)) return false;
+        var extension = System.IO.Path.GetExtension(receiptPath).ToLowerInvariant();
+        return extension == ".jpg" || extension == ".jpeg" || extension == ".png" || extension == ".webp" || extension == ".gif";
+    }
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@Model.Request.RequestNumber - Print</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+        @@page {
+            size: A4 portrait;
+            margin: 10mm;
+        }
+        :root {
+            --ink: #0f172a;
+            --muted: #64748b;
+            --border: #dbe3ef;
+            --panel: #f8fafc;
+            --brand: #180a3c;
+        }
+        body {
+            margin: 0;
+            background: #eef2f7;
+            color: var(--ink);
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.35;
+        }
+        .print-shell {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 1rem auto;
+            background: #fff;
+            border: 1px solid var(--border);
+            box-shadow: 0 12px 30px rgba(15, 23, 42, .08);
+        }
+        .print-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            gap: .75rem;
+            padding: .75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            background: #f8fafc;
+        }
+        .print-doc {
+            padding: 1.1rem 1.25rem 1rem;
+        }
+        .print-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            padding-bottom: .9rem;
+            border-bottom: 2px solid var(--brand);
+        }
+        .print-brand {
+            display: flex;
+            gap: .85rem;
+            align-items: center;
+        }
+        .print-brand img {
+            max-width: 120px;
+            max-height: 52px;
+            object-fit: contain;
+        }
+        .print-kicker {
+            text-transform: uppercase;
+            letter-spacing: .14em;
+            font-size: .6rem;
+            color: var(--muted);
+            font-weight: 700;
+        }
+        .print-title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin: .18rem 0;
+            color: var(--brand);
+        }
+        .print-subtitle {
+            color: var(--muted);
+            font-size: .76rem;
+            margin: 0;
+        }
+        .print-status {
+            text-align: right;
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            border-radius: 999px;
+            padding: .3rem .7rem;
+            color: #fff;
+            font-weight: 700;
+            font-size: .72rem;
+            background: @statusTone;
+        }
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: .6rem;
+            margin: .9rem 0;
+        }
+        .meta-card, .section-card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--panel);
+            padding: .7rem .8rem;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+        .meta-label, .section-label {
+            font-size: .6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            color: var(--muted);
+            margin-bottom: .3rem;
+        }
+        .meta-value {
+            font-size: .88rem;
+            font-weight: 700;
+            color: var(--ink);
+        }
+        .section-stack {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: .6rem;
+            margin-bottom: .9rem;
+        }
+        .print-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: .6rem;
+        }
+        .print-table thead {
+            display: table-header-group;
+        }
+        .print-table tfoot {
+            display: table-footer-group;
+        }
+        .print-table tbody {
+            display: table-row-group;
+        }
+        .print-table th,
+        .print-table td {
+            padding: .5rem .45rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+            font-size: .74rem;
+        }
+        .print-table tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+        .print-table th {
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            font-size: .58rem;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: .75rem;
+            margin-top: .65rem;
+            border-top: 2px solid var(--border);
+            font-size: .88rem;
+            font-weight: 800;
+            color: var(--brand);
+        }
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: .55rem;
+            margin-top: .55rem;
+        }
+        .history-item {
+            border-left: 3px solid var(--brand);
+            padding-left: .55rem;
+        }
+        .receipt-link {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            color: var(--brand);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: .68rem;
+        }
+        .receipt-link:hover {
+            text-decoration: underline;
+        }
+        .receipt-preview {
+            margin-top: .45rem;
+            max-width: 120px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .receipt-preview img {
+            width: 100%;
+            height: auto;
+            display: block;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+        .receipt-empty {
+            color: var(--muted);
+            font-size: .68rem;
+        }
+        .history-title {
+            font-weight: 700;
+            font-size: .76rem;
+        }
+        .history-meta,
+        .detail-note {
+            color: var(--muted);
+            font-size: .68rem;
+        }
+        .footer-note {
+            margin-top: .9rem;
+            padding-top: .7rem;
+            border-top: 1px dashed var(--border);
+            color: var(--muted);
+            font-size: .64rem;
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        @@media print {
+            body {
+                background: #fff;
+            }
+            .print-header,
+            .meta-grid,
+            .section-stack,
+            .section-card,
+            .summary-row,
+            .footer-note,
+            .history-item,
+            .receipt-preview {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .print-table thead {
+                display: table-header-group;
+            }
+            .print-table tfoot {
+                display: table-footer-group;
+            }
+            .print-table tr,
+            .print-table td,
+            .print-table th {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .print-shell {
+                margin: 0;
+                width: 100%;
+                min-height: auto;
+                border: none;
+                box-shadow: none;
+            }
+            .print-toolbar {
+                display: none;
+            }
+            .print-doc {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-shell">
+        <div class="print-toolbar no-print">
+            <a href="javascript:window.close()" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-x-lg me-1"></i> Close
+            </a>
+            <button type="button" onclick="window.print()" class="btn btn-sm text-white" style="background:#180a3c;border:none;">
+                <i class="bi bi-printer me-1"></i> Print Expense
+            </button>
+        </div>
+
+        <div class="print-doc">
+            <div class="print-header">
+                <div class="print-brand">
+                    @if (!string.IsNullOrWhiteSpace(brandLogoPath))
+                    {
+                        <img src="@brandLogoPath" alt="@brandName" />
+                    }
+                    <div>
+                        <div class="print-kicker">Expense Document</div>
+                        <div class="print-title">@brandName</div>
+                        <p class="print-subtitle">Professional expense and advance booking request summary</p>
+                    </div>
+                </div>
+                <div class="print-status">
+                    <div class="print-kicker">Request Reference</div>
+                    <div class="print-title" style="font-size:1.35rem;margin-bottom:.65rem;">@Model.Request.RequestNumber</div>
+                    <span class="status-badge"><i class="bi bi-check2-circle"></i>@Model.Request.Status</span>
+                </div>
+            </div>
+
+            <div class="meta-grid">
+                <div class="meta-card">
+                    <div class="meta-label">Employee</div>
+                    <div class="meta-value">@Model.Request.EmployeeName</div>
+                </div>
+                <div class="meta-card">
+                    <div class="meta-label">Approver</div>
+                    <div class="meta-value">@(string.IsNullOrWhiteSpace(Model.Request.ApproverName) ? "Auto / Not Assigned" : Model.Request.ApproverName)</div>
+                </div>
+                <div class="meta-card">
+                    <div class="meta-label">Created On</div>
+                    <div class="meta-value">@Model.Request.CreatedAt.ToString("dd MMM yyyy")</div>
+                </div>
+                <div class="meta-card">
+                    <div class="meta-label">Items</div>
+                    <div class="meta-value">@Model.Request.ItemCount</div>
+                </div>
+            </div>
+
+            <div class="section-stack">
+                <div class="section-card">
+                    <div class="section-label">Purpose Of Travel / Advance</div>
+                    <div class="meta-value" style="font-size:1.05rem;">@Model.Request.PurposeOfTravel</div>
+                    <div class="detail-note mt-2">@(string.IsNullOrWhiteSpace(Model.Request.EmployeeRemarks) ? "No additional employee remarks were provided." : Model.Request.EmployeeRemarks)</div>
+                </div>
+                <div class="section-card">
+                    <div class="section-label">Approval Summary</div>
+                    <div class="detail-note mb-2">Submitted: @(Model.Request.SubmittedAt.HasValue ? Model.Request.SubmittedAt.Value.ToString("dd MMM yyyy hh:mm tt") : "Not submitted")</div>
+                    <div class="detail-note mb-2">Approved: @(Model.Request.ApprovedAt.HasValue ? Model.Request.ApprovedAt.Value.ToString("dd MMM yyyy hh:mm tt") : "-")</div>
+                    <div class="detail-note">Rejected: @(Model.Request.RejectedAt.HasValue ? Model.Request.RejectedAt.Value.ToString("dd MMM yyyy hh:mm tt") : "-")</div>
+                </div>
+            </div>
+
+            <div class="section-card" style="background:#fff;">
+                <div class="section-label">Expense Details</div>
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Expense / Booking Title</th>
+                            <th>Category</th>
+                            <th>Date</th>
+                            <th>Project / Cost Center</th>
+                            <th>Amount</th>
+                            <th>Receipt</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in Model.Lines)
+                        {
+                            <tr>
+                                <td>@line.ItemType</td>
+                                <td>
+                                    <div style="font-weight:700;">@line.Title</div>
+                                    @if (!string.IsNullOrWhiteSpace(line.Notes))
+                                    {
+                                        <div class="detail-note mt-1">@line.Notes</div>
+                                    }
+                                </td>
+                                <td>@(string.IsNullOrWhiteSpace(line.ExpenseCategoryName) ? "-" : line.ExpenseCategoryName)</td>
+                                <td>@line.ExpenseDate.ToString("dd MMM yyyy")</td>
+                                <td>@(string.IsNullOrWhiteSpace(line.ProjectOrCostCenter) ? "-" : line.ProjectOrCostCenter)</td>
+                                <td style="font-weight:700;">@line.CurrencyCode @line.Amount.ToString("N2")</td>
+                                <td>
+                                    @if (line.Attachments.Any())
+                                    {
+                                        @foreach (var attachment in line.Attachments)
+                                        {
+                                            <div style="margin-bottom:.45rem;">
+                                                <a href="@Url.Content(attachment.FilePath)" target="_blank" class="receipt-link">
+                                                    <i class="bi bi-paperclip"></i>
+                                                    <span>@(string.IsNullOrWhiteSpace(attachment.OriginalFileName) ? System.IO.Path.GetFileName(attachment.FilePath) : attachment.OriginalFileName)</span>
+                                                </a>
+
+                                                @if (IsImageReceipt(attachment.FilePath))
+                                                {
+                                                    <div class="receipt-preview">
+                                                        <img src="@Url.Content(attachment.FilePath)" alt="Receipt for @line.Title" />
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="receipt-empty">No receipt attached</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <div class="summary-row">
+                    <span>Total Expense Value</span>
+                    <span>INR @Model.Request.TotalAmount.ToString("N2")</span>
+                </div>
+            </div>
+
+            <div class="section-card mt-4">
+                <div class="section-label">Approval Timeline</div>
+                <div class="history-list">
+                    @foreach (var entry in Model.History)
+                    {
+                        <div class="history-item">
+                            <div class="history-title">@entry.ActionTaken</div>
+                            <div class="history-meta">@(string.IsNullOrWhiteSpace(entry.ActionByName) ? "System" : entry.ActionByName) | @entry.ActionAt.ToString("dd MMM yyyy hh:mm tt")</div>
+                            @if (!string.IsNullOrWhiteSpace(entry.Remarks))
+                            {
+                                <div class="detail-note mt-1">@entry.Remarks</div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="footer-note">
+                <span>This is a system-generated expense request document.</span>
+                <span>Generated on @DateTime.Now.ToString("dd MMM yyyy hh:mm tt")</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

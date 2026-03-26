@@ -25,7 +25,11 @@
     Func<string, string> Act = c => ctrl == c ? "active" : "";
     var fullName = User.FindFirst("FullName")?.Value ?? User.Identity!.Name ?? "User";
     var initials = fullName.Length > 0 ? fullName[0].ToString().ToUpper() : "U";
+    var username = User.Identity?.Name ?? string.Empty;
     var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    var isSuperAdmin = string.Equals(username, "admin", System.StringComparison.OrdinalIgnoreCase) || User.HasClaim("IsSuperAdmin", "true");
+    var isAdmin = User.IsInRole("Administrator") || isSuperAdmin;
+    var isFinance = User.IsInRole("Finance") || isSuperAdmin;
     var profileImagePath = User.FindFirst("ProfileImagePath")?.Value ?? "";
     var currentProductType = Context.Request.Query["productType"].ToString();
     <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -41,6 +45,9 @@
             @{
                 var licencesOpen = ctrl == "ClientLicense" || ctrl == "LicenseHistory";
                 var masterOpen   = ctrl == "EmployeeDepartment" || ctrl == "EmployeeDesignation";
+                var businessUnitMasterOpen = ctrl == "ExpenseCategory";
+                var businessUnitTransactionOpen = ctrl == "ExpenseRequest";
+                var businessUnitOpen = businessUnitMasterOpen || businessUnitTransactionOpen;
                 var adminOpen    = ctrl == "User" || ctrl == "Role" || ctrl == "EmailConfig" || ctrl == "EmailTemplate" || ctrl == "CompanySettings" || masterOpen;
             }
             <a href="#section-licences" data-bs-toggle="collapse"
@@ -55,7 +62,7 @@
                 <div class="nav-item"><a asp-controller="LicenseHistory" asp-action="Index" class="@Act("LicenseHistory")"><i class="bi bi-clock-history"></i> Validation History</a></div>
             </div><!-- /section-licences collapse -->
 
-            @if (role == "Administrator")
+            @if (isAdmin)
             {
                 <a href="#section-admin" data-bs-toggle="collapse"
                    class="nav-lbl nav-lbl-toggle mt-2"
@@ -82,6 +89,41 @@
                 <div class="nav-item"><a asp-controller="EmailTemplate" asp-action="Index" class="@Act("EmailTemplate")"><i class="bi bi-file-earmark-text"></i> Email Templates</a></div>
                 </div><!-- /section-admin collapse -->
             }
+
+            <div class="nav-item mt-1">
+                <a href="#section-business-unit" data-bs-toggle="collapse" class="@(businessUnitOpen ? "active" : "")" aria-expanded="@(businessUnitOpen ? "true" : "false")">
+                    <i class="bi bi-diagram-2"></i> Business Unit
+                    <i class="bi bi-chevron-down submenu-arrow"></i>
+                </a>
+            </div>
+            <div class="collapse @(businessUnitOpen ? "show" : "")" id="section-business-unit">
+                <div class="nav-item nav-item-nested">
+                    <a href="#section-business-unit-transaction" data-bs-toggle="collapse" class="@(businessUnitTransactionOpen ? "active" : "")" aria-expanded="@(businessUnitTransactionOpen ? "true" : "false")">
+                        <i class="bi bi-arrow-left-right"></i> Transaction
+                        <i class="bi bi-chevron-down submenu-arrow"></i>
+                    </a>
+                </div>
+                <div class="collapse @(businessUnitTransactionOpen ? "show" : "")" id="section-business-unit-transaction">
+                    <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="ExpenseRequest" asp-action="Index" class="@Act("ExpenseRequest")"><i class="bi bi-wallet2"></i> Expense Requests</a></div>
+                    <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="ExpenseRequest" asp-action="Approvals" class="@(ctrl == "ExpenseRequest" && (ViewContext.RouteData.Values["action"]?.ToString() == "Approvals") ? "active" : "")"><i class="bi bi-check2-square"></i> Approval Inbox</a></div>
+                    @if (isFinance)
+                    {
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="ExpenseRequest" asp-action="FinanceDesk" class="@(ctrl == "ExpenseRequest" && (ViewContext.RouteData.Values["action"]?.ToString() == "FinanceDesk") ? "active" : "")"><i class="bi bi-cash-stack"></i> Reimbursement Desk</a></div>
+                    }
+                </div>
+                @if (isAdmin)
+                {
+                    <div class="nav-item nav-item-nested">
+                        <a href="#section-business-unit-master" data-bs-toggle="collapse" class="@(businessUnitMasterOpen ? "active" : "")" aria-expanded="@(businessUnitMasterOpen ? "true" : "false")">
+                            <i class="bi bi-collection"></i> Master
+                            <i class="bi bi-chevron-down submenu-arrow"></i>
+                        </a>
+                    </div>
+                    <div class="collapse @(businessUnitMasterOpen ? "show" : "")" id="section-business-unit-master">
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="ExpenseCategory" asp-action="Index" class="@Act("ExpenseCategory")"><i class="bi bi-receipt"></i> Expense Category</a></div>
+                    </div>
+                }
+            </div>
         </nav>
         <div style="padding:1rem 1.5rem;border-top:1px solid #2d1258;">
             <form asp-controller="Account" asp-action="Logout" method="post"
@@ -112,7 +154,15 @@
             }
             <div>
                 <div class="uname">@fullName</div>
-                <div class="urole"><i class="bi bi-circle-fill me-1" style="font-size:.45rem;color:#22c55e;vertical-align:middle;"></i>@role</div>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="urole"><i class="bi bi-circle-fill me-1" style="font-size:.45rem;color:#22c55e;vertical-align:middle;"></i>@role</div>
+                    @if (isSuperAdmin)
+                    {
+                        <span style="display:inline-flex;align-items:center;gap:.35rem;background:#fef3c7;color:#92400e;border-radius:999px;padding:.15rem .55rem;font-size:.68rem;font-weight:700;line-height:1;">
+                            <i class="bi bi-stars"></i> Super Admin
+                        </span>
+                    }
+                </div>
             </div>
         </div>
     </div>

@@ -18,28 +18,38 @@ namespace CentralLicenceApp.Controllers
         }
 
         [HttpGet]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Login(string? returnUrl = null)
         {
             if (User.Identity?.IsAuthenticated == true)
                 return RedirectToAction("Index", "Dashboard");
 
+            ApplyNoCacheHeaders();
             ViewData["ReturnUrl"] = returnUrl;
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public async Task<IActionResult> Login(LoginViewModel model, string? returnUrl = null)
         {
+            ApplyNoCacheHeaders();
             ViewData["ReturnUrl"] = returnUrl;
 
             if (!ModelState.IsValid)
+            {
+                model.Password = string.Empty;
+                ModelState.Remove(nameof(LoginViewModel.Password));
                 return View(model);
+            }
 
             var user = await _userRepo.GetByUsernameAsync(model.Username);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
             {
+                model.Password = string.Empty;
+                ModelState.Remove(nameof(LoginViewModel.Password));
                 ModelState.AddModelError(string.Empty, "Invalid username or password.");
                 return View(model);
             }
@@ -87,6 +97,13 @@ namespace CentralLicenceApp.Controllers
         public IActionResult AccessDenied()
         {
             return View();
+        }
+
+        private void ApplyNoCacheHeaders()
+        {
+            Response.Headers.CacheControl = "no-store, no-cache, max-age=0, must-revalidate";
+            Response.Headers.Pragma = "no-cache";
+            Response.Headers.Expires = "0";
         }
     }
 }

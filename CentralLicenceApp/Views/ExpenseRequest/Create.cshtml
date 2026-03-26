@@ -1,0 +1,47 @@
+@model CentralLicenceApp.Models.ViewModels.ExpenseRequestFormViewModel
+@{
+    ViewData["Title"] = "New Expense Request";
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Travel / Advance Request</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Start a draft request before adding expense or advance booking items.</p>
+    </div>
+</div>
+
+<div class="card" style="max-width:760px;">
+    <div class="card-body p-4">
+        <form asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.83rem;"></div>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label asp-for="PurposeOfTravel" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="PurposeOfTravel" class="form-control" style="border-radius:10px;" />
+                    <span asp-validation-for="PurposeOfTravel" class="text-danger small"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="EmployeeRemarks" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <textarea asp-for="EmployeeRemarks" rows="4" class="form-control" style="border-radius:10px;"></textarea>
+                    <span asp-validation-for="EmployeeRemarks" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="alert alert-info mt-3 py-2 px-3 rounded-3" style="font-size:.8rem;">
+                <i class="bi bi-info-circle me-1"></i>
+                After saving the draft, add one or more expense / advance booking lines and then submit the request for approval.
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn text-white px-4" style="background:#180a3c;border:none;border-radius:10px;">
+                    <i class="bi bi-save me-1"></i> Create Draft
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary" style="border-radius:10px;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

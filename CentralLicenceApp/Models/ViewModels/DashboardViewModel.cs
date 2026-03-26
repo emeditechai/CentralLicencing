@@ -11,6 +11,9 @@ namespace CentralLicenceApp.Models.ViewModels
         public int TotalValidations { get; set; }
         public int FailedValidations { get; set; }
         public int TodayValidations { get; set; }
+        public int ApprovedExpenseRequests { get; set; }
+        public int ReimbursementInProcessRequests { get; set; }
+        public int SettledExpenseRequests { get; set; }
         public string? SelectedProductType { get; set; }
         public List<string> AvailableProductTypes { get; set; } = new();
         public List<ClientAppLicense> RecentClients { get; set; } = new();
