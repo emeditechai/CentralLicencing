@@ -1,8 +1,11 @@
 using CentralLicenceApp.Repositories;
 using CentralLicenceApp.Services;
+using CentralLicenceApp.Hubs;
+using CentralLicenceApp.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +14,8 @@ var connStr = builder.Configuration.GetConnectionString("DefaultConnection")!;
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddSignalR();
+builder.Services.Configure<PushNotificationSettings>(builder.Configuration.GetSection("PushNotifications"));
 
 // Repositories
 builder.Services.AddScoped<IClientLicenseRepository>(_ => new ClientLicenseRepository(connStr));
@@ -28,11 +33,14 @@ builder.Services.AddScoped<IMailConfigRepository>(_ => new MailConfigRepository(
 builder.Services.AddScoped<IEmailTemplateRepository>(_ => new EmailTemplateRepository(connStr));
 builder.Services.AddScoped<IReminderRepository>(_ => new ReminderRepository(connStr));
 builder.Services.AddScoped<IClientDetailsRepository>(_ => new ClientDetailsRepository(connStr));
+builder.Services.AddScoped<IUserPushSubscriptionRepository>(_ => new UserPushSubscriptionRepository(connStr));
 
 // Email service
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddScoped<IExpenseBrowserNotificationService, ExpenseBrowserNotificationService>();
 builder.Services.AddTransient<IClaimsTransformation, AdminClaimsTransformation>();
 builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, AdminAuthorizationMiddlewareResultHandler>();
+builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
 
 // Background reminder service
 builder.Services.AddHostedService<ExpiryReminderService>();
@@ -114,5 +122,7 @@ app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Dashboard}/{action=Index}/{id?}");
+
+app.MapHub<ExpenseNotificationHub>("/hubs/expense-notifications");
 
 app.Run();

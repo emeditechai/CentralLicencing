@@ -24,16 +24,18 @@ namespace CentralLicenceApp.Controllers
         private readonly IExpenseCategoryRepository _expenseCategoryRepo;
         private readonly ICompanySettingsRepository _companySettingsRepo;
         private readonly IEmailService _emailService;
+        private readonly IExpenseBrowserNotificationService _expenseBrowserNotificationService;
         private readonly ILogger<ExpenseRequestController> _logger;
         private readonly IWebHostEnvironment _environment;
 
-        public ExpenseRequestController(IExpenseRequestRepository requestRepo, IUserRepository userRepo, IExpenseCategoryRepository expenseCategoryRepo, ICompanySettingsRepository companySettingsRepo, IEmailService emailService, ILogger<ExpenseRequestController> logger, IWebHostEnvironment environment)
+        public ExpenseRequestController(IExpenseRequestRepository requestRepo, IUserRepository userRepo, IExpenseCategoryRepository expenseCategoryRepo, ICompanySettingsRepository companySettingsRepo, IEmailService emailService, IExpenseBrowserNotificationService expenseBrowserNotificationService, ILogger<ExpenseRequestController> logger, IWebHostEnvironment environment)
         {
             _requestRepo = requestRepo;
             _userRepo = userRepo;
             _expenseCategoryRepo = expenseCategoryRepo;
             _companySettingsRepo = companySettingsRepo;
             _emailService = emailService;
+            _expenseBrowserNotificationService = expenseBrowserNotificationService;
             _logger = logger;
             _environment = environment;
         }
@@ -320,6 +322,11 @@ namespace CentralLicenceApp.Controllers
             }
 
             var submittedRequest = await _requestRepo.GetByIdAsync(id);
+            if (submittedRequest != null)
+            {
+                await _expenseBrowserNotificationService.NotifyExpenseRequestSubmittedAsync(submittedRequest, currentUser);
+            }
+
             if (submittedRequest != null && await IsExpenseEmailNotificationEnabledAsync())
             {
                 await SendCoreMemberSubmissionNotificationsAsync(submittedRequest);
@@ -382,6 +389,7 @@ namespace CentralLicenceApp.Controllers
                 return RedirectToAction("AccessDenied", "Account");
 
             await _requestRepo.ApproveAsync(vm.RequestId, currentUser.Id, vm.Remarks?.Trim());
+            await _expenseBrowserNotificationService.NotifyExpenseRequestApprovedAsync(request, currentUser);
             TempData["Success"] = $"Request {request.RequestNumber} approved.";
             return RedirectToAction(nameof(Approvals));
         }
@@ -401,6 +409,7 @@ namespace CentralLicenceApp.Controllers
             }
 
             await _requestRepo.RejectAsync(vm.RequestId, currentUser.Id, vm.Remarks.Trim());
+            await _expenseBrowserNotificationService.NotifyExpenseRequestRejectedAsync(request, currentUser);
             TempData["Success"] = $"Request {request.RequestNumber} rejected.";
             return RedirectToAction(nameof(Approvals));
         }
@@ -433,6 +442,7 @@ namespace CentralLicenceApp.Controllers
             }
 
             TempData["Success"] = $"Reimbursement started for request {request.RequestNumber}.";
+            await _expenseBrowserNotificationService.NotifyReimbursementStartedAsync(request, currentUser);
             return RedirectToAction(nameof(Details), new { id = vm.RequestId });
         }
 
@@ -483,6 +493,11 @@ namespace CentralLicenceApp.Controllers
             }
 
             var settledRequest = await _requestRepo.GetByIdAsync(vm.RequestId);
+            if (settledRequest != null)
+            {
+                await _expenseBrowserNotificationService.NotifySettlementCompletedAsync(settledRequest, currentUser);
+            }
+
             if (settledRequest != null && await IsExpenseEmailNotificationEnabledAsync())
             {
                 await SendSettlementNotificationAsync(settledRequest);

@@ -2,18 +2,21 @@
 @using CentralLicenceApp.Repositories
 @inject ICompanySettingsRepository CompanySettingsRepo
 @inject IUserRepository UserRepo
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
     var parentCompany = await CompanySettingsRepo.GetParentCompanyAsync();
     var brandName = string.IsNullOrWhiteSpace(parentCompany?.CompanyName) ? "Emeditech Plus LLP" : parentCompany.CompanyName.Trim();
     var hasBrandLogo = !string.IsNullOrWhiteSpace(parentCompany?.CompanyLogoPath);
     var brandLogoUrl = hasBrandLogo ? Url.Content(parentCompany!.CompanyLogoPath!) : "https://emeditechplus.com/img/emeditechplus-logo.png";
     var footerCompanyName = brandName.ToUpperInvariant();
+    var antiforgeryToken = Antiforgery.GetAndStoreTokens(Context).RequestToken;
 }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="request-verification-token" content="@antiforgeryToken" />
     <title>@ViewData["Title"] - @brandName</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
@@ -159,6 +162,9 @@
             <span class="pg-title">@(ViewData["Title"] ?? "Dashboard")</span>
         </div>
         <div class="d-flex align-items-center gap-2">
+            <button type="button" id="browserNotificationToggle" class="btn btn-sm browser-notification-trigger">
+                <i class="bi bi-bell me-1"></i> Enable Alerts
+            </button>
             @if (!string.IsNullOrWhiteSpace(profileImagePath))
             {
                 <img src="@Url.Content(profileImagePath)" alt="@fullName" class="avatar avatar-img" />
@@ -291,6 +297,41 @@ else
         opacity: 1;
         cursor: default;
     }
+
+    .browser-notification-trigger {
+        border-radius: 999px;
+        border: 1px solid #dbe4f0;
+        color: #334155;
+        background: #fff;
+        font-size: .72rem;
+        font-weight: 600;
+        padding: .18rem .65rem;
+    }
+
+    .browser-notification-trigger:hover,
+    .browser-notification-trigger:focus {
+        border-color: #c7d2fe;
+        color: #312e81;
+        background: #eef2ff;
+    }
+
+    .browser-notification-trigger.is-enabled {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+        color: #166534;
+    }
+
+    .browser-notification-trigger.is-blocked {
+        border-color: #fecaca;
+        background: #fef2f2;
+        color: #991b1b;
+    }
+
+    .browser-notification-trigger.is-live-only {
+        border-color: #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
 </style>
 <script>
     const swalSuccessMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["Success"]?.ToString()));
@@ -372,6 +413,8 @@ else
         showAppAlert('error', 'Something went wrong', swalErrorMessage);
     }
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="~/js/expense-browser-notifications.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
