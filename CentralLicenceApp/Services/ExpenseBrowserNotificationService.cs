@@ -219,11 +219,6 @@ namespace CentralLicenceApp.Services
                 return;
             }
 
-            var recipientIds = recipients.Keys.ToList();
-            var subscriptions = (await _subscriptionRepository.GetActiveByUserIdsAsync(recipientIds))
-                .GroupBy(subscription => subscription.UserId)
-                .ToDictionary(group => group.Key, group => group.ToList());
-
             foreach (var recipient in recipients)
             {
                 try
@@ -238,6 +233,31 @@ namespace CentralLicenceApp.Services
                         requestId,
                         recipient.Key);
                 }
+            }
+
+            if (!_pushSettings.IsConfigured)
+            {
+                return;
+            }
+
+            Dictionary<int, List<UserPushSubscription>> subscriptions;
+            try
+            {
+                var recipientIds = recipients.Keys.ToList();
+                subscriptions = (await _subscriptionRepository.GetActiveByUserIdsAsync(recipientIds))
+                    .GroupBy(subscription => subscription.UserId)
+                    .ToDictionary(group => group.Key, group => group.ToList());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to load web push subscriptions for expense request {RequestId}. Live SignalR alerts were still sent.",
+                    requestId);
+                return;
+            }
+
+            foreach (var recipient in recipients)
+            {
 
                 if (!subscriptions.TryGetValue(recipient.Key, out var userSubscriptions))
                 {
