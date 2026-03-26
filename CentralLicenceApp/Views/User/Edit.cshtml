@@ -94,10 +94,41 @@
         <div class="uf-section-title"><i class="bi bi-shield-lock"></i> Role & Location</div>
         <div class="row g-3">
             <div class="col-sm-6">
-                <label asp-for="RoleId" class="uf-label"></label>
-                <select asp-for="RoleId" class="form-select uf-input" asp-items="@(new SelectList(Model.Roles, "Id", "RoleName", Model.RoleId))">
-                </select>
-                <span asp-validation-for="RoleId" class="uf-err"></span>
+                <label asp-for="RoleIds" class="uf-label"></label>
+                <div class="dropdown uf-role-dropdown" data-bs-auto-close="outside">
+                    <button class="btn form-control uf-input uf-role-trigger dropdown-toggle text-start" type="button" id="roleDropdownButton" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span id="roleDropdownText">Select one or more roles</span>
+                    </button>
+                    <div class="dropdown-menu w-100 p-2 uf-role-menu" aria-labelledby="roleDropdownButton">
+                        <div class="uf-role-menu-title px-2 pb-2">Available Roles</div>
+                        <div class="px-2 pb-2">
+                            <div class="position-relative">
+                                <i class="bi bi-search uf-role-search-icon"></i>
+                                <input type="text" id="roleSearchInput" class="form-control uf-input uf-role-search" placeholder="Search roles" autocomplete="off" />
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between gap-2 px-2 pb-2 uf-role-actions">
+                            <button type="button" id="selectAllRolesButton" class="btn btn-sm uf-role-action-btn">Select All</button>
+                            <button type="button" id="clearRolesButton" class="btn btn-sm uf-role-action-btn uf-role-action-btn-secondary">Clear All</button>
+                        </div>
+                        <div class="uf-role-option-list">
+                            @foreach (var role in Model.Roles)
+                            {
+                                <label class="uf-role-option" data-role-name="@role.RoleName.ToLowerInvariant()">
+                                    <input type="checkbox" name="RoleIds" value="@role.Id" class="uf-role-checkbox" checked="@(Model.RoleIds.Contains(role.Id))" />
+                                    <span class="uf-role-option-copy">
+                                        <span class="uf-role-option-title">@role.RoleName</span>
+                                        <span class="uf-role-option-sub">@(string.IsNullOrWhiteSpace(role.Description) ? "Grant access for this role." : role.Description)</span>
+                                    </span>
+                                </label>
+                            }
+                        </div>
+                        <div id="roleSearchEmptyState" class="uf-role-empty-state d-none">No roles match your search.</div>
+                    </div>
+                </div>
+                <div id="roleSelectionSummary" class="uf-role-summary mt-2"></div>
+                <div class="uf-hint">Open the list and select all roles that should be available for this user.</div>
+                <span asp-validation-for="RoleIds" class="uf-err"></span>
             </div>
             <div class="col-sm-6">
                 <label asp-for="LocationId" class="uf-label"></label>
@@ -192,10 +223,191 @@
     </div>
 </form>
 
+<style>
+    .uf-role-trigger {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-right: 2.5rem;
+        background: #fff;
+    }
+
+    .uf-role-trigger::after {
+        position: absolute;
+        right: 1rem;
+        margin-top: 0;
+    }
+
+    .uf-role-menu {
+        border: 1px solid #dbe4f0;
+        border-radius: 14px;
+        box-shadow: 0 18px 38px rgba(15, 23, 42, .12);
+    }
+
+    .uf-role-menu-title {
+        font-size: .72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: #64748b;
+    }
+
+    .uf-role-search {
+        padding-left: 2.2rem;
+    }
+
+    .uf-role-search-icon {
+        position: absolute;
+        left: .8rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: .9rem;
+        pointer-events: none;
+    }
+
+    .uf-role-actions {
+        border-bottom: 1px solid #eef2f7;
+        margin: 0 .25rem .5rem;
+    }
+
+    .uf-role-action-btn {
+        border-radius: 999px;
+        border: 1px solid #c7d2fe;
+        color: #3730a3;
+        background: #eef2ff;
+        font-size: .72rem;
+        font-weight: 700;
+        padding: .25rem .7rem;
+    }
+
+    .uf-role-action-btn:hover {
+        background: #e0e7ff;
+        color: #312e81;
+    }
+
+    .uf-role-action-btn-secondary {
+        border-color: #e2e8f0;
+        background: #fff;
+        color: #475569;
+    }
+
+    .uf-role-action-btn-secondary:hover {
+        background: #f8fafc;
+        color: #1e293b;
+    }
+
+    .uf-role-option-list {
+        display: flex;
+        flex-direction: column;
+        gap: .35rem;
+        max-height: 240px;
+        overflow-y: auto;
+    }
+
+    .uf-role-option {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: .7rem .8rem;
+        background: #fff;
+        display: flex;
+        align-items: flex-start;
+        gap: .7rem;
+        cursor: pointer;
+        transition: border-color .2s ease, background .2s ease, box-shadow .2s ease;
+    }
+
+    .uf-role-option:hover {
+        border-color: #c7d2fe;
+        background: #f8faff;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, .05);
+    }
+
+    .uf-role-checkbox {
+        width: 1rem;
+        height: 1rem;
+        margin-top: .15rem;
+        accent-color: #4f46e5;
+        flex-shrink: 0;
+    }
+
+    .uf-role-option-copy {
+        display: flex;
+        flex-direction: column;
+        gap: .15rem;
+    }
+
+    .uf-role-option-title {
+        font-weight: 700;
+        color: #1e293b;
+        font-size: .92rem;
+    }
+
+    .uf-role-option-sub {
+        color: #64748b;
+        font-size: .76rem;
+        line-height: 1.4;
+    }
+
+    .uf-role-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .4rem;
+        min-height: 1.75rem;
+    }
+
+    .uf-role-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .32rem .65rem;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #3730a3;
+        font-size: .74rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .uf-role-chip-admin {
+        background: #ede9fe;
+        color: #6d28d9;
+    }
+
+    .uf-role-chip-finance {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .uf-role-chip-staff {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .uf-role-chip-ticket {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .uf-role-empty-state {
+        font-size: .8rem;
+        color: #64748b;
+        text-align: center;
+        padding: .75rem;
+    }
+</style>
+
 @section Scripts {
 <partial name="_ValidationScriptsPartial" />
 <script>
     var currentUserId = @Model.Id;
+    var roleDropdownText = document.getElementById('roleDropdownText');
+    var roleSelectionSummary = document.getElementById('roleSelectionSummary');
+    var roleSearchInput = document.getElementById('roleSearchInput');
+    var selectAllRolesButton = document.getElementById('selectAllRolesButton');
+    var clearRolesButton = document.getElementById('clearRolesButton');
+    var roleSearchEmptyState = document.getElementById('roleSearchEmptyState');
 
     function previewProfileImage(input) {
         var preview = document.getElementById('profilePreview');
@@ -223,6 +435,75 @@
         if (pw === cpw) { msg.style.color = '#16a34a'; msg.textContent = '✓ Passwords match'; }
         else            { msg.style.color = '#ef4444'; msg.textContent = '✗ Passwords do not match'; }
     }
+
+    function getRoleChipClass(roleName) {
+        var normalized = (roleName || '').toLowerCase();
+        if (normalized.indexOf('admin') !== -1) return 'uf-role-chip-admin';
+        if (normalized.indexOf('finance') !== -1) return 'uf-role-chip-finance';
+        if (normalized.indexOf('staff') !== -1) return 'uf-role-chip-staff';
+        if (normalized.indexOf('ticket') !== -1) return 'uf-role-chip-ticket';
+        return '';
+    }
+
+    function updateRoleSelectionDisplay() {
+        var selectedRoles = Array.from(document.querySelectorAll('.uf-role-checkbox:checked')).map(function (checkbox) {
+            var label = checkbox.closest('.uf-role-option');
+            var title = label ? label.querySelector('.uf-role-option-title') : null;
+            return {
+                id: checkbox.value,
+                name: title ? title.textContent.trim() : checkbox.value
+            };
+        });
+
+        if (!selectedRoles.length) {
+            roleDropdownText.textContent = 'Select one or more roles';
+            roleSelectionSummary.innerHTML = '';
+            return;
+        }
+
+        roleDropdownText.textContent = selectedRoles.length === 1
+            ? selectedRoles[0].name
+            : selectedRoles.length + ' roles selected';
+
+        roleSelectionSummary.innerHTML = selectedRoles.map(function (role) {
+            return '<span class="uf-role-chip ' + getRoleChipClass(role.name) + '"><i class="bi bi-check2"></i>' + role.name + '</span>';
+        }).join('');
+    }
+
+    function filterRoleOptions() {
+        var searchTerm = (roleSearchInput.value || '').trim().toLowerCase();
+        var visibleCount = 0;
+
+        document.querySelectorAll('.uf-role-option').forEach(function (option) {
+            var roleName = option.dataset.roleName || '';
+            var optionText = option.textContent.toLowerCase();
+            var isMatch = !searchTerm || roleName.indexOf(searchTerm) !== -1 || optionText.indexOf(searchTerm) !== -1;
+            option.classList.toggle('d-none', !isMatch);
+            if (isMatch) {
+                visibleCount += 1;
+            }
+        });
+
+        roleSearchEmptyState.classList.toggle('d-none', visibleCount > 0);
+    }
+
+    function setVisibleRoleSelection(isSelected) {
+        document.querySelectorAll('.uf-role-option:not(.d-none) .uf-role-checkbox').forEach(function (checkbox) {
+            checkbox.checked = isSelected;
+        });
+        updateRoleSelectionDisplay();
+    }
+
+    document.querySelectorAll('.uf-role-checkbox').forEach(function (checkbox) {
+        checkbox.addEventListener('change', updateRoleSelectionDisplay);
+    });
+
+    roleSearchInput.addEventListener('input', filterRoleOptions);
+    selectAllRolesButton.addEventListener('click', function () { setVisibleRoleSelection(true); });
+    clearRolesButton.addEventListener('click', function () { setVisibleRoleSelection(false); });
+
+    filterRoleOptions();
+    updateRoleSelectionDisplay();
 
     function onActiveToggle() {
         var isActive = document.getElementById('chkIsActive').checked;

@@ -45,7 +45,7 @@
         <form method="get" class="row g-2 align-items-end">
             <input type="hidden" name="productType" value="@selectedPT" />
             <div class="col-sm-5">
-                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Client Code / License Key</label>
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Client Code / AppUrl</label>
                 <div class="input-group">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
                     <input type="text" name="search" value="@ViewBag.Search" class="form-control border-start-0" placeholder="Search…" style="border-radius:0 10px 10px 0;" />
@@ -75,7 +75,7 @@
                     <tr>
                         <th class="ps-3">#</th>
                         <th>Client Code</th>
-                        <th>License Key</th>
+                        <th>AppUrl</th>
                         <th>Result</th>
                         <th>Failure Reason</th>
                         <th>IP Address</th>
@@ -93,7 +93,16 @@
                         <tr>
                             <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@v.Id</td>
                             <td class="fw-semibold" style="color:#6366f1;font-size:.86rem;">@v.ClientCode</td>
-                            <td><code style="font-size:.72rem;background:#f1f5f9;padding:.15rem .35rem;border-radius:5px;">@(v.LicenseKey.Length>16?v.LicenseKey[..16]+"…":v.LicenseKey)</code></td>
+                            <td style="font-size:.78rem;max-width:220px;white-space:normal;word-break:break-word;">
+                                @if (string.IsNullOrWhiteSpace(v.AppUrl))
+                                {
+                                    <span>—</span>
+                                }
+                                else
+                                {
+                                    <span>@v.AppUrl</span>
+                                }
+                            </td>
                             <td>
                                 @if (v.IsValid)
                                 {

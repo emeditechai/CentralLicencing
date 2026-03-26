@@ -41,7 +41,7 @@ namespace CentralLicenceApp.Repositories
 
             if (!string.IsNullOrWhiteSpace(clientCode))
             {
-                where += " AND (h.ClientCode LIKE @ClientCode OR h.LicenseKey LIKE @ClientCode)";
+                where += " AND (h.ClientCode LIKE @ClientCode OR ISNULL(h.AppUrl, '') LIKE @ClientCode)";
                 parameters.Add("ClientCode", $"%{clientCode}%");
             }
 

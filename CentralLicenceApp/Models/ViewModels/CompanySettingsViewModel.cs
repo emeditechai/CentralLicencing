@@ -68,6 +68,9 @@ namespace CentralLicenceApp.Models.ViewModels
         [Display(Name = "Is Parent Company")]
         public bool IsParentCompany { get; set; }
 
+        [Display(Name = "Email Notification Required on Expense Request")]
+        public bool IsExpenseEmailNotificationRequired { get; set; }
+
         [Display(Name = "Company Logo")]
         public IFormFile? CompanyLogo { get; set; }
 

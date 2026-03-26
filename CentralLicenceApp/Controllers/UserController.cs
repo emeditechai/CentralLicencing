@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 
 namespace CentralLicenceApp.Controllers
@@ -112,6 +113,9 @@ namespace CentralLicenceApp.Controllers
             if (string.IsNullOrWhiteSpace(vm.Password))
                 ModelState.AddModelError("Password", "Password is required for new users.");
 
+            if (!vm.RoleIds.Any())
+                ModelState.AddModelError(nameof(UserFormViewModel.RoleIds), "At least one role is required.");
+
             if (vm.IsEmployee)
             {
                 if (string.IsNullOrWhiteSpace(vm.EmployeeCode))
@@ -142,7 +146,8 @@ namespace CentralLicenceApp.Controllers
                 PhoneNumber   = vm.PhoneNumber?.Trim(),
                 DateOfBirth   = vm.DateOfBirth,
                 DateOfJoining = vm.DateOfJoining,
-                RoleId        = vm.RoleId,
+                RoleId        = vm.RoleIds.First(),
+                AssignedRoleIds = vm.RoleIds.Distinct().ToList(),
                 LocationId    = vm.LocationId,
                 DepartmentId  = vm.IsEmployee ? vm.DepartmentId : null,
                 DesignationId = vm.IsEmployee ? vm.DesignationId : null,
@@ -182,7 +187,7 @@ namespace CentralLicenceApp.Controllers
                 PhoneNumber  = user.PhoneNumber,
                 DateOfBirth  = user.DateOfBirth,
                 DateOfJoining = user.DateOfJoining,
-                RoleId       = user.RoleId,
+                RoleIds      = user.AssignedRoleIds.Any() ? user.AssignedRoleIds.ToList() : new List<int> { user.RoleId },
                 LocationId   = user.LocationId,
                 DepartmentId = user.DepartmentId,
                 DesignationId = user.DesignationId,
@@ -222,6 +227,9 @@ namespace CentralLicenceApp.Controllers
             ModelState.Remove("Password");
             ModelState.Remove("ConfirmPassword");
 
+            if (!vm.RoleIds.Any())
+                ModelState.AddModelError(nameof(UserFormViewModel.RoleIds), "At least one role is required.");
+
             if (isSelfEdit && !vm.IsActive)
             {
                 vm.IsActive = true;
@@ -259,7 +267,8 @@ namespace CentralLicenceApp.Controllers
             existing.PhoneNumber  = vm.PhoneNumber?.Trim();
             existing.DateOfBirth  = vm.DateOfBirth;
             existing.DateOfJoining = vm.DateOfJoining;
-            existing.RoleId       = vm.RoleId;
+            existing.RoleId       = vm.RoleIds.First();
+            existing.AssignedRoleIds = vm.RoleIds.Distinct().ToList();
             existing.LocationId   = vm.LocationId;
             existing.DepartmentId = vm.IsEmployee ? vm.DepartmentId : null;
             existing.DesignationId = vm.IsEmployee ? vm.DesignationId : null;
@@ -305,7 +314,29 @@ namespace CentralLicenceApp.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            await _userRepo.DeleteAsync(id);
+            var deleteValidation = await _userRepo.ValidateDeleteAsync(id);
+            if (!deleteValidation.CanDelete)
+            {
+                TempData["Error"] = deleteValidation.Reason;
+                return RedirectToAction(nameof(Index));
+            }
+
+            try
+            {
+                var deleted = await _userRepo.DeleteAsync(id);
+                if (!deleted)
+                {
+                    TempData["Error"] = "The selected user was not found or could not be deleted.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+            catch (SqlException ex)
+            {
+                _logger.LogWarning(ex, "User deletion blocked for user id {UserId}", id);
+                TempData["Error"] = "This user cannot be deleted because related business records still reference them. Please reassign those records and try again.";
+                return RedirectToAction(nameof(Index));
+            }
+
             TempData["Success"] = "User deleted.";
             return RedirectToAction(nameof(Index));
         }
@@ -348,19 +379,26 @@ namespace CentralLicenceApp.Controllers
 
         private async Task RefreshCurrentUserClaimsAsync(UserMaster user)
         {
+            var activeRoleId = User.FindFirst("ActiveRoleId")?.Value;
+            var resolvedRole = user.Roles.FirstOrDefault(role => role.Id.ToString() == activeRoleId)
+                ?? user.Roles.FirstOrDefault(role => role.Id == user.RoleId)
+                ?? user.Roles.FirstOrDefault();
+
             var claims = new List<Claim>
             {
                 new(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new(ClaimTypes.Name, user.Username),
                 new(ClaimTypes.Email, user.Email),
                 new("FullName", user.FullName ?? user.Username),
-                new(ClaimTypes.Role, user.RoleName ?? "Staff"),
+                new(ClaimTypes.Role, resolvedRole?.RoleName ?? user.RoleName ?? "Staff"),
+                new("ActiveRoleId", (resolvedRole?.Id ?? user.RoleId).ToString()),
                 new("ProfileImagePath", user.ProfileImagePath ?? string.Empty),
             };
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var principal = new ClaimsPrincipal(identity);
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+            var authResult = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authResult.Properties);
         }
 
         private async Task SendOnboardingEmailAsync(int userId, string? temporaryPassword)
@@ -378,7 +416,7 @@ namespace CentralLicenceApp.Controllers
                 ["Email"] = createdUser.Email,
                 ["FullName"] = string.IsNullOrWhiteSpace(createdUser.FullName) ? createdUser.Username : createdUser.FullName,
                 ["PhoneNumber"] = GetDisplayValue(createdUser.PhoneNumber),
-                ["RoleName"] = GetDisplayValue(createdUser.RoleName),
+                ["RoleName"] = GetDisplayValue(createdUser.RoleNamesDisplay),
                 ["LocationName"] = GetDisplayValue(createdUser.LocationName),
                 ["DepartmentName"] = GetDisplayValue(createdUser.DepartmentName),
                 ["DesignationName"] = GetDisplayValue(createdUser.DesignationName),

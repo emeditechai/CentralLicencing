@@ -12,6 +12,7 @@ namespace CentralLicenceApp.Repositories
         Task<UserMaster?> GetByUsernameAsync(string username);
         Task<int> CreateAsync(UserMaster user);
         Task<bool> UpdateAsync(UserMaster user);
+        Task<(bool CanDelete, string? Reason)> ValidateDeleteAsync(int id);
         Task<bool> DeleteAsync(int id);
         Task<bool> UpdateLastLoginAsync(int userId);
         Task<bool> CheckEmployeeCodeUniqueAsync(string employeeCode, int? excludeUserId = null);
@@ -25,6 +26,7 @@ namespace CentralLicenceApp.Repositories
         Task<RoleMaster?> GetByIdAsync(int id);
         Task<int> CreateAsync(RoleMaster role);
         Task<bool> UpdateAsync(RoleMaster role);
+        Task<(bool CanDelete, string? Reason)> ValidateDeleteAsync(int id);
         Task<bool> DeleteAsync(int id);
     }
 }

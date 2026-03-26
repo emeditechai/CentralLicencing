@@ -64,6 +64,7 @@ namespace CentralLicenceApp.Controllers
                 GSTCode = vm.GSTCode?.Trim(),
                 PANCard = vm.PANCard?.Trim(),
                 IsParentCompany = vm.IsParentCompany,
+                IsExpenseEmailNotificationRequired = vm.IsExpenseEmailNotificationRequired,
                 CompanyLogoPath = await SaveCompanyLogoAsync(vm.CompanyLogo),
                 IsActive = vm.IsActive
             };
@@ -96,6 +97,7 @@ namespace CentralLicenceApp.Controllers
                 GSTCode = company.GSTCode,
                 PANCard = company.PANCard,
                 IsParentCompany = company.IsParentCompany,
+                IsExpenseEmailNotificationRequired = company.IsExpenseEmailNotificationRequired,
                 ExistingLogoPath = company.CompanyLogoPath,
                 IsActive = company.IsActive,
                 CompanyTypes = (await _repo.GetCompanyTypesAsync()).ToList()
@@ -132,6 +134,7 @@ namespace CentralLicenceApp.Controllers
             existing.GSTCode = vm.GSTCode?.Trim();
             existing.PANCard = vm.PANCard?.Trim();
             existing.IsParentCompany = vm.IsParentCompany;
+            existing.IsExpenseEmailNotificationRequired = vm.IsExpenseEmailNotificationRequired;
             existing.CompanyLogoPath = await SaveCompanyLogoAsync(vm.CompanyLogo, existing.CompanyLogoPath);
             existing.IsActive = vm.IsActive;
 

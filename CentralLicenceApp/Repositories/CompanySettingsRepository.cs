@@ -63,9 +63,9 @@ namespace CentralLicenceApp.Repositories
             companySetting.CreatedAt = DateTime.Now;
             return await conn.ExecuteScalarAsync<int>(@"
                 INSERT INTO CompanySettings
-                    (CompanyCode, CompanyTypeId, CompanyName, Country, State, District, City, Address, Website, EmailId, ContactNo, Pincode, GSTCode, PANCard, IsParentCompany, CompanyLogoPath, IsActive, CreatedAt)
+                    (CompanyCode, CompanyTypeId, CompanyName, Country, State, District, City, Address, Website, EmailId, ContactNo, Pincode, GSTCode, PANCard, IsParentCompany, IsExpenseEmailNotificationRequired, CompanyLogoPath, IsActive, CreatedAt)
                 VALUES
-                    (@CompanyCode, @CompanyTypeId, @CompanyName, @Country, @State, @District, @City, @Address, @Website, @EmailId, @ContactNo, @Pincode, @GSTCode, @PANCard, @IsParentCompany, @CompanyLogoPath, @IsActive, @CreatedAt);
+                    (@CompanyCode, @CompanyTypeId, @CompanyName, @Country, @State, @District, @City, @Address, @Website, @EmailId, @ContactNo, @Pincode, @GSTCode, @PANCard, @IsParentCompany, @IsExpenseEmailNotificationRequired, @CompanyLogoPath, @IsActive, @CreatedAt);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);", companySetting);
         }
 
@@ -89,6 +89,7 @@ namespace CentralLicenceApp.Repositories
                     GSTCode = @GSTCode,
                     PANCard = @PANCard,
                     IsParentCompany = @IsParentCompany,
+                    IsExpenseEmailNotificationRequired = @IsExpenseEmailNotificationRequired,
                     CompanyLogoPath = @CompanyLogoPath,
                     IsActive = @IsActive
                 WHERE Id = @Id", companySetting) > 0;

@@ -63,6 +63,21 @@ namespace CentralLicenceApp.Repositories
             return await conn.ExecuteAsync(sql, expenseCategory) > 0;
         }
 
+        public async Task<(bool CanDelete, string? Reason)> ValidateDeleteAsync(int id)
+        {
+            using var conn = CreateConnection();
+            var linkedExpenseLineCount = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(1) FROM ExpenseRequestLine WHERE ExpenseCategoryId = @Id",
+                new { Id = id });
+
+            if (linkedExpenseLineCount == 0)
+            {
+                return (true, null);
+            }
+
+            return (false, $"This expense category cannot be deleted because it is used in {linkedExpenseLineCount} expense line item(s). Remove or reclassify those records first.");
+        }
+
         public async Task<bool> DeleteAsync(int id)
         {
             using var conn = CreateConnection();

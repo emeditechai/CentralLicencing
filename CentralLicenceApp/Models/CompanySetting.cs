@@ -20,6 +20,7 @@ namespace CentralLicenceApp.Models
         public string? GSTCode { get; set; }
         public string? PANCard { get; set; }
         public bool IsParentCompany { get; set; }
+        public bool IsExpenseEmailNotificationRequired { get; set; }
         public string? CompanyLogoPath { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; }

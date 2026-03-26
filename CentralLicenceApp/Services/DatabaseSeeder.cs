@@ -127,6 +127,36 @@ namespace CentralLicenceApp.Services
                 ALTER TABLE [dbo].[UserMaster] ADD [ProfileImagePath] NVARCHAR(300) NULL;
             END
 
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='UserRoleMap')
+            BEGIN
+                CREATE TABLE [dbo].[UserRoleMap] (
+                    [UserId]    INT       NOT NULL,
+                    [RoleId]    INT       NOT NULL,
+                    [CreatedAt] DATETIME  NOT NULL DEFAULT GETDATE(),
+                    CONSTRAINT [PK_UserRoleMap] PRIMARY KEY ([UserId], [RoleId]),
+                    CONSTRAINT [FK_UserRoleMap_UserMaster] FOREIGN KEY ([UserId]) REFERENCES [dbo].[UserMaster]([Id]) ON DELETE CASCADE,
+                    CONSTRAINT [FK_UserRoleMap_RoleMaster] FOREIGN KEY ([RoleId]) REFERENCES [dbo].[RoleMaster]([Id])
+                );
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.indexes
+              WHERE name = 'IX_UserRoleMap_RoleId'
+                AND object_id = OBJECT_ID('UserRoleMap'))
+            BEGIN
+              CREATE INDEX [IX_UserRoleMap_RoleId] ON [dbo].[UserRoleMap]([RoleId], [UserId]);
+            END
+
+            INSERT INTO [dbo].[UserRoleMap]([UserId], [RoleId], [CreatedAt])
+            SELECT u.Id, u.RoleId, GETDATE()
+            FROM [dbo].[UserMaster] u
+            WHERE u.RoleId IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM [dbo].[UserRoleMap] ur
+                  WHERE ur.UserId = u.Id AND ur.RoleId = u.RoleId
+              );
+
             IF NOT EXISTS (
               SELECT 1 FROM sys.indexes
               WHERE name = 'UQ_UserMaster_EmployeeCode'
@@ -458,6 +488,16 @@ namespace CentralLicenceApp.Services
                     new { Hash = hash, RoleId = adminRoleId });
             }
 
+                await conn.ExecuteAsync(@"
+                  INSERT INTO UserRoleMap(UserId, RoleId, CreatedAt)
+                  SELECT u.Id, @RoleId, GETDATE()
+                  FROM UserMaster u
+                  WHERE u.Username = 'admin'
+                    AND NOT EXISTS (
+                      SELECT 1 FROM UserRoleMap ur
+                      WHERE ur.UserId = u.Id AND ur.RoleId = @RoleId)",
+                  new { RoleId = adminRoleId });
+
             if (!await conn.ExecuteScalarAsync<bool>("SELECT COUNT(1) FROM UserMaster WHERE Username='staff'"))
             {
                 var hash = BCrypt.Net.BCrypt.HashPassword("Staff@1234");
@@ -466,6 +506,16 @@ namespace CentralLicenceApp.Services
                     VALUES('staff','staff@centrallicence.com',@Hash,'Staff Member',@RoleId,1,GETDATE())",
                     new { Hash = hash, RoleId = staffRoleId });
             }
+
+                await conn.ExecuteAsync(@"
+                  INSERT INTO UserRoleMap(UserId, RoleId, CreatedAt)
+                  SELECT u.Id, @RoleId, GETDATE()
+                  FROM UserMaster u
+                  WHERE u.Username = 'staff'
+                    AND NOT EXISTS (
+                      SELECT 1 FROM UserRoleMap ur
+                      WHERE ur.UserId = u.Id AND ur.RoleId = @RoleId)",
+                  new { RoleId = staffRoleId });
         }
 
         private static async Task EnsureEmailTemplatesTableAsync(SqlConnection conn)
@@ -578,6 +628,7 @@ namespace CentralLicenceApp.Services
                         [GSTCode]          NVARCHAR(50)    NULL,
                         [PANCard]          NVARCHAR(50)    NULL,
                         [IsParentCompany]  BIT             NOT NULL DEFAULT 0,
+                        [IsExpenseEmailNotificationRequired] BIT NOT NULL DEFAULT 0,
                         [CompanyLogoPath]  NVARCHAR(300)   NULL,
                         [IsActive]         BIT             NOT NULL DEFAULT 1,
                         [CreatedAt]        DATETIME        NOT NULL DEFAULT GETDATE(),
@@ -592,6 +643,8 @@ namespace CentralLicenceApp.Services
                         ALTER TABLE [dbo].[CompanySettings] ADD [EmailId] NVARCHAR(200) NULL;
                       IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('CompanySettings') AND name = 'ContactNo')
                         ALTER TABLE [dbo].[CompanySettings] ADD [ContactNo] NVARCHAR(30) NULL;
+                      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('CompanySettings') AND name = 'IsExpenseEmailNotificationRequired')
+                        ALTER TABLE [dbo].[CompanySettings] ADD [IsExpenseEmailNotificationRequired] BIT NOT NULL CONSTRAINT [DF_CompanySettings_IsExpenseEmailNotificationRequired] DEFAULT 0;
                     END");
         }
 

@@ -320,7 +320,7 @@ namespace CentralLicenceApp.Controllers
             }
 
             var submittedRequest = await _requestRepo.GetByIdAsync(id);
-            if (submittedRequest != null)
+            if (submittedRequest != null && await IsExpenseEmailNotificationEnabledAsync())
             {
                 await SendCoreMemberSubmissionNotificationsAsync(submittedRequest);
             }
@@ -483,7 +483,7 @@ namespace CentralLicenceApp.Controllers
             }
 
             var settledRequest = await _requestRepo.GetByIdAsync(vm.RequestId);
-            if (settledRequest != null)
+            if (settledRequest != null && await IsExpenseEmailNotificationEnabledAsync())
             {
                 await SendSettlementNotificationAsync(settledRequest);
             }
@@ -509,7 +509,7 @@ namespace CentralLicenceApp.Controllers
             return (currentUser != null &&
                     (request.EmployeeId == currentUser.Id
                         || request.ApproverId == currentUser.Id
-                        || currentUser.RoleName == "Administrator"))
+                        || User.IsInRole("Administrator")))
                 || HasSuperAdminAccess()
                 || (HasFinanceAccess(currentUser)
                     && (request.Status == ExpenseRequestStatus.Approved
@@ -521,7 +521,7 @@ namespace CentralLicenceApp.Controllers
         {
             return request.Status == ExpenseRequestStatus.PendingApproval
                 && (request.ApproverId == currentUser.Id
-                    || currentUser.RoleName == "Administrator"
+                    || User.IsInRole("Administrator")
                     || HasSuperAdminAccess());
         }
 
@@ -534,7 +534,7 @@ namespace CentralLicenceApp.Controllers
 
             return currentUser != null
                 && currentUser.IsActive
-                && (currentUser.RoleName == "Finance"
+                && (User.IsInRole("Finance")
                     || string.Equals(currentUser.Username, "admin", StringComparison.OrdinalIgnoreCase));
         }
 
@@ -695,6 +695,12 @@ namespace CentralLicenceApp.Controllers
             await file.CopyToAsync(stream);
 
             return $"/uploads/expense-receipts/{fileName}";
+        }
+
+        private async Task<bool> IsExpenseEmailNotificationEnabledAsync()
+        {
+            var company = await _companySettingsRepo.GetParentCompanyAsync();
+            return company?.IsExpenseEmailNotificationRequired ?? false;
         }
 
         private async Task SendCoreMemberSubmissionNotificationsAsync(ExpenseRequest request)

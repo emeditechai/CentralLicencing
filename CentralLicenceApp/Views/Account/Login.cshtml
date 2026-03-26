@@ -118,6 +118,32 @@
         }
         .btn-signin:hover { opacity: .92; transform: translateY(-1px); color: #fff; }
         .btn-signin:active { transform: translateY(0); }
+        .role-choice-card {
+            border: 1px solid #dbe4f0;
+            border-radius: 14px;
+            padding: 1rem;
+            display: block;
+            cursor: pointer;
+            transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+        }
+        .role-choice-card:hover {
+            border-color: #6366f1;
+            box-shadow: 0 12px 25px rgba(79, 70, 229, .1);
+            transform: translateY(-1px);
+        }
+        .role-choice-input {
+            accent-color: #4f46e5;
+            width: 1rem;
+            height: 1rem;
+        }
+        .role-choice-title {
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .role-choice-sub {
+            color: #64748b;
+            font-size: .82rem;
+        }
         .footer-copy { font-size: .73rem; color: #94a3b8; text-align: center; margin-top: 2rem; }
         @@media (max-width: 768px) {
             body { flex-direction: column; }
@@ -157,6 +183,10 @@
 
         <form asp-controller="Account" asp-action="Login" asp-route-returnUrl="@(ViewData["ReturnUrl"] as string)" method="post" autocomplete="off">
             @Html.AntiForgeryToken()
+            @if (TempData["Error"] is string errorMessage)
+            {
+                <div class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.82rem;">@errorMessage</div>
+            }
             @if (!ViewData.ModelState.IsValid)
             {
                 <div asp-validation-summary="All" class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.82rem;"></div>
@@ -194,8 +224,62 @@
     </div>
 </div>
 
+@if (Model?.ShowRoleSelectionPopup == true)
+{
+    <div class="modal fade" id="roleSelectionModal" tabindex="-1" aria-labelledby="roleSelectionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius:20px;overflow:hidden;">
+                <div class="modal-header" style="background:#eef2ff;border-bottom:1px solid #dbe4f0;">
+                    <div>
+                        <h5 class="modal-title fw-bold" id="roleSelectionModalLabel">Choose your role</h5>
+                        <div class="text-muted" style="font-size:.82rem;">This account has multiple roles. Select the role for this session.</div>
+                    </div>
+                </div>
+                <form asp-controller="Account" asp-action="SelectRole" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-body">
+                        <input type="hidden" name="pendingSelectionToken" value="@Model.PendingSelectionToken" />
+                        <div class="d-grid gap-2">
+                            @for (var i = 0; i < Model.AvailableRoles.Count; i++)
+                            {
+                                var role = Model.AvailableRoles[i];
+                                <label class="role-choice-card">
+                                    <div class="d-flex align-items-start gap-3">
+                                        <input class="role-choice-input mt-1" type="radio" name="selectedRoleId" value="@role.Id" checked="@(i == 0)" required />
+                                        <div>
+                                            <div class="role-choice-title">@role.RoleName</div>
+                                            <div class="role-choice-sub">@(string.IsNullOrWhiteSpace(role.Description) ? "Use this role for the current login session." : role.Description)</div>
+                                        </div>
+                                    </div>
+                                </label>
+                            }
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                        <button type="submit" class="btn btn-signin">Continue</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.21.0/dist/jquery.validate.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var roleModalEl = document.getElementById('roleSelectionModal');
+        if (!roleModalEl) {
+            return;
+        }
+
+        var roleModal = new bootstrap.Modal(roleModalEl, {
+            backdrop: 'static',
+            keyboard: false
+        });
+        roleModal.show();
+    });
+</script>
 </body>
 </html>

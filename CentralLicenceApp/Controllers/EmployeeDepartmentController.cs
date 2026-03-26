@@ -4,6 +4,7 @@ using CentralLicenceApp.Models.ViewModels;
 using CentralLicenceApp.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 
 namespace CentralLicenceApp.Controllers
 {
@@ -82,7 +83,28 @@ namespace CentralLicenceApp.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {
-            await _repo.DeleteAsync(id);
+            var deleteValidation = await _repo.ValidateDeleteAsync(id);
+            if (!deleteValidation.CanDelete)
+            {
+                TempData["Error"] = deleteValidation.Reason;
+                return RedirectToAction(nameof(Index));
+            }
+
+            try
+            {
+                var deleted = await _repo.DeleteAsync(id);
+                if (!deleted)
+                {
+                    TempData["Error"] = "The selected department was not found or could not be deleted.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+            catch (SqlException)
+            {
+                TempData["Error"] = "This department cannot be deleted because related records still reference it. Reassign those records first.";
+                return RedirectToAction(nameof(Index));
+            }
+
             TempData["Success"] = "Department deleted.";
             return RedirectToAction(nameof(Index));
         }

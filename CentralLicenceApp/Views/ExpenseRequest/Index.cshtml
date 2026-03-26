@@ -4,25 +4,196 @@
     var subtitle = Model.ShowFinanceActions
         ? "Process approved requests through reimbursement and final settlement."
         : "Track your draft, submitted, approved, reimbursed, and settled expense requests.";
+    var totalRequests = Model.Requests.Count;
+    var approvedCount = Model.Requests.Count(r => r.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Approved);
+    var reimbursementCount = Model.Requests.Count(r => r.Status == CentralLicenceApp.Models.ExpenseRequestStatus.ReimbursementInProcess);
+    var settledCount = Model.Requests.Count(r => r.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Settled);
+    var queueAmount = Model.Requests.Sum(r => r.TotalAmount);
+    var approvedAmount = Model.Requests
+        .Where(r => r.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Approved)
+        .Sum(r => r.TotalAmount);
+    var reimbursementAmount = Model.Requests
+        .Where(r => r.Status == CentralLicenceApp.Models.ExpenseRequestStatus.ReimbursementInProcess)
+        .Sum(r => r.TotalAmount);
+    var settledAmount = Model.Requests
+        .Where(r => r.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Settled)
+        .Sum(r => r.TotalAmount);
+    var oldestPending = Model.Requests
+        .Where(r => r.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Approved)
+        .OrderBy(r => r.SubmittedAt ?? r.CreatedAt)
+        .FirstOrDefault();
+    var biggestOpenRequest = Model.Requests
+        .Where(r => r.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Approved || r.Status == CentralLicenceApp.Models.ExpenseRequestStatus.ReimbursementInProcess)
+        .OrderByDescending(r => r.TotalAmount)
+        .FirstOrDefault();
+    var today = DateTime.Today;
+    var overdueApprovedRequests = Model.Requests
+        .Where(r => r.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Approved)
+        .Select(r => new
+        {
+            Request = r,
+            AgeDays = Math.Max(0, (today - (r.ApprovedAt ?? r.SubmittedAt ?? r.CreatedAt).Date).Days)
+        })
+        .Where(x => x.AgeDays >= 3)
+        .OrderByDescending(x => x.AgeDays)
+        .ToList();
+    var overdueReimbursementRequests = Model.Requests
+        .Where(r => r.Status == CentralLicenceApp.Models.ExpenseRequestStatus.ReimbursementInProcess)
+        .Select(r => new
+        {
+            Request = r,
+            AgeDays = Math.Max(0, (today - (r.ReimbursementStartedAt ?? r.ApprovedAt ?? r.SubmittedAt ?? r.CreatedAt).Date).Days)
+        })
+        .Where(x => x.AgeDays >= 5)
+        .OrderByDescending(x => x.AgeDays)
+        .ToList();
+    var overdueApprovedCount = overdueApprovedRequests.Count;
+    var overdueApprovedAmount = overdueApprovedRequests.Sum(x => x.Request.TotalAmount);
+    var overdueReimbursementCount = overdueReimbursementRequests.Count;
+    var overdueReimbursementAmount = overdueReimbursementRequests.Sum(x => x.Request.TotalAmount);
+    var oldestApprovedOverdue = overdueApprovedRequests.FirstOrDefault();
+    var oldestReimbursementOverdue = overdueReimbursementRequests.FirstOrDefault();
+    var overdueTotalCount = overdueApprovedCount + overdueReimbursementCount;
 }
 
-<div class="d-flex align-items-center justify-content-between mb-4">
-    <div>
-        <h4 class="fw-bold mb-0" style="color:#1e293b;">@Model.PageTitle</h4>
-        <p class="text-muted mb-0" style="font-size:.85rem;">@subtitle</p>
-    </div>
-    @if (Model.ShowCreateButton)
-    {
-        <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
-            <i class="bi bi-plus-lg me-1"></i> New Request
-        </a>
-    }
-</div>
+@if (Model.ShowFinanceActions)
+{
+    <section class="finance-hero mb-4">
+        <div class="finance-hero-copy">
+            <span class="finance-kicker">Finance Control Center</span>
+            <h2 class="finance-title mb-2">@Model.PageTitle</h2>
+            <p class="finance-subtitle mb-0">@subtitle</p>
+            <div class="finance-hero-inline-metrics mt-3">
+                <div class="finance-hero-pill">
+                    <span class="finance-hero-pill-label">Live Queue</span>
+                    <strong>@totalRequests</strong>
+                </div>
+                <div class="finance-hero-pill">
+                    <span class="finance-hero-pill-label">Pipeline Value</span>
+                    <strong>INR @queueAmount.ToString("N2")</strong>
+                </div>
+            </div>
+        </div>
+    </section>
 
-<div class="card">
+    <section class="finance-card-grid mb-4">
+        <article class="finance-stat-card finance-stat-card-approved">
+            <div class="finance-stat-icon"><i class="bi bi-check2-circle"></i></div>
+            <div class="finance-stat-label">Ready For Reimbursement</div>
+            <div class="finance-stat-value">@approvedCount</div>
+            <div class="finance-stat-meta">INR @approvedAmount.ToString("N2") waiting to be picked up</div>
+        </article>
+        <article class="finance-stat-card finance-stat-card-process">
+            <div class="finance-stat-icon"><i class="bi bi-arrow-repeat"></i></div>
+            <div class="finance-stat-label">In Reimbursement</div>
+            <div class="finance-stat-value">@reimbursementCount</div>
+            <div class="finance-stat-meta">INR @reimbursementAmount.ToString("N2") currently under processing</div>
+        </article>
+        <article class="finance-stat-card finance-stat-card-settled">
+            <div class="finance-stat-icon"><i class="bi bi-bank2"></i></div>
+            <div class="finance-stat-label">Settled Requests</div>
+            <div class="finance-stat-value">@settledCount</div>
+            <div class="finance-stat-meta">INR @settledAmount.ToString("N2") completed in this desk view</div>
+        </article>
+        <article class="finance-stat-card finance-stat-card-total">
+            <div class="finance-stat-icon"><i class="bi bi-cash-stack"></i></div>
+            <div class="finance-stat-label">Total Queue Value</div>
+            <div class="finance-stat-value finance-stat-value-money">INR @queueAmount.ToString("N2")</div>
+            <div class="finance-stat-meta">Across @totalRequests request@(totalRequests == 1 ? string.Empty : "s") visible to finance</div>
+        </article>
+    </section>
+
+    <section class="finance-insights-row mb-4">
+        <article class="finance-insight-card">
+            <div class="finance-insight-head">
+                <span class="finance-insight-kicker">Oldest Approved Request</span>
+                <i class="bi bi-hourglass-split"></i>
+            </div>
+            @if (oldestPending != null)
+            {
+                <div class="finance-insight-title">@oldestPending.RequestNumber</div>
+                <div class="finance-insight-copy">@oldestPending.EmployeeName · @oldestPending.PurposeOfTravel</div>
+                <div class="finance-insight-foot">Submitted @((oldestPending.SubmittedAt ?? oldestPending.CreatedAt).ToString("dd MMM yyyy"))</div>
+            }
+            else
+            {
+                <div class="finance-insight-empty">No approved requests are waiting right now.</div>
+            }
+        </article>
+        <article class="finance-insight-card">
+            <div class="finance-insight-head">
+                <span class="finance-insight-kicker">Largest Open Value</span>
+                <i class="bi bi-graph-up-arrow"></i>
+            </div>
+            @if (biggestOpenRequest != null)
+            {
+                <div class="finance-insight-title">INR @biggestOpenRequest.TotalAmount.ToString("N2")</div>
+                <div class="finance-insight-copy">@biggestOpenRequest.RequestNumber · @biggestOpenRequest.EmployeeName</div>
+                <div class="finance-insight-foot">Current stage: @biggestOpenRequest.Status</div>
+            }
+            else
+            {
+                <div class="finance-insight-empty">No open reimbursement items are currently pending.</div>
+            }
+        </article>
+    </section>
+
+    <section class="finance-overdue-strip mb-3">
+        <div class="finance-overdue-strip-lead">
+            <i class="bi bi-exclamation-triangle"></i>
+            <span>Overdue finance watch</span>
+        </div>
+        <div class="finance-overdue-pill finance-overdue-pill-alert">
+            <span class="finance-overdue-pill-title">Reimbursement start</span>
+            <strong>@overdueApprovedCount</strong>
+            <span class="finance-overdue-pill-copy">INR @overdueApprovedAmount.ToString("N2") over 3+ days</span>
+            @if (oldestApprovedOverdue != null)
+            {
+                <span class="finance-overdue-pill-note">Oldest: @oldestApprovedOverdue.Request.RequestNumber · @oldestApprovedOverdue.AgeDays days</span>
+            }
+        </div>
+        <div class="finance-overdue-pill finance-overdue-pill-warning">
+            <span class="finance-overdue-pill-title">Settlement pending</span>
+            <strong>@overdueReimbursementCount</strong>
+            <span class="finance-overdue-pill-copy">INR @overdueReimbursementAmount.ToString("N2") over 5+ days</span>
+            @if (oldestReimbursementOverdue != null)
+            {
+                <span class="finance-overdue-pill-note">Oldest: @oldestReimbursementOverdue.Request.RequestNumber · @oldestReimbursementOverdue.AgeDays days</span>
+            }
+        </div>
+    </section>
+}
+else
+{
+    <div class="d-flex align-items-center justify-content-between mb-4 expense-list-header">
+        <div>
+            <h4 class="fw-bold mb-0" style="color:#1e293b;">@Model.PageTitle</h4>
+            <p class="text-muted mb-0" style="font-size:.85rem;">@subtitle</p>
+        </div>
+        @if (Model.ShowCreateButton)
+        {
+            <a asp-action="Create" class="btn btn-primary expense-list-create-btn" style="background:#180a3c;border:none;border-radius:10px;">
+                <i class="bi bi-plus-lg me-1"></i> New Request
+            </a>
+        }
+    </div>
+}
+
+@if (Model.ShowFinanceActions)
+{
+    <section class="finance-table-toolbar mb-2">
+        <button type="button" class="finance-filter-chip active" data-filter="all">All <span>@totalRequests</span></button>
+        <button type="button" class="finance-filter-chip" data-filter="Approved">Approved <span>@approvedCount</span></button>
+        <button type="button" class="finance-filter-chip" data-filter="Reimbursement In Process">In Reimbursement <span>@reimbursementCount</span></button>
+        <button type="button" class="finance-filter-chip" data-filter="Settled">Settled <span>@settledCount</span></button>
+        <button type="button" class="finance-filter-chip finance-filter-chip-overdue" data-filter="overdue">Overdue <span>@overdueTotalCount</span></button>
+    </section>
+}
+
+<div class="card @(Model.ShowFinanceActions ? "finance-table-card" : string.Empty)">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table tbl-clean mb-0">
+            <table class="table tbl-clean mb-0 responsive-expense-table @(Model.ShowFinanceActions ? "finance-compact-table" : string.Empty)">
                 <thead>
                     <tr>
                         <th class="ps-3">Request No.</th>
@@ -50,6 +221,17 @@
                     {
                         foreach (var item in Model.Requests)
                         {
+                            var itemAgeAnchor = item.Status == CentralLicenceApp.Models.ExpenseRequestStatus.ReimbursementInProcess
+                                ? (item.ReimbursementStartedAt ?? item.ApprovedAt ?? item.SubmittedAt ?? item.CreatedAt)
+                                : (item.ApprovedAt ?? item.SubmittedAt ?? item.CreatedAt);
+                            var itemAgeDays = Math.Max(0, (today - itemAgeAnchor.Date).Days);
+                            var isApprovedOverdue = Model.ShowFinanceActions
+                                && item.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Approved
+                                && itemAgeDays >= 3;
+                            var isReimbursementOverdue = Model.ShowFinanceActions
+                                && item.Status == CentralLicenceApp.Models.ExpenseRequestStatus.ReimbursementInProcess
+                                && itemAgeDays >= 5;
+                            var isOverdueRow = isApprovedOverdue || isReimbursementOverdue;
                             var badgeClass = item.Status switch
                             {
                                 "Settled" => "badge-ok",
@@ -60,25 +242,35 @@
                                 _ => "badge-neu"
                             };
 
-                            <tr>
-                                <td class="ps-3">
+                            <tr class="@(isOverdueRow ? (isReimbursementOverdue ? "finance-row-overdue-strong" : "finance-row-overdue") : string.Empty)"
+                                data-status="@item.Status"
+                                data-overdue="@(isOverdueRow ? "true" : "false")">
+                                <td class="ps-3" data-label="Request No.">
                                     <div class="fw-semibold" style="font-size:.86rem;">@item.RequestNumber</div>
                                     <div class="text-muted" style="font-size:.73rem;">@item.EmployeeName</div>
                                 </td>
-                                <td>
+                                <td data-label="Purpose">
                                     <div class="fw-semibold" style="font-size:.85rem;">@item.PurposeOfTravel</div>
                                     @if (!string.IsNullOrWhiteSpace(item.EmployeeRemarks))
                                     {
                                         <div class="text-muted" style="font-size:.74rem;">@item.EmployeeRemarks</div>
                                     }
                                 </td>
-                                <td style="font-size:.82rem;">@(string.IsNullOrWhiteSpace(item.ApproverName) ? "Auto / Not Assigned" : item.ApproverName)</td>
-                                <td style="font-size:.82rem;">@item.ItemCount</td>
-                                <td style="font-size:.82rem;font-weight:600;">INR @item.TotalAmount.ToString("N2")</td>
-                                <td><span class="badge @badgeClass rounded-pill px-2 py-1" style="font-size:.73rem;">@item.Status</span></td>
-                                <td style="font-size:.82rem;">@((item.SettlementDate ?? item.SubmittedAt ?? item.CreatedAt).ToString("dd MMM yyyy"))</td>
-                                <td class="pe-3">
-                                    <div class="d-flex gap-1">
+                                <td data-label="Approver" style="font-size:.82rem;">@(string.IsNullOrWhiteSpace(item.ApproverName) ? "Auto / Not Assigned" : item.ApproverName)</td>
+                                <td data-label="Items" style="font-size:.82rem;">@item.ItemCount</td>
+                                <td data-label="Total" style="font-size:.82rem;font-weight:600;">INR @item.TotalAmount.ToString("N2")</td>
+                                <td data-label="Status">
+                                    <div class="d-flex align-items-center gap-1 flex-wrap">
+                                        <span class="badge @badgeClass rounded-pill px-2 py-1" style="font-size:.73rem;">@item.Status</span>
+                                        @if (isOverdueRow)
+                                        {
+                                            <span class="badge finance-overdue-badge rounded-pill px-2 py-1">@itemAgeDays d overdue</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td data-label="Created" style="font-size:.82rem;">@((item.SettlementDate ?? item.SubmittedAt ?? item.CreatedAt).ToString("dd MMM yyyy"))</td>
+                                <td class="pe-3" data-label="Actions">
+                                    <div class="d-flex gap-1 expense-row-actions">
                                         @if (item.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Draft)
                                         {
                                             <a asp-action="Manage" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" style="border-radius:7px;">Open</a>
@@ -110,3 +302,402 @@
         </div>
     </div>
 </div>
+
+@if (Model.ShowFinanceActions)
+{
+    <style>
+        .finance-hero {
+            display: block;
+            padding: 1rem 1.15rem;
+            border-radius: 18px;
+            background:
+                radial-gradient(circle at top right, rgba(242, 201, 76, .18), transparent 30%),
+                linear-gradient(135deg, #0f172a 0%, #16213e 54%, #1f3a5f 100%);
+            color: #f8fafc;
+            overflow: hidden;
+        }
+
+        .finance-kicker {
+            display: inline-flex;
+            align-items: center;
+            padding: .22rem .5rem;
+            border-radius: 999px;
+            background: rgba(255,255,255,.12);
+            color: #dbeafe;
+            font-size: .67rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin-bottom: .55rem;
+        }
+
+        .finance-title {
+            font-size: 1.65rem;
+            font-weight: 800;
+            line-height: 1.05;
+            color: #fff;
+        }
+
+        .finance-subtitle {
+            max-width: 42rem;
+            color: rgba(226, 232, 240, .88);
+            font-size: .84rem;
+        }
+
+        .finance-hero-inline-metrics {
+            display: flex;
+            gap: .6rem;
+            flex-wrap: wrap;
+        }
+
+        .finance-hero-pill {
+            min-width: 150px;
+            padding: .55rem .75rem;
+            border-radius: 14px;
+            background: rgba(255,255,255,.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .finance-hero-pill-label {
+            display: block;
+            color: #bfdbfe;
+            font-size: .65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: .18rem;
+        }
+
+        .finance-hero-pill strong {
+            font-size: .98rem;
+            color: #fff;
+        }
+
+        .finance-card-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: .8rem;
+        }
+
+        .finance-stat-card {
+            position: relative;
+            border-radius: 16px;
+            padding: .85rem .9rem .8rem;
+            color: #0f172a;
+            box-shadow: 0 10px 20px rgba(15, 23, 42, .06);
+            overflow: hidden;
+        }
+
+        .finance-stat-card-approved { background: linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%); }
+        .finance-stat-card-process { background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%); }
+        .finance-stat-card-settled { background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%); }
+        .finance-stat-card-total { background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%); }
+
+        .finance-stat-icon {
+            width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 11px;
+            background: rgba(255,255,255,.7);
+            font-size: .92rem;
+            margin-bottom: .55rem;
+        }
+
+        .finance-stat-label {
+            font-size: .68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: #475569;
+            margin-bottom: .28rem;
+        }
+
+        .finance-stat-value {
+            font-size: 1.55rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: .28rem;
+            color: #0f172a;
+        }
+
+        .finance-stat-value-money {
+            font-size: 1.18rem;
+            line-height: 1.15;
+        }
+
+        .finance-stat-meta {
+            font-size: .75rem;
+            color: #475569;
+            line-height: 1.35;
+        }
+
+        .finance-insights-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .7rem;
+        }
+
+        .finance-overdue-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .8rem;
+        }
+
+        .finance-overdue-strip {
+            display: flex;
+            align-items: center;
+            gap: .7rem;
+            flex-wrap: wrap;
+            padding: .7rem .85rem;
+            border-radius: 14px;
+            background: linear-gradient(180deg, #fffaf0 0%, #fff7ed 100%);
+            border: 1px solid #fed7aa;
+        }
+
+        .finance-overdue-strip-lead {
+            display: inline-flex;
+            align-items: center;
+            gap: .45rem;
+            font-size: .74rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: #9a3412;
+            margin-right: .2rem;
+        }
+
+        .finance-overdue-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            flex-wrap: wrap;
+            padding: .38rem .6rem;
+            border-radius: 999px;
+            background: rgba(255,255,255,.8);
+            border: 1px solid transparent;
+            font-size: .74rem;
+        }
+
+        .finance-overdue-pill strong {
+            font-size: .88rem;
+            color: #111827;
+        }
+
+        .finance-overdue-pill-title {
+            font-weight: 800;
+            color: #7c2d12;
+        }
+
+        .finance-overdue-pill-copy,
+        .finance-overdue-pill-note {
+            color: #7c2d12;
+        }
+
+        .finance-overdue-pill-alert {
+            border-color: #fda4af;
+        }
+
+        .finance-overdue-pill-warning {
+            border-color: #fdba74;
+        }
+
+        .finance-table-toolbar {
+            display: flex;
+            align-items: center;
+            gap: .45rem;
+            flex-wrap: wrap;
+        }
+
+        .finance-filter-chip {
+            border: 1px solid #dbe4f0;
+            background: #fff;
+            color: #334155;
+            border-radius: 999px;
+            padding: .34rem .72rem;
+            font-size: .75rem;
+            font-weight: 700;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+        }
+
+        .finance-filter-chip span {
+            background: #eef2ff;
+            color: #3730a3;
+            border-radius: 999px;
+            padding: .16rem .38rem;
+            font-size: .68rem;
+        }
+
+        .finance-filter-chip.active {
+            background: #180a3c;
+            color: #fff;
+            border-color: #180a3c;
+        }
+
+        .finance-filter-chip.active span {
+            background: rgba(255,255,255,.14);
+            color: #fff;
+        }
+
+        .finance-filter-chip-overdue {
+            border-color: #fdba74;
+            color: #9a3412;
+            background: #fff7ed;
+        }
+
+        .finance-row-overdue {
+            background: linear-gradient(90deg, rgba(254, 242, 242, .9) 0%, rgba(255,255,255,0) 22%);
+        }
+
+        .finance-row-overdue-strong {
+            background: linear-gradient(90deg, rgba(255, 237, 213, .95) 0%, rgba(255,255,255,0) 24%);
+        }
+
+        .finance-overdue-badge {
+            background: #fff1f2;
+            color: #be123c;
+            border: 1px solid #fecdd3;
+            font-size: .68rem;
+        }
+
+        .finance-insight-card {
+            padding: .75rem .85rem;
+            border-radius: 16px;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, .04);
+            display: grid;
+            grid-template-columns: auto 1fr;
+            column-gap: .9rem;
+            align-items: center;
+        }
+
+        .finance-insight-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0;
+            color: #64748b;
+            min-width: 160px;
+        }
+
+        .finance-insight-kicker {
+            font-size: .67rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+        }
+
+        .finance-insight-title {
+            font-size: .98rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: .1rem;
+        }
+
+        .finance-insight-copy {
+            font-size: .76rem;
+            color: #334155;
+            margin-bottom: .15rem;
+        }
+
+        .finance-insight-foot,
+        .finance-insight-empty {
+            font-size: .7rem;
+            color: #64748b;
+        }
+
+        .finance-table-card .card-body {
+            padding-top: .2rem !important;
+        }
+
+        .finance-compact-table thead th {
+            font-size: .68rem;
+            padding-top: .6rem;
+            padding-bottom: .6rem;
+        }
+
+        .finance-compact-table td {
+            padding-top: .45rem;
+            padding-bottom: .45rem;
+            line-height: 1.15;
+        }
+
+        .finance-compact-table .btn-sm {
+            padding: .2rem .5rem;
+            font-size: .74rem;
+        }
+
+        @@media (max-width: 1200px) {
+            .finance-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        @@media (max-width: 900px) {
+            .finance-insights-row {
+                grid-template-columns: 1fr;
+            }
+
+            .finance-insight-card {
+                grid-template-columns: 1fr;
+                row-gap: .35rem;
+            }
+
+            .finance-insight-head {
+                min-width: 0;
+            }
+        }
+
+        @@media (max-width: 640px) {
+            .finance-title {
+                font-size: 1.35rem;
+            }
+
+            .finance-card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .finance-hero-inline-metrics { flex-direction: column; }
+            .finance-overdue-strip {
+                align-items: flex-start;
+            }
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var filterButtons = Array.from(document.querySelectorAll('.finance-filter-chip'));
+            var tableRows = Array.from(document.querySelectorAll('.finance-compact-table tbody tr[data-status]'));
+
+            if (!filterButtons.length || !tableRows.length) {
+                return;
+            }
+
+            function applyFinanceFilter(filter) {
+                tableRows.forEach(function (row) {
+                    var rowStatus = row.dataset.status || '';
+                    var isOverdue = row.dataset.overdue === 'true';
+                    var isVisible = filter === 'all'
+                        || (filter === 'overdue' && isOverdue)
+                        || rowStatus === filter;
+                    row.classList.toggle('d-none', !isVisible);
+                });
+
+                filterButtons.forEach(function (button) {
+                    button.classList.toggle('active', button.dataset.filter === filter);
+                });
+            }
+
+            filterButtons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    applyFinanceFilter(button.dataset.filter || 'all');
+                });
+            });
+
+            applyFinanceFilter('all');
+        });
+    </script>
+}

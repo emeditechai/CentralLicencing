@@ -63,6 +63,21 @@ namespace CentralLicenceApp.Repositories
             return await conn.ExecuteAsync(sql, designation) > 0;
         }
 
+        public async Task<(bool CanDelete, string? Reason)> ValidateDeleteAsync(int id)
+        {
+            using var conn = CreateConnection();
+            var linkedUserCount = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(1) FROM UserMaster WHERE DesignationId = @Id",
+                new { Id = id });
+
+            if (linkedUserCount == 0)
+            {
+                return (true, null);
+            }
+
+            return (false, $"This designation cannot be deleted because it is assigned to {linkedUserCount} user account(s). Reassign those users first.");
+        }
+
         public async Task<bool> DeleteAsync(int id)
         {
             using var conn = CreateConnection();

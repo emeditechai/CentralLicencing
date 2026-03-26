@@ -5,6 +5,7 @@ using CentralLicenceApp.Models.ViewModels;
 using CentralLicenceApp.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 
 namespace CentralLicenceApp.Controllers
 {
@@ -84,7 +85,28 @@ namespace CentralLicenceApp.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {
-            await _repo.DeleteAsync(id);
+            var deleteValidation = await _repo.ValidateDeleteAsync(id);
+            if (!deleteValidation.CanDelete)
+            {
+                TempData["Error"] = deleteValidation.Reason;
+                return RedirectToAction(nameof(Index));
+            }
+
+            try
+            {
+                var deleted = await _repo.DeleteAsync(id);
+                if (!deleted)
+                {
+                    TempData["Error"] = "The selected expense category was not found or could not be deleted.";
+                    return RedirectToAction(nameof(Index));
+                }
+            }
+            catch (SqlException)
+            {
+                TempData["Error"] = "This expense category cannot be deleted because related expense records still reference it. Reclassify those records first.";
+                return RedirectToAction(nameof(Index));
+            }
+
             TempData["Success"] = "Expense category deleted.";
             return RedirectToAction(nameof(Index));
         }

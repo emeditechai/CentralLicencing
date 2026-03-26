@@ -11,6 +11,7 @@ namespace CentralLicenceApp.Repositories
         Task<ExpenseCategoryMaster?> GetByIdAsync(int id);
         Task<int> CreateAsync(ExpenseCategoryMaster expenseCategory);
         Task<bool> UpdateAsync(ExpenseCategoryMaster expenseCategory);
+        Task<(bool CanDelete, string? Reason)> ValidateDeleteAsync(int id);
         Task<bool> DeleteAsync(int id);
     }
 }

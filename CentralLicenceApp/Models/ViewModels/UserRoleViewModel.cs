@@ -56,9 +56,9 @@ namespace CentralLicenceApp.Models.ViewModels
         [Compare("Password", ErrorMessage = "Passwords do not match")]
         public string? ConfirmPassword { get; set; }
 
-        [Required(ErrorMessage = "Role is required")]
-        [Display(Name = "Role")]
-        public int RoleId { get; set; }
+        [Display(Name = "Roles")]
+        [MinLength(1, ErrorMessage = "At least one role is required")]
+        public List<int> RoleIds { get; set; } = new();
 
         [Display(Name = "Is Active")]
         public bool IsActive { get; set; } = true;

@@ -1,6 +1,11 @@
 @model CentralLicenceApp.Models.UserMaster
 @{
     ViewData["Title"] = "User Details";
+    var roles = Model.Roles.Any()
+        ? Model.Roles
+        : (!string.IsNullOrWhiteSpace(Model.RoleName)
+            ? new List<CentralLicenceApp.Models.RoleMaster> { new() { Id = Model.RoleId, RoleName = Model.RoleName } }
+            : new List<CentralLicenceApp.Models.RoleMaster>());
 }
 
 <div class="uf-header mb-4">
@@ -73,8 +78,22 @@
                         <span class="user-detail-value">@(Model.DateOfJoining.HasValue ? Model.DateOfJoining.Value.ToString("dd MMM yyyy") : "—")</span>
                     </div>
                     <div class="user-detail-item">
-                        <span class="user-detail-label">Role</span>
-                        <span class="user-detail-value">@(Model.RoleName ?? "—")</span>
+                        <span class="user-detail-label">Roles</span>
+                        <span class="user-detail-value">
+                            @if (roles.Any())
+                            {
+                                <span class="d-flex flex-wrap gap-2">
+                                    @foreach (var role in roles)
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#eff6ff;color:#1d4ed8;">@role.RoleName</span>
+                                    }
+                                </span>
+                            }
+                            else
+                            {
+                                <span>—</span>
+                            }
+                        </span>
                     </div>
                     <div class="user-detail-item">
                         <span class="user-detail-label">Location</span>

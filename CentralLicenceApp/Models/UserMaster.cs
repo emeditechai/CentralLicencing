@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace CentralLicenceApp.Models
 {
@@ -12,6 +13,9 @@ namespace CentralLicenceApp.Models
         public string? PhoneNumber { get; set; }
         public int RoleId { get; set; }
         public string? RoleName { get; set; }
+        public List<int> AssignedRoleIds { get; set; } = new();
+        public List<RoleMaster> Roles { get; set; } = new();
+        public string? RoleNamesDisplay { get; set; }
         public int? LocationId { get; set; }
         public string? LocationName { get; set; }
         public int? DepartmentId { get; set; }

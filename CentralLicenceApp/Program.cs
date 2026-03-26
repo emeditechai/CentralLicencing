@@ -67,6 +67,15 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
                 {
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return;
+                }
+
+                var activeRoleIdValue = context.Principal?.FindFirstValue("ActiveRoleId");
+                if (!int.TryParse(activeRoleIdValue, out var activeRoleId)
+                    || !user.AssignedRoleIds.Contains(activeRoleId))
+                {
+                    context.RejectPrincipal();
+                    await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
                 }
             }
         };

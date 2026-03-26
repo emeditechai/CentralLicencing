@@ -11,6 +11,7 @@ namespace CentralLicenceApp.Repositories
         Task<EmployeeDesignationMaster?> GetByIdAsync(int id);
         Task<int> CreateAsync(EmployeeDesignationMaster designation);
         Task<bool> UpdateAsync(EmployeeDesignationMaster designation);
+        Task<(bool CanDelete, string? Reason)> ValidateDeleteAsync(int id);
         Task<bool> DeleteAsync(int id);
     }
 }

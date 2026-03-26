@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CentralLicenceApp.Models;
 
 namespace CentralLicenceApp.Models.ViewModels
 {
@@ -15,5 +16,9 @@ namespace CentralLicenceApp.Models.ViewModels
 
         [Display(Name = "Remember Me")]
         public bool RememberMe { get; set; }
+
+        public bool ShowRoleSelectionPopup { get; set; }
+        public string? PendingSelectionToken { get; set; }
+        public List<RoleMaster> AvailableRoles { get; set; } = new();
     }
 }
