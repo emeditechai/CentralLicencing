@@ -45,7 +45,10 @@ namespace CentralLicenceApp.Controllers
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return Challenge();
 
-            var requests = await _requestRepo.GetRequestsForEmployeeAsync(currentUser.Id);
+            var requests = HasSuperAdminAccess()
+                ? await _requestRepo.GetAllAsync()
+                : await _requestRepo.GetRequestsForEmployeesAsync(await _userRepo.GetSelfAndSubordinateIdsAsync(currentUser.Id));
+
             return View(new ExpenseRequestListPageViewModel
             {
                 Requests = requests.ToList(),
@@ -63,7 +66,7 @@ namespace CentralLicenceApp.Controllers
 
             var requests = HasSuperAdminAccess() || User.IsInRole("Administrator")
                 ? await _requestRepo.GetAllAsync()
-                : await _requestRepo.GetPendingApprovalsAsync(currentUser.Id);
+                : await _requestRepo.GetPendingApprovalsAsync(await _userRepo.GetSelfAndSubordinateIdsAsync(currentUser.Id));
 
             var filtered = HasSuperAdminAccess() || User.IsInRole("Administrator")
                 ? requests.Where(r => r.Status == ExpenseRequestStatus.PendingApproval).ToList()
@@ -82,9 +85,12 @@ namespace CentralLicenceApp.Controllers
         public async Task<IActionResult> FinanceDesk()
         {
             var currentUser = await GetCurrentUserAsync();
-            if (!HasFinanceAccess(currentUser)) return RedirectToAction("AccessDenied", "Account");
+            if (currentUser == null || !HasFinanceAccess(currentUser)) return RedirectToAction("AccessDenied", "Account");
 
-            var requests = await _requestRepo.GetFinanceQueueAsync();
+            var requests = HasSuperAdminAccess()
+                ? await _requestRepo.GetFinanceQueueAsync()
+                : await _requestRepo.GetFinanceQueueAsync(await _userRepo.GetSelfAndSubordinateIdsAsync(currentUser.Id));
+
             return View("Index", new ExpenseRequestListPageViewModel
             {
                 Requests = requests.ToList(),
@@ -127,7 +133,7 @@ namespace CentralLicenceApp.Controllers
         {
             var currentUser = await GetCurrentUserAsync();
             var request = await _requestRepo.GetByIdAsync(id);
-            if (currentUser == null || request == null || !CanViewRequest(currentUser, request)) return RedirectToAction("AccessDenied", "Account");
+            if (currentUser == null || request == null || !await CanViewRequestAsync(currentUser, request)) return RedirectToAction("AccessDenied", "Account");
 
             var lines = (await _requestRepo.GetLinesAsync(id)).ToList();
             var history = (await _requestRepo.GetHistoryAsync(id)).ToList();
@@ -342,7 +348,7 @@ namespace CentralLicenceApp.Controllers
         {
             var currentUser = await GetCurrentUserAsync();
             var request = await _requestRepo.GetByIdAsync(id);
-            if (request == null || !CanViewRequest(currentUser, request))
+            if (request == null || !await CanViewRequestAsync(currentUser, request))
                 return RedirectToAction("AccessDenied", "Account");
 
             var lines = (await _requestRepo.GetLinesAsync(id)).ToList();
@@ -354,7 +360,7 @@ namespace CentralLicenceApp.Controllers
         {
             var currentUser = await GetCurrentUserAsync();
             var request = await _requestRepo.GetByIdAsync(id);
-            if (request == null || !CanViewRequest(currentUser, request))
+            if (request == null || !await CanViewRequestAsync(currentUser, request))
                 return RedirectToAction("AccessDenied", "Account");
 
             var lines = (await _requestRepo.GetLinesAsync(id)).ToList();
@@ -369,7 +375,7 @@ namespace CentralLicenceApp.Controllers
         {
             var currentUser = await GetCurrentUserAsync();
             var request = await _requestRepo.GetByIdAsync(id);
-            if (request == null || request.Status != ExpenseRequestStatus.Settled || !CanViewRequest(currentUser, request))
+            if (request == null || request.Status != ExpenseRequestStatus.Settled || !await CanViewRequestAsync(currentUser, request))
                 return RedirectToAction("AccessDenied", "Account");
 
             var lines = (await _requestRepo.GetLinesAsync(id)).ToList();
@@ -419,7 +425,7 @@ namespace CentralLicenceApp.Controllers
         {
             var currentUser = await GetCurrentUserAsync();
             var request = await _requestRepo.GetByIdAsync(vm.RequestId);
-            if (!HasFinanceAccess(currentUser) || currentUser == null || request == null)
+            if (!HasFinanceAccess(currentUser) || currentUser == null || request == null || !await CanAccessFinanceRequestAsync(currentUser, request))
                 return RedirectToAction("AccessDenied", "Account");
 
             if (request.Status != ExpenseRequestStatus.Approved)
@@ -450,7 +456,7 @@ namespace CentralLicenceApp.Controllers
         {
             var currentUser = await GetCurrentUserAsync();
             var request = await _requestRepo.GetByIdAsync(id);
-            if (!HasFinanceAccess(currentUser) || currentUser == null || request == null)
+            if (!HasFinanceAccess(currentUser) || currentUser == null || request == null || !await CanAccessFinanceRequestAsync(currentUser, request))
                 return RedirectToAction("AccessDenied", "Account");
 
             if (request.Status != ExpenseRequestStatus.ReimbursementInProcess)
@@ -467,7 +473,7 @@ namespace CentralLicenceApp.Controllers
         {
             var currentUser = await GetCurrentUserAsync();
             var request = await _requestRepo.GetByIdAsync(vm.RequestId);
-            if (!HasFinanceAccess(currentUser) || currentUser == null || request == null)
+            if (!HasFinanceAccess(currentUser) || currentUser == null || request == null || !await CanAccessFinanceRequestAsync(currentUser, request))
                 return RedirectToAction("AccessDenied", "Account");
 
             PopulateSettlementFormOptions(vm, request);
@@ -519,17 +525,48 @@ namespace CentralLicenceApp.Controllers
             return currentUser != null && currentUser.IsEmployee && currentUser.IsActive;
         }
 
-        private bool CanViewRequest(UserMaster? currentUser, ExpenseRequest request)
+        private async Task<bool> CanViewRequestAsync(UserMaster? currentUser, ExpenseRequest request)
         {
-            return (currentUser != null &&
-                    (request.EmployeeId == currentUser.Id
-                        || request.ApproverId == currentUser.Id
-                        || User.IsInRole("Administrator")))
-                || HasSuperAdminAccess()
-                || (HasFinanceAccess(currentUser)
-                    && (request.Status == ExpenseRequestStatus.Approved
-                        || request.Status == ExpenseRequestStatus.ReimbursementInProcess
-                        || request.Status == ExpenseRequestStatus.Settled));
+            if (currentUser == null)
+            {
+                return false;
+            }
+
+            if (HasSuperAdminAccess() || User.IsInRole("Administrator"))
+            {
+                return true;
+            }
+
+            var visibleEmployeeIds = await _userRepo.GetSelfAndSubordinateIdsAsync(currentUser.Id);
+            if (visibleEmployeeIds.Contains(request.EmployeeId) || request.ApproverId == currentUser.Id)
+            {
+                return true;
+            }
+
+            return await CanAccessFinanceRequestAsync(currentUser, request);
+        }
+
+        private async Task<bool> CanAccessFinanceRequestAsync(UserMaster currentUser, ExpenseRequest request)
+        {
+            if (!HasFinanceAccess(currentUser))
+            {
+                return false;
+            }
+
+            if (HasSuperAdminAccess())
+            {
+                return true;
+            }
+
+            if (request.Status != ExpenseRequestStatus.Approved
+                && request.Status != ExpenseRequestStatus.ReimbursementInProcess
+                && request.Status != ExpenseRequestStatus.Settled)
+            {
+                return false;
+            }
+
+            var visibleEmployeeIds = await _userRepo.GetSelfAndSubordinateIdsAsync(currentUser.Id);
+            return visibleEmployeeIds.Contains(request.EmployeeId);
         }
 
         private bool CanApproveRequest(UserMaster currentUser, ExpenseRequest request)

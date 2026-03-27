@@ -19,6 +19,7 @@ namespace CentralLicenceApp.Models
         public string? Pincode { get; set; }
         public string? GSTCode { get; set; }
         public string? PANCard { get; set; }
+        public int? ParentCompanyId { get; set; }
         public bool IsParentCompany { get; set; }
         public bool IsExpenseEmailNotificationRequired { get; set; }
         public string? CompanyLogoPath { get; set; }
@@ -26,5 +27,12 @@ namespace CentralLicenceApp.Models
         public DateTime CreatedAt { get; set; }
 
         public string? CompanyTypeName { get; set; }
+        public string? ParentCompanyName { get; set; }
+        public string? ParentCompanyCity { get; set; }
+        public string ParentCompanyDisplayName => string.IsNullOrWhiteSpace(ParentCompanyName)
+            ? string.Empty
+            : string.IsNullOrWhiteSpace(ParentCompanyCity)
+                ? ParentCompanyName
+                : $"{ParentCompanyName} - {ParentCompanyCity}";
     }
 }

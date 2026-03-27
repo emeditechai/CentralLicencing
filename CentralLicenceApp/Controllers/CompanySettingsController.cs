@@ -33,7 +33,8 @@ namespace CentralLicenceApp.Controllers
         {
             return View(new CompanySettingsFormViewModel
             {
-                CompanyTypes = (await _repo.GetCompanyTypesAsync()).ToList()
+                CompanyTypes = (await _repo.GetCompanyTypesAsync()).ToList(),
+                ParentCompanies = (await _repo.GetParentCompanyOptionsAsync()).ToList()
             });
         }
 
@@ -41,9 +42,12 @@ namespace CentralLicenceApp.Controllers
         public async Task<IActionResult> Create(CompanySettingsFormViewModel vm)
         {
             vm.CompanyTypes = (await _repo.GetCompanyTypesAsync()).ToList();
+            vm.ParentCompanies = (await _repo.GetParentCompanyOptionsAsync()).ToList();
 
             if (!await _repo.CheckCompanyCodeUniqueAsync(vm.CompanyCode.Trim()))
                 ModelState.AddModelError(nameof(vm.CompanyCode), "Company Code already exists.");
+
+            await ValidateParentCompanySelectionAsync(vm);
 
             if (!ModelState.IsValid) return View(vm);
 
@@ -63,6 +67,7 @@ namespace CentralLicenceApp.Controllers
                 Pincode = vm.Pincode?.Trim(),
                 GSTCode = vm.GSTCode?.Trim(),
                 PANCard = vm.PANCard?.Trim(),
+                ParentCompanyId = vm.IsParentCompany ? null : vm.ParentCompanyId,
                 IsParentCompany = vm.IsParentCompany,
                 IsExpenseEmailNotificationRequired = vm.IsExpenseEmailNotificationRequired,
                 CompanyLogoPath = await SaveCompanyLogoAsync(vm.CompanyLogo),
@@ -96,23 +101,36 @@ namespace CentralLicenceApp.Controllers
                 Pincode = company.Pincode,
                 GSTCode = company.GSTCode,
                 PANCard = company.PANCard,
+                ParentCompanyId = company.ParentCompanyId,
                 IsParentCompany = company.IsParentCompany,
                 IsExpenseEmailNotificationRequired = company.IsExpenseEmailNotificationRequired,
                 ExistingLogoPath = company.CompanyLogoPath,
                 IsActive = company.IsActive,
-                CompanyTypes = (await _repo.GetCompanyTypesAsync()).ToList()
+                CompanyTypes = (await _repo.GetCompanyTypesAsync()).ToList(),
+                ParentCompanies = (await _repo.GetParentCompanyOptionsAsync(id)).ToList()
             });
+        }
+
+        public async Task<IActionResult> Details(int id)
+        {
+            var company = await _repo.GetByIdAsync(id);
+            if (company == null) return NotFound();
+
+            return View(company);
         }
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, CompanySettingsFormViewModel vm)
         {
             vm.CompanyTypes = (await _repo.GetCompanyTypesAsync()).ToList();
+            vm.ParentCompanies = (await _repo.GetParentCompanyOptionsAsync(id)).ToList();
 
             if (id != vm.Id) return BadRequest();
 
             if (!await _repo.CheckCompanyCodeUniqueAsync(vm.CompanyCode.Trim(), id))
                 ModelState.AddModelError(nameof(vm.CompanyCode), "Company Code already exists.");
+
+            await ValidateParentCompanySelectionAsync(vm, id);
 
             if (!ModelState.IsValid) return View(vm);
 
@@ -133,6 +151,7 @@ namespace CentralLicenceApp.Controllers
             existing.Pincode = vm.Pincode?.Trim();
             existing.GSTCode = vm.GSTCode?.Trim();
             existing.PANCard = vm.PANCard?.Trim();
+            existing.ParentCompanyId = vm.IsParentCompany ? null : vm.ParentCompanyId;
             existing.IsParentCompany = vm.IsParentCompany;
             existing.IsExpenseEmailNotificationRequired = vm.IsExpenseEmailNotificationRequired;
             existing.CompanyLogoPath = await SaveCompanyLogoAsync(vm.CompanyLogo, existing.CompanyLogoPath);
@@ -176,6 +195,35 @@ namespace CentralLicenceApp.Controllers
             await file.CopyToAsync(stream);
 
             return $"/uploads/company-logos/{fileName}";
+        }
+
+        private async Task ValidateParentCompanySelectionAsync(CompanySettingsFormViewModel vm, int? currentCompanyId = null)
+        {
+            if (vm.IsParentCompany)
+            {
+                vm.ParentCompanyId = null;
+                return;
+            }
+
+            if (!vm.ParentCompanyId.HasValue)
+            {
+                return;
+            }
+
+            if (currentCompanyId.HasValue && vm.ParentCompanyId.Value == currentCompanyId.Value)
+            {
+                ModelState.AddModelError(nameof(vm.ParentCompanyId), "A company cannot be its own parent company.");
+                return;
+            }
+
+            var parentOptions = currentCompanyId.HasValue
+                ? await _repo.GetParentCompanyOptionsAsync(currentCompanyId.Value)
+                : await _repo.GetParentCompanyOptionsAsync();
+
+            if (!parentOptions.Any(company => company.Id == vm.ParentCompanyId.Value))
+            {
+                ModelState.AddModelError(nameof(vm.ParentCompanyId), "Select a valid parent company.");
+            }
         }
 
         private void DeleteCompanyLogo(string? path)

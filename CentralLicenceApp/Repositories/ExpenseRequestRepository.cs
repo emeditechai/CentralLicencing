@@ -27,11 +27,53 @@ namespace CentralLicenceApp.Repositories
             return await conn.QueryAsync<ExpenseRequest>(BaseRequestSql + " WHERE r.EmployeeId = @EmployeeId ORDER BY r.CreatedAt DESC", new { EmployeeId = employeeId });
         }
 
+        public async Task<IEnumerable<ExpenseRequest>> GetRequestsForEmployeesAsync(IEnumerable<int> employeeIds)
+        {
+            var scopedEmployeeIds = employeeIds?
+                .Where(employeeId => employeeId > 0)
+                .Distinct()
+                .ToArray() ?? Array.Empty<int>();
+
+            if (scopedEmployeeIds.Length == 0)
+            {
+                return Enumerable.Empty<ExpenseRequest>();
+            }
+
+            using var conn = CreateConnection();
+            await ((SqlConnection)conn).OpenAsync();
+            return await conn.QueryAsync<ExpenseRequest>(
+                BaseRequestSql + " WHERE r.EmployeeId IN @EmployeeIds ORDER BY r.CreatedAt DESC",
+                new { EmployeeIds = scopedEmployeeIds });
+        }
+
         public async Task<IEnumerable<ExpenseRequest>> GetPendingApprovalsAsync(int approverId)
         {
             using var conn = CreateConnection();
             await ((SqlConnection)conn).OpenAsync();
             return await conn.QueryAsync<ExpenseRequest>(BaseRequestSql + " WHERE r.ApproverId = @ApproverId AND r.Status = @Status ORDER BY r.SubmittedAt ASC, r.CreatedAt ASC", new { ApproverId = approverId, Status = ExpenseRequestStatus.PendingApproval });
+        }
+
+        public async Task<IEnumerable<ExpenseRequest>> GetPendingApprovalsAsync(IEnumerable<int> employeeIds)
+        {
+            var scopedEmployeeIds = employeeIds?
+                .Where(employeeId => employeeId > 0)
+                .Distinct()
+                .ToArray() ?? Array.Empty<int>();
+
+            if (scopedEmployeeIds.Length == 0)
+            {
+                return Enumerable.Empty<ExpenseRequest>();
+            }
+
+            using var conn = CreateConnection();
+            await ((SqlConnection)conn).OpenAsync();
+            return await conn.QueryAsync<ExpenseRequest>(
+                BaseRequestSql + " WHERE r.EmployeeId IN @EmployeeIds AND r.Status = @Status ORDER BY r.SubmittedAt ASC, r.CreatedAt ASC",
+                new
+                {
+                    EmployeeIds = scopedEmployeeIds,
+                    Status = ExpenseRequestStatus.PendingApproval
+                });
         }
 
         public async Task<IEnumerable<ExpenseRequest>> GetFinanceQueueAsync()
@@ -62,6 +104,46 @@ namespace CentralLicenceApp.Repositories
                 });
         }
 
+        public async Task<IEnumerable<ExpenseRequest>> GetFinanceQueueAsync(IEnumerable<int> employeeIds)
+        {
+            var scopedEmployeeIds = employeeIds?
+                .Where(employeeId => employeeId > 0)
+                .Distinct()
+                .ToArray() ?? Array.Empty<int>();
+
+            if (scopedEmployeeIds.Length == 0)
+            {
+                return Enumerable.Empty<ExpenseRequest>();
+            }
+
+            using var conn = CreateConnection();
+            await ((SqlConnection)conn).OpenAsync();
+            return await conn.QueryAsync<ExpenseRequest>(BaseRequestSql + @"
+                WHERE r.EmployeeId IN @EmployeeIds
+                  AND r.Status IN @Statuses
+                ORDER BY CASE
+                    WHEN r.Status = @Approved THEN 1
+                    WHEN r.Status = @ReimbursementInProcess THEN 2
+                    WHEN r.Status = @Settled THEN 3
+                    ELSE 4
+                END,
+                ISNULL(r.ReimbursementStartedAt, r.ApprovedAt) DESC,
+                r.CreatedAt DESC",
+                new
+                {
+                    EmployeeIds = scopedEmployeeIds,
+                    Statuses = new[]
+                    {
+                        ExpenseRequestStatus.Approved,
+                        ExpenseRequestStatus.ReimbursementInProcess,
+                        ExpenseRequestStatus.Settled
+                    },
+                    Approved = ExpenseRequestStatus.Approved,
+                    ReimbursementInProcess = ExpenseRequestStatus.ReimbursementInProcess,
+                    Settled = ExpenseRequestStatus.Settled
+                });
+        }
+
         public async Task<(int Approved, int ReimbursementInProcess, int Settled)> GetDashboardCountsAsync()
         {
             using var conn = CreateConnection();
@@ -75,6 +157,39 @@ namespace CentralLicenceApp.Repositories
                 FROM ExpenseRequest",
                 new
                 {
+                    Approved = ExpenseRequestStatus.Approved,
+                    ReimbursementInProcess = ExpenseRequestStatus.ReimbursementInProcess,
+                    Settled = ExpenseRequestStatus.Settled
+                });
+
+            return (counts.Approved, counts.ReimbursementInProcess, counts.Settled);
+        }
+
+        public async Task<(int Approved, int ReimbursementInProcess, int Settled)> GetDashboardCountsAsync(IEnumerable<int> employeeIds)
+        {
+            var scopedEmployeeIds = employeeIds?
+                .Where(employeeId => employeeId > 0)
+                .Distinct()
+                .ToArray() ?? Array.Empty<int>();
+
+            if (scopedEmployeeIds.Length == 0)
+            {
+                return (0, 0, 0);
+            }
+
+            using var conn = CreateConnection();
+            await ((SqlConnection)conn).OpenAsync();
+
+            var counts = await conn.QuerySingleAsync<ExpenseDashboardCounts>(@"
+                SELECT
+                    SUM(CASE WHEN Status = @Approved THEN 1 ELSE 0 END) AS Approved,
+                    SUM(CASE WHEN Status = @ReimbursementInProcess THEN 1 ELSE 0 END) AS ReimbursementInProcess,
+                    SUM(CASE WHEN Status = @Settled THEN 1 ELSE 0 END) AS Settled
+                FROM ExpenseRequest
+                WHERE EmployeeId IN @EmployeeIds",
+                new
+                {
+                    EmployeeIds = scopedEmployeeIds,
                     Approved = ExpenseRequestStatus.Approved,
                     ReimbursementInProcess = ExpenseRequestStatus.ReimbursementInProcess,
                     Settled = ExpenseRequestStatus.Settled

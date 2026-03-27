@@ -1,0 +1,116 @@
+@model CentralLicenceApp.Models.CompanySetting
+@{
+    ViewData["Title"] = "Company Details";
+    var locationText = string.Join(", ", new[] { Model.City, Model.State, Model.Country }.Where(value => !string.IsNullOrWhiteSpace(value)));
+}
+
+<div class="uf-header mb-4">
+    <a asp-action="Index" class="uf-back-btn"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h4 class="uf-title">Company Details</h4>
+        <p class="uf-sub">Review configured company information, hierarchy, and settings</p>
+    </div>
+</div>
+
+<div class="uf-form">
+    <div class="uf-section">
+        <div class="d-flex flex-wrap align-items-center gap-3">
+            @if (!string.IsNullOrWhiteSpace(Model.CompanyLogoPath))
+            {
+                <img src="@Url.Content(Model.CompanyLogoPath)" alt="@Model.CompanyName" style="width:76px;height:76px;border-radius:16px;object-fit:cover;border:1px solid #e2e8f0;" />
+            }
+            else
+            {
+                <div style="width:76px;height:76px;border-radius:16px;background:#ede9fe;display:flex;align-items:center;justify-content:center;color:#6d28d9;font-size:1.8rem;">
+                    <i class="bi bi-buildings"></i>
+                </div>
+            }
+            <div>
+                <div class="fw-bold" style="font-size:1.2rem;color:#1e293b;">@Model.CompanyName</div>
+                <div class="text-muted" style="font-size:.9rem;">@Model.CompanyCode</div>
+                <div class="mt-2 d-flex flex-wrap gap-2">
+                    <span class="badge rounded-pill px-2 py-1" style="background:#eff6ff;color:#1d4ed8;">@(Model.CompanyTypeName ?? "Company Type")</span>
+                    @if (Model.IsParentCompany)
+                    {
+                        <span class="badge rounded-pill px-2 py-1" style="background:#dcfce7;color:#166534;">Parent Company</span>
+                    }
+                    @if (Model.IsActive)
+                    {
+                        <span class="badge badge-ok rounded-pill px-2 py-1">Active</span>
+                    }
+                    else
+                    {
+                        <span class="badge badge-neu rounded-pill px-2 py-1">Inactive</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="uf-section h-100">
+                <div class="uf-section-title"><i class="bi bi-building"></i> Company Information</div>
+                <div class="user-detail-grid">
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Parent Company</span>
+                        <span class="user-detail-value">@(string.IsNullOrWhiteSpace(Model.ParentCompanyDisplayName) ? "—" : Model.ParentCompanyDisplayName)</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Location</span>
+                        <span class="user-detail-value">@(string.IsNullOrWhiteSpace(locationText) ? "—" : locationText)</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Address</span>
+                        <span class="user-detail-value">@(string.IsNullOrWhiteSpace(Model.Address) ? "—" : Model.Address)</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Website</span>
+                        <span class="user-detail-value">@(string.IsNullOrWhiteSpace(Model.Website) ? "—" : Model.Website)</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Email ID</span>
+                        <span class="user-detail-value">@(string.IsNullOrWhiteSpace(Model.EmailId) ? "—" : Model.EmailId)</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Contact No</span>
+                        <span class="user-detail-value">@(string.IsNullOrWhiteSpace(Model.ContactNo) ? "—" : Model.ContactNo)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="uf-section h-100">
+                <div class="uf-section-title"><i class="bi bi-file-earmark-text"></i> Registration & Settings</div>
+                <div class="user-detail-grid">
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Pincode</span>
+                        <span class="user-detail-value">@(string.IsNullOrWhiteSpace(Model.Pincode) ? "—" : Model.Pincode)</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">GST Code</span>
+                        <span class="user-detail-value">@(string.IsNullOrWhiteSpace(Model.GSTCode) ? "—" : Model.GSTCode)</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">PAN Card</span>
+                        <span class="user-detail-value">@(string.IsNullOrWhiteSpace(Model.PANCard) ? "—" : Model.PANCard)</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Expense Email Notification</span>
+                        <span class="user-detail-value">@(Model.IsExpenseEmailNotificationRequired ? "Enabled" : "Disabled")</span>
+                    </div>
+                    <div class="user-detail-item">
+                        <span class="user-detail-label">Created At</span>
+                        <span class="user-detail-value">@Model.CreatedAt.ToString("dd MMM yyyy hh:mm tt")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="uf-actions">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn uf-btn-primary"><i class="bi bi-pencil me-1"></i> Edit Company</a>
+        <a asp-action="Index" class="btn uf-btn-cancel">Back to List</a>
+    </div>
+</div>

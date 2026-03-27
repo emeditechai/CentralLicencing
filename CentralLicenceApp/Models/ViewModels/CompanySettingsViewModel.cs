@@ -65,6 +65,9 @@ namespace CentralLicenceApp.Models.ViewModels
         [StringLength(50)]
         public string? PANCard { get; set; }
 
+        [Display(Name = "Parent Company")]
+        public int? ParentCompanyId { get; set; }
+
         [Display(Name = "Is Parent Company")]
         public bool IsParentCompany { get; set; }
 
@@ -80,5 +83,6 @@ namespace CentralLicenceApp.Models.ViewModels
         public bool IsActive { get; set; } = true;
 
         public List<CompanyTypeMaster> CompanyTypes { get; set; } = new();
+        public List<CompanySetting> ParentCompanies { get; set; } = new();
     }
 }

@@ -38,11 +38,13 @@ BEGIN
         [Pincode]         NVARCHAR(20) NULL,
         [GSTCode]         NVARCHAR(50) NULL,
         [PANCard]         NVARCHAR(50) NULL,
+        [ParentCompanyId] INT NULL,
         [IsParentCompany] BIT NOT NULL CONSTRAINT [DF_CompanySettings_IsParentCompany] DEFAULT 0,
         [CompanyLogoPath] NVARCHAR(300) NULL,
         [IsActive]        BIT NOT NULL CONSTRAINT [DF_CompanySettings_IsActive] DEFAULT 1,
         [CreatedAt]       DATETIME NOT NULL CONSTRAINT [DF_CompanySettings_CreatedAt] DEFAULT GETDATE(),
         CONSTRAINT [FK_CompanySettings_CompanyTypeMaster] FOREIGN KEY ([CompanyTypeId]) REFERENCES [dbo].[CompanyTypeMaster]([Id]),
+        CONSTRAINT [FK_CompanySettings_ParentCompany] FOREIGN KEY ([ParentCompanyId]) REFERENCES [dbo].[CompanySettings]([Id]),
         CONSTRAINT [UQ_CompanySettings_CompanyCode] UNIQUE ([CompanyCode])
     );
 END;
@@ -55,3 +57,10 @@ IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('CompanySet
 
 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('CompanySettings') AND name = 'ContactNo')
     ALTER TABLE [dbo].[CompanySettings] ADD [ContactNo] NVARCHAR(30) NULL;
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('CompanySettings') AND name = 'ParentCompanyId')
+    ALTER TABLE [dbo].[CompanySettings] ADD [ParentCompanyId] INT NULL;
+
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_CompanySettings_ParentCompany')
+    ALTER TABLE [dbo].[CompanySettings]
+    WITH CHECK ADD CONSTRAINT [FK_CompanySettings_ParentCompany] FOREIGN KEY ([ParentCompanyId]) REFERENCES [dbo].[CompanySettings]([Id]);

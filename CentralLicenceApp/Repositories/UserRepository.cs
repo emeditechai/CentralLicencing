@@ -321,6 +321,29 @@ namespace CentralLicenceApp.Repositories
                 ORDER BY ISNULL(FullName, Username)");
         }
 
+        public async Task<IReadOnlyCollection<int>> GetSelfAndSubordinateIdsAsync(int userId)
+        {
+            var users = (await GetAllAsync()).ToList();
+            var visibleUserIds = new HashSet<int> { userId };
+            var pendingManagerIds = new Queue<int>();
+            pendingManagerIds.Enqueue(userId);
+
+            while (pendingManagerIds.Count > 0)
+            {
+                var managerId = pendingManagerIds.Dequeue();
+                var directReports = users.Where(user => user.ManagerId == managerId);
+                foreach (var directReport in directReports)
+                {
+                    if (visibleUserIds.Add(directReport.Id))
+                    {
+                        pendingManagerIds.Enqueue(directReport.Id);
+                    }
+                }
+            }
+
+            return visibleUserIds.ToArray();
+        }
+
         private static List<int> NormalizeRoleIds(UserMaster user)
         {
             var roleIds = user.AssignedRoleIds

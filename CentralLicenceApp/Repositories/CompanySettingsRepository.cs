@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading.Tasks;
 using CentralLicenceApp.Models;
 using Dapper;
@@ -23,9 +24,12 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             return await conn.QueryAsync<CompanySetting>(@"
-                SELECT c.*, t.TypeName AS CompanyTypeName
+                SELECT c.*, t.TypeName AS CompanyTypeName,
+                       parent.CompanyName AS ParentCompanyName,
+                       parent.City AS ParentCompanyCity
                 FROM CompanySettings c
                 INNER JOIN CompanyTypeMaster t ON c.CompanyTypeId = t.Id
+                LEFT JOIN CompanySettings parent ON c.ParentCompanyId = parent.Id
                 ORDER BY c.CreatedAt DESC");
         }
 
@@ -33,9 +37,12 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             return await conn.QuerySingleOrDefaultAsync<CompanySetting>(@"
-                SELECT c.*, t.TypeName AS CompanyTypeName
+                SELECT c.*, t.TypeName AS CompanyTypeName,
+                       parent.CompanyName AS ParentCompanyName,
+                       parent.City AS ParentCompanyCity
                 FROM CompanySettings c
                 INNER JOIN CompanyTypeMaster t ON c.CompanyTypeId = t.Id
+                LEFT JOIN CompanySettings parent ON c.ParentCompanyId = parent.Id
                 WHERE c.Id = @Id", new { Id = id });
         }
 
@@ -43,11 +50,28 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             return await conn.QuerySingleOrDefaultAsync<CompanySetting>(@"
-                SELECT TOP 1 c.*, t.TypeName AS CompanyTypeName
+                SELECT TOP 1 c.*, t.TypeName AS CompanyTypeName,
+                       parent.CompanyName AS ParentCompanyName,
+                       parent.City AS ParentCompanyCity
                 FROM CompanySettings c
                 INNER JOIN CompanyTypeMaster t ON c.CompanyTypeId = t.Id
+                LEFT JOIN CompanySettings parent ON c.ParentCompanyId = parent.Id
                 WHERE c.IsParentCompany = 1 AND c.IsActive = 1
                 ORDER BY c.Id ASC");
+        }
+
+        public async Task<IEnumerable<CompanySetting>> GetParentCompanyOptionsAsync(int? excludeId = null)
+        {
+            using var conn = CreateConnection();
+            var options = await conn.QueryAsync<CompanySetting>(@"
+                SELECT Id, CompanyName, City, IsActive
+                FROM CompanySettings
+                WHERE (@ExcludeId IS NULL OR Id <> @ExcludeId)
+                ORDER BY CompanyName ASC, City ASC, Id ASC", new { ExcludeId = excludeId });
+
+            return options
+                .Where(company => company.Id > 0)
+                .ToList();
         }
 
         public async Task<IEnumerable<CompanyTypeMaster>> GetCompanyTypesAsync()
@@ -63,9 +87,9 @@ namespace CentralLicenceApp.Repositories
             companySetting.CreatedAt = DateTime.Now;
             return await conn.ExecuteScalarAsync<int>(@"
                 INSERT INTO CompanySettings
-                    (CompanyCode, CompanyTypeId, CompanyName, Country, State, District, City, Address, Website, EmailId, ContactNo, Pincode, GSTCode, PANCard, IsParentCompany, IsExpenseEmailNotificationRequired, CompanyLogoPath, IsActive, CreatedAt)
+                    (CompanyCode, CompanyTypeId, CompanyName, Country, State, District, City, Address, Website, EmailId, ContactNo, Pincode, GSTCode, PANCard, ParentCompanyId, IsParentCompany, IsExpenseEmailNotificationRequired, CompanyLogoPath, IsActive, CreatedAt)
                 VALUES
-                    (@CompanyCode, @CompanyTypeId, @CompanyName, @Country, @State, @District, @City, @Address, @Website, @EmailId, @ContactNo, @Pincode, @GSTCode, @PANCard, @IsParentCompany, @IsExpenseEmailNotificationRequired, @CompanyLogoPath, @IsActive, @CreatedAt);
+                    (@CompanyCode, @CompanyTypeId, @CompanyName, @Country, @State, @District, @City, @Address, @Website, @EmailId, @ContactNo, @Pincode, @GSTCode, @PANCard, @ParentCompanyId, @IsParentCompany, @IsExpenseEmailNotificationRequired, @CompanyLogoPath, @IsActive, @CreatedAt);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);", companySetting);
         }
 
@@ -88,6 +112,7 @@ namespace CentralLicenceApp.Repositories
                     Pincode = @Pincode,
                     GSTCode = @GSTCode,
                     PANCard = @PANCard,
+                    ParentCompanyId = @ParentCompanyId,
                     IsParentCompany = @IsParentCompany,
                     IsExpenseEmailNotificationRequired = @IsExpenseEmailNotificationRequired,
                     CompanyLogoPath = @CompanyLogoPath,

@@ -180,6 +180,68 @@ namespace CentralLicenceApp.Controllers
             return View();
         }
 
+        [HttpGet]
+        [Authorize]
+        public IActionResult ChangePassword()
+        {
+            return View(new ChangePasswordViewModel());
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                model.CurrentPassword = string.Empty;
+                model.NewPassword = string.Empty;
+                model.ConfirmNewPassword = string.Empty;
+                return View(model);
+            }
+
+            var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdValue, out var userId))
+            {
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                TempData["Error"] = "Your session expired. Please sign in again.";
+                return RedirectToAction(nameof(Login));
+            }
+
+            var user = await _userRepo.GetByIdAsync(userId);
+            if (user == null || !user.IsActive)
+            {
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                TempData["Error"] = "Your account is no longer available. Please sign in again.";
+                return RedirectToAction(nameof(Login));
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(model.CurrentPassword, user.PasswordHash))
+            {
+                ModelState.AddModelError(nameof(ChangePasswordViewModel.CurrentPassword), "Current password is incorrect.");
+                model.CurrentPassword = string.Empty;
+                model.NewPassword = string.Empty;
+                model.ConfirmNewPassword = string.Empty;
+                return View(model);
+            }
+
+            if (BCrypt.Net.BCrypt.Verify(model.NewPassword, user.PasswordHash))
+            {
+                ModelState.AddModelError(nameof(ChangePasswordViewModel.NewPassword), "New password must be different from the current password.");
+                model.CurrentPassword = string.Empty;
+                model.NewPassword = string.Empty;
+                model.ConfirmNewPassword = string.Empty;
+                return View(model);
+            }
+
+            var newHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
+            await _userRepo.UpdatePasswordAsync(user.Id, newHash);
+
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            TempData["Success"] = "Password changed successfully. Please sign in with your new password.";
+            return RedirectToAction(nameof(Login));
+        }
+
         private void ApplyNoCacheHeaders()
         {
             Response.Headers.CacheControl = "no-store, no-cache, max-age=0, must-revalidate";

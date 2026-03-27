@@ -659,6 +659,7 @@ namespace CentralLicenceApp.Services
                         [Pincode]          NVARCHAR(20)    NULL,
                         [GSTCode]          NVARCHAR(50)    NULL,
                         [PANCard]          NVARCHAR(50)    NULL,
+                        [ParentCompanyId]  INT             NULL REFERENCES [dbo].[CompanySettings]([Id]),
                         [IsParentCompany]  BIT             NOT NULL DEFAULT 0,
                         [IsExpenseEmailNotificationRequired] BIT NOT NULL DEFAULT 0,
                         [CompanyLogoPath]  NVARCHAR(300)   NULL,
@@ -675,8 +676,12 @@ namespace CentralLicenceApp.Services
                         ALTER TABLE [dbo].[CompanySettings] ADD [EmailId] NVARCHAR(200) NULL;
                       IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('CompanySettings') AND name = 'ContactNo')
                         ALTER TABLE [dbo].[CompanySettings] ADD [ContactNo] NVARCHAR(30) NULL;
+                      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('CompanySettings') AND name = 'ParentCompanyId')
+                        ALTER TABLE [dbo].[CompanySettings] ADD [ParentCompanyId] INT NULL;
                       IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('CompanySettings') AND name = 'IsExpenseEmailNotificationRequired')
                         ALTER TABLE [dbo].[CompanySettings] ADD [IsExpenseEmailNotificationRequired] BIT NOT NULL CONSTRAINT [DF_CompanySettings_IsExpenseEmailNotificationRequired] DEFAULT 0;
+                      IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_CompanySettings_ParentCompany')
+                        ALTER TABLE [dbo].[CompanySettings] WITH CHECK ADD CONSTRAINT [FK_CompanySettings_ParentCompany] FOREIGN KEY ([ParentCompanyId]) REFERENCES [dbo].[CompanySettings]([Id]);
                     END");
         }
 

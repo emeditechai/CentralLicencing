@@ -12,12 +12,14 @@ namespace CentralLicenceApp.Repositories
         Task<UserMaster?> GetByUsernameAsync(string username);
         Task<int> CreateAsync(UserMaster user);
         Task<bool> UpdateAsync(UserMaster user);
+        Task<bool> UpdatePasswordAsync(int id, string passwordHash);
         Task<(bool CanDelete, string? Reason)> ValidateDeleteAsync(int id);
         Task<bool> DeleteAsync(int id);
         Task<bool> UpdateLastLoginAsync(int userId);
         Task<bool> CheckEmployeeCodeUniqueAsync(string employeeCode, int? excludeUserId = null);
         Task<IEnumerable<UserMaster>> GetEmployeesAsync();
         Task<IEnumerable<UserMaster>> GetCoreMembersAsync();
+        Task<IReadOnlyCollection<int>> GetSelfAndSubordinateIdsAsync(int userId);
     }
 
     public interface IRoleRepository

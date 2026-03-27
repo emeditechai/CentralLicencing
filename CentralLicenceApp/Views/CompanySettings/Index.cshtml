@@ -27,7 +27,8 @@
                         <th>Email</th>
                         <th>Contact</th>
                         <th>Location</th>
-                        <th>Parent</th>
+                        <th>Parent Company</th>
+                        <th>Parent Record</th>
                         <th>Status</th>
                         <th>Created</th>
                         <th class="pe-3">Actions</th>
@@ -62,6 +63,7 @@
                             <td class="text-muted" style="font-size:.84rem;">@(string.IsNullOrWhiteSpace(item.EmailId) ? "—" : item.EmailId)</td>
                             <td class="text-muted" style="font-size:.84rem;">@(string.IsNullOrWhiteSpace(item.ContactNo) ? "—" : item.ContactNo)</td>
                             <td class="text-muted" style="font-size:.84rem;">@string.Join(", ", new[] { item.City, item.State, item.Country }.Where(v => !string.IsNullOrWhiteSpace(v)))</td>
+                            <td class="text-muted" style="font-size:.84rem;">@(string.IsNullOrWhiteSpace(item.ParentCompanyDisplayName) ? "—" : item.ParentCompanyDisplayName)</td>
                             <td>
                                 @if (item.IsParentCompany)
                                 {
@@ -85,6 +87,7 @@
                             <td style="font-size:.82rem;">@item.CreatedAt.ToString("dd MMM yyyy")</td>
                             <td class="pe-3">
                                 <div class="d-flex gap-1">
+                                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" title="View" style="border-radius:7px;border-color:#c7d2fe;color:#4f46e5;"><i class="bi bi-eye"></i></a>
                                     <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" title="Edit" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
                                     <form asp-action="Delete" method="post"
                                           data-swal-confirm="true"

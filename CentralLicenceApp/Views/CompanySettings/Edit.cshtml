@@ -42,6 +42,21 @@
                     <input asp-for="CompanyName" class="form-control" style="border-radius:10px;" />
                     <span asp-validation-for="CompanyName" class="text-danger small"></span>
                 </div>
+                <div class="col-md-4">
+                    <label asp-for="ParentCompanyId" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <select asp-for="ParentCompanyId" class="form-select" style="border-radius:10px;">
+                        <option value="">Select Parent Company</option>
+                        @foreach (var parentCompany in Model.ParentCompanies)
+                        {
+                            var parentDisplayName = string.IsNullOrWhiteSpace(parentCompany.City)
+                                ? parentCompany.CompanyName
+                                : $"{parentCompany.CompanyName} - {parentCompany.City}";
+                            <option value="@parentCompany.Id">@parentDisplayName</option>
+                        }
+                    </select>
+                    <div class="form-text">Dropdown values are loaded from Company Settings as Company Name - City.</div>
+                    <span asp-validation-for="ParentCompanyId" class="text-danger small"></span>
+                </div>
 
                 <div class="col-md-3">
                     <label asp-for="Country" class="form-label fw-semibold" style="font-size:.82rem;">Country</label>
@@ -159,4 +174,25 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var isParentCompanyToggle = document.getElementById('IsParentCompany');
+            var parentCompanyDropdown = document.getElementById('ParentCompanyId');
+
+            if (!isParentCompanyToggle || !parentCompanyDropdown) {
+                return;
+            }
+
+            function syncParentCompanyState() {
+                var isDisabled = isParentCompanyToggle.checked;
+                parentCompanyDropdown.disabled = isDisabled;
+                if (isDisabled) {
+                    parentCompanyDropdown.value = '';
+                }
+            }
+
+            isParentCompanyToggle.addEventListener('change', syncParentCompanyState);
+            syncParentCompanyState();
+        });
+    </script>
 }

@@ -9,6 +9,7 @@ namespace CentralLicenceApp.Repositories
         Task<IEnumerable<CompanySetting>> GetAllAsync();
         Task<CompanySetting?> GetByIdAsync(int id);
         Task<CompanySetting?> GetParentCompanyAsync();
+        Task<IEnumerable<CompanySetting>> GetParentCompanyOptionsAsync(int? excludeId = null);
         Task<IEnumerable<CompanyTypeMaster>> GetCompanyTypesAsync();
         Task<int> CreateAsync(CompanySetting companySetting);
         Task<bool> UpdateAsync(CompanySetting companySetting);

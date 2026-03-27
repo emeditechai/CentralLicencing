@@ -8,9 +8,13 @@ namespace CentralLicenceApp.Repositories
     public interface IExpenseRequestRepository
     {
         Task<IEnumerable<ExpenseRequest>> GetRequestsForEmployeeAsync(int employeeId);
+        Task<IEnumerable<ExpenseRequest>> GetRequestsForEmployeesAsync(IEnumerable<int> employeeIds);
         Task<IEnumerable<ExpenseRequest>> GetPendingApprovalsAsync(int approverId);
+        Task<IEnumerable<ExpenseRequest>> GetPendingApprovalsAsync(IEnumerable<int> employeeIds);
         Task<IEnumerable<ExpenseRequest>> GetFinanceQueueAsync();
+        Task<IEnumerable<ExpenseRequest>> GetFinanceQueueAsync(IEnumerable<int> employeeIds);
         Task<(int Approved, int ReimbursementInProcess, int Settled)> GetDashboardCountsAsync();
+        Task<(int Approved, int ReimbursementInProcess, int Settled)> GetDashboardCountsAsync(IEnumerable<int> employeeIds);
         Task<IEnumerable<ExpenseRequest>> GetAllAsync();
         Task<ExpenseRequest?> GetByIdAsync(int id);
         Task<IEnumerable<ExpenseRequestLine>> GetLinesAsync(int requestId);
