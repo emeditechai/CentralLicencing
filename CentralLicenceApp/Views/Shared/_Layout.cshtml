@@ -18,7 +18,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="request-verification-token" content="@antiforgeryToken" />
     <title>@ViewData["Title"] - @brandName</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" />
     <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
@@ -66,6 +66,7 @@
                 var businessUnitMasterOpen = ctrl == "ExpenseCategory" || ctrl == "ProductMaster" || ctrl == "ProductRate";
                 var businessUnitTransactionOpen = ctrl == "ExpenseRequest";
                 var businessUnitOpen = businessUnitMasterOpen || businessUnitTransactionOpen;
+                var reportsOpen = ctrl == "Reports";
                 var adminOpen    = ctrl == "User" || ctrl == "Role" || ctrl == "EmailConfig" || ctrl == "EmailTemplate" || ctrl == "EmailLog" || ctrl == "CompanySettings" || masterOpen;
             }
             <a href="#section-licences" data-bs-toggle="collapse"
@@ -144,6 +145,16 @@
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="ProductRate" asp-action="Index" class="@Act("ProductRate")"><i class="bi bi-tags"></i> Product Rate List</a></div>
                     </div>
                 }
+            </div>
+
+            <div class="nav-item mt-1">
+                <a href="#section-reports" data-bs-toggle="collapse" class="@(reportsOpen ? "active" : "")" aria-expanded="@(reportsOpen ? "true" : "false")">
+                    <i class="bi bi-bar-chart-line"></i> Reports
+                    <i class="bi bi-chevron-down submenu-arrow"></i>
+                </a>
+            </div>
+            <div class="collapse @(reportsOpen ? "show" : "")" id="section-reports">
+                <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="Reports" asp-action="ClientDetails" class="@(ctrl == "Reports" && (ViewContext.RouteData.Values["action"]?.ToString() == "ClientDetails") ? "active" : "")"><i class="bi bi-file-earmark-bar-graph"></i> Client Details</a></div>
             </div>
         </nav>
         <div style="padding:1rem 1.5rem;border-top:1px solid #2d1258;">
@@ -250,7 +261,7 @@ else
 {
     @RenderBody()
 }
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>

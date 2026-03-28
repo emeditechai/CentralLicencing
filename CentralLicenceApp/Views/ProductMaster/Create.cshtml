@@ -4,16 +4,26 @@
     var productTypes = ViewBag.ProductTypes as string[] ?? System.Array.Empty<string>();
 }
 
-<div class="d-flex align-items-center gap-3 mb-4">
-    <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
-    <div>
-        <h4 class="fw-bold mb-0" style="color:#1e293b;">New eProduct</h4>
-        <p class="text-muted mb-0" style="font-size:.85rem;">Create a new product master entry</p>
+<div class="catalog-form-shell catalog-product">
+    <div class="catalog-form-hero">
+        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap position-relative" style="z-index:1;">
+            <div class="d-flex align-items-start gap-3">
+                <a asp-action="Index" class="catalog-form-back"><i class="bi bi-arrow-left"></i></a>
+                <div>
+                    <div class="catalog-form-eyebrow mb-2">Product Setup</div>
+                    <h3 class="fw-bold mb-1" style="color:#1e293b;">New eProduct</h3>
+                    <p class="catalog-form-subtitle">Create a product master entry with the same polished visual system used on the pricing and discount screens.</p>
+                </div>
+            </div>
+            <div class="catalog-form-mini-stat">
+                <div class="catalog-form-mini-label">Module</div>
+                <div class="catalog-form-mini-value" style="color:#7c3aed;">Product Master</div>
+            </div>
+        </div>
     </div>
-</div>
 
-<div class="card" style="max-width:620px;">
-    <div class="card-body p-4">
+    <div class="catalog-form-card">
+        <div class="catalog-form-surface">
         <form asp-action="Create" method="post">
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.83rem;"></div>
@@ -21,17 +31,17 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <label asp-for="ProductCode" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <input asp-for="ProductCode" class="form-control" style="border-radius:10px;" />
+                    <input asp-for="ProductCode" class="form-control catalog-input" />
                     <span asp-validation-for="ProductCode" class="text-danger small"></span>
                 </div>
                 <div class="col-md-6">
                     <label asp-for="ProductName" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <input asp-for="ProductName" class="form-control" style="border-radius:10px;" />
+                    <input asp-for="ProductName" class="form-control catalog-input" />
                     <span asp-validation-for="ProductName" class="text-danger small"></span>
                 </div>
                 <div class="col-md-6">
                     <label asp-for="ProductType" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <select asp-for="ProductType" class="form-select" style="border-radius:10px;">
+                    <select asp-for="ProductType" class="form-select catalog-select">
                         <option value="">Select Product Type</option>
                         @foreach (var item in productTypes)
                         {
@@ -41,21 +51,25 @@
                     <span asp-validation-for="ProductType" class="text-danger small"></span>
                 </div>
                 <div class="col-md-6 d-flex align-items-end">
-                    <div class="form-check mb-2">
-                        <input asp-for="IsActive" class="form-check-input" type="checkbox" />
-                        <label asp-for="IsActive" class="form-check-label fw-semibold" style="font-size:.85rem;"></label>
+                    <div class="catalog-toggle w-100">
+                        <div class="form-check mb-0">
+                            <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                            <label asp-for="IsActive" class="form-check-label fw-semibold" style="font-size:.85rem;"></label>
+                            <div class="catalog-help">Keep the product available for pricing and client-purchase mapping.</div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="d-flex gap-2 mt-4">
-                <button type="submit" class="btn text-white px-4" style="background:#180a3c;border:none;border-radius:10px;">
+                <button type="submit" class="btn catalog-submit px-4">
                     <i class="bi bi-check2-circle me-1"></i> Save Product
                 </button>
-                <a asp-action="Index" class="btn btn-outline-secondary" style="border-radius:10px;">Cancel</a>
+                <a asp-action="Index" class="btn catalog-cancel">Cancel</a>
             </div>
         </form>
     </div>
+</div>
 </div>
 
 @section Scripts {

@@ -2,28 +2,53 @@
 @model CentralLicenceApp.Models.ViewModels.ProductRateIndexViewModel
 @{
     ViewData["Title"] = "Product Rate List";
+    var activeRates = Model.Items.Count(x => x.IsActive);
+    var discountMappedRates = Model.Items.Count(x => x.DiscountOfferCount > 0);
+    var averageRate = Model.Items.Any() ? Model.Items.Average(x => x.Rate) : 0;
 }
 
-<div class="d-flex align-items-center justify-content-between mb-4 gap-3 flex-wrap">
-    <div>
-        <h4 class="fw-bold mb-0" style="color:#1e293b;">Product Rate List</h4>
-        <p class="text-muted mb-0" style="font-size:.85rem;">
-            @if (Model.SelectedProduct != null)
-            {
-                <span>Showing pricing models for <strong style="color:#6366f1;">@Model.SelectedProduct.ProductName</strong></span>
-            }
-            else
-            {
-                <span>@Model.Items.Count pricing model record(s) across all products</span>
-            }
-        </p>
+<div class="rate-shell">
+    <div class="hero-panel mb-4">
+        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap position-relative" style="z-index:1;">
+            <div>
+                <div class="section-label mb-2">Pricing Control</div>
+                <h3 class="fw-bold mb-1" style="color:#1e293b;">Product Rate List</h3>
+                <p class="mb-0" style="font-size:.9rem;color:#54657e;max-width:620px;">
+                    @if (Model.SelectedProduct != null)
+                    {
+                        <span>Showing pricing models for <strong style="color:#4338ca;">@Model.SelectedProduct.ProductName</strong> with rate, AMC, and offer visibility.</span>
+                    }
+                    else
+                    {
+                        <span>@Model.Items.Count pricing model record(s) across all products with commercial comparison at a glance.</span>
+                    }
+                </p>
+            </div>
+            <a asp-action="Create" asp-route-productId="@Model.SelectedProductId" class="btn btn-primary align-self-start" style="background:#180a3c;border:none;border-radius:14px;padding:.8rem 1.1rem;box-shadow:0 10px 24px rgba(24,10,60,.18);">
+                <i class="bi bi-plus-lg me-1"></i> New Product Rate
+            </a>
+        </div>
+        <div class="d-flex gap-3 flex-wrap mt-4 position-relative" style="z-index:1;">
+            <div class="hero-stat">
+                <div class="section-label">Rate Models</div>
+                <div class="hero-stat-value">@Model.Items.Count</div>
+            </div>
+            <div class="hero-stat">
+                <div class="section-label">Active</div>
+                <div class="hero-stat-value" style="color:#059669;">@activeRates</div>
+            </div>
+            <div class="hero-stat">
+                <div class="section-label">Offer Mapped</div>
+                <div class="hero-stat-value" style="color:#c2410c;">@discountMappedRates</div>
+            </div>
+            <div class="hero-stat">
+                <div class="section-label">Average Rate</div>
+                <div class="hero-stat-value" style="color:#2563eb;">₹@averageRate.ToString("0.##")</div>
+            </div>
+        </div>
     </div>
-    <a asp-action="Create" asp-route-productId="@Model.SelectedProductId" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
-        <i class="bi bi-plus-lg me-1"></i> New Product Rate
-    </a>
-</div>
 
-<div class="card mb-4">
+<div class="soft-card mb-4">
     <div class="card-body py-3">
         <form method="get" class="row g-2 align-items-end">
             <div class="col-md-4">
@@ -38,7 +63,7 @@
             </div>
             <div class="col-md-auto">
                 <button type="submit" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;"><i class="bi bi-funnel me-1"></i> Filter</button>
-                <a asp-action="Index" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
+                <a asp-action="Index" class="btn ms-1" style="border-radius:10px;border:1px solid #cfd9e6;color:#475569;background:#fff;">Clear</a>
             </div>
         </form>
     </div>
@@ -46,20 +71,20 @@
 
 @if (Model.SelectedProduct != null)
 {
-    <div class="card mb-4" style="border:1px solid #e2e8f0;">
+    <div class="soft-card mb-4" style="background:linear-gradient(135deg,#ffffff 0%,#f8fbff 100%);">
         <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
             <div>
                 <div class="fw-semibold" style="font-size:1rem;color:#1e293b;">@Model.SelectedProduct.ProductName</div>
                 <div style="font-size:.82rem;color:#6366f1;">@Model.SelectedProduct.ProductCode • @Model.SelectedProduct.ProductType</div>
             </div>
-            <a asp-controller="ProductMaster" asp-action="Edit" asp-route-id="@Model.SelectedProduct.Id" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
+            <a asp-controller="ProductMaster" asp-action="Edit" asp-route-id="@Model.SelectedProduct.Id" class="btn btn-sm" style="border-radius:10px;background:#fff;color:#475569;border:1px solid #dbe4f0;">
                 <i class="bi bi-pencil me-1"></i> Edit Product
             </a>
         </div>
     </div>
 }
 
-<div class="card">
+<div class="soft-card">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table tbl-clean mb-0">
@@ -99,29 +124,31 @@
                                           style="background:@pricingModelTheme.BackgroundColor;color:@pricingModelTheme.TextColor;border:1px solid @pricingModelTheme.BorderColor;">
                                         @item.PricingModel
                                     </span>
-                                    <div class="text-muted mt-1" style="font-size:.74rem;">@item.DiscountOfferCount discount offer(s)</div>
+                                    <div class="mt-2">
+                                        <span class="info-chip" style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;">@item.DiscountOfferCount offer(s)</span>
+                                    </div>
                                 </td>
                                 <td style="font-size:.8rem;max-width:220px;white-space:normal;word-break:break-word;">@(string.IsNullOrWhiteSpace(item.ProductSpecification) ? "-" : item.ProductSpecification)</td>
                                 <td style="font-size:.8rem;max-width:260px;white-space:normal;word-break:break-word;">@(string.IsNullOrWhiteSpace(item.Features) ? "-" : item.Features)</td>
-                                <td style="font-size:.82rem;font-weight:700;white-space:nowrap;">₹@item.Rate.ToString("0.00")</td>
+                                <td style="font-size:.82rem;font-weight:700;white-space:nowrap;color:#1d4ed8;">₹@item.Rate.ToString("0.00")</td>
                                 <td style="font-size:.8rem;white-space:nowrap;min-width:140px;">
-                                    <div class="fw-semibold">₹@item.AmcAmount.ToString("0.00")</div>
+                                    <div class="fw-semibold" style="color:#0f766e;">₹@item.AmcAmount.ToString("0.00")</div>
                                     <div class="text-muted">@item.AmcPercentage.ToString("0.####")% • @item.AmcCalculationType</div>
                                 </td>
                                 <td>
                                     @if (item.IsActive)
                                     {
-                                        <span class="badge badge-ok rounded-pill px-2 py-1" style="font-size:.73rem;">Active</span>
+                                        <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;">Active</span>
                                     }
                                     else
                                     {
-                                        <span class="badge badge-neu rounded-pill px-2 py-1" style="font-size:.73rem;">Inactive</span>
+                                        <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:#e2e8f0;color:#475569;border:1px solid #cbd5e1;">Inactive</span>
                                     }
                                 </td>
                                 <td class="pe-3">
                                     <div class="d-flex gap-1 flex-wrap justify-content-end">
-                                        <a asp-controller="ProductRateDiscount" asp-action="Index" asp-route-productRateId="@item.Id" class="btn btn-sm btn-outline-primary" style="border-radius:7px;"><i class="bi bi-percent me-1"></i>Discounts</a>
-                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
+                                        <a asp-controller="ProductRateDiscount" asp-action="Index" asp-route-productRateId="@item.Id" class="btn btn-sm" style="border-radius:9px;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;"><i class="bi bi-percent me-1"></i>Discounts</a>
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm" style="border-radius:9px;background:#f8fafc;color:#475569;border:1px solid #dbe4f0;"><i class="bi bi-pencil"></i></a>
                                         <form asp-action="Delete" method="post"
                                               data-swal-confirm="true"
                                               data-swal-title="Delete Product Rate?"
@@ -130,7 +157,7 @@
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@item.Id" />
                                             <input type="hidden" name="productId" value="@item.ProductId" />
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius:7px;"><i class="bi bi-trash"></i></button>
+                                            <button type="submit" class="btn btn-sm" style="border-radius:9px;background:#fff1f2;color:#dc2626;border:1px solid #fecdd3;"><i class="bi bi-trash"></i></button>
                                         </form>
                                     </div>
                                 </td>
@@ -141,4 +168,5 @@
             </table>
         </div>
     </div>
+</div>
 </div>

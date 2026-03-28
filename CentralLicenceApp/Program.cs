@@ -39,6 +39,8 @@ builder.Services.AddScoped<IEmailTemplateRepository>(_ => new EmailTemplateRepos
 builder.Services.AddScoped<IEmailLogRepository>(_ => new EmailLogRepository(connStr));
 builder.Services.AddScoped<IReminderRepository>(_ => new ReminderRepository(connStr));
 builder.Services.AddScoped<IClientDetailsRepository>(_ => new ClientDetailsRepository(connStr));
+builder.Services.AddScoped<IReportRepository>(_ => new ReportRepository(connStr));
+builder.Services.AddScoped<IClientDetailsReportExportService, ClientDetailsReportExportService>();
 builder.Services.AddScoped<IUserPushSubscriptionRepository>(_ => new UserPushSubscriptionRepository(connStr));
 
 // Email service

@@ -1,0 +1,172 @@
+@model CentralLicenceApp.Models.ViewModels.ClientDetailsReportViewModel
+@{
+    ViewData["Title"] = "Client Details Report";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4 gap-3 flex-wrap">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Client Details Report</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Stored-procedure-backed report with start date range and product type filters</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-action="ExportClientDetailsExcel"
+           asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+           asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+           asp-route-productType="@Model.ProductType"
+           class="btn btn-success"
+           style="border-radius:10px;background:#15803d;border:none;">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
+        <a asp-action="ExportClientDetailsPdf"
+           asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+           asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+           asp-route-productType="@Model.ProductType"
+           class="btn btn-danger"
+           style="border-radius:10px;background:#b91c1c;border:none;">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">TOTAL CLIENTS</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#1e293b;">@Model.TotalClients</div>
+                <div class="text-muted" style="font-size:.78rem;">Matching selected filters</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">INTERNAL USE</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#2563eb;">@Model.InternalUseCount</div>
+                <div class="text-muted" style="font-size:.78rem;">Client details marked as internal use</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">REFERENCED CLIENTS</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#7c3aed;">@Model.ReferencedClientCount</div>
+                <div class="text-muted" style="font-size:.78rem;">Rows linked using Reference ClientCode</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4" style="border:1px solid #e2e8f0;">
+    <div class="card-body py-3">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Start Date From</label>
+                <input type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" class="form-control" style="border-radius:10px;" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Start Date To</label>
+                <input type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" class="form-control" style="border-radius:10px;" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Product Type</label>
+                <select name="productType" class="form-select" style="border-radius:10px;">
+                    <option value="">All Product Types</option>
+                    @foreach (var item in Model.ProductTypes)
+                    {
+                        <option value="@item" selected="@(string.Equals(Model.ProductType, item, StringComparison.OrdinalIgnoreCase))">@item</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-primary" style="background:#1d4ed8;border:none;border-radius:10px;"><i class="bi bi-funnel me-1"></i>Filter</button>
+                <a asp-action="ClientDetails" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
+            </div>
+        </form>
+        @if (!ViewContext.ViewData.ModelState.IsValid)
+        {
+            <div asp-validation-summary="All" class="alert alert-danger mt-3 mb-0 py-2 px-3 rounded-3" style="font-size:.83rem;"></div>
+        }
+        @if (TempData["ReportError"] is string reportError)
+        {
+            <div class="alert alert-danger mt-3 mb-0 py-2 px-3 rounded-3" style="font-size:.83rem;">@reportError</div>
+        }
+    </div>
+</div>
+
+<div class="card" style="border:1px solid #e2e8f0;box-shadow:0 12px 28px rgba(15,23,42,.05);">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Client</th>
+                        <th>Product Type</th>
+                        <th>Contact</th>
+                        <th>Client Details</th>
+                        <th>Products Purchased</th>
+                        <th>Reference</th>
+                        <th>Status</th>
+                        <th class="pe-3">Start Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Items.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No report records found</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td class="ps-3" style="min-width:180px;">
+                                    <div class="fw-semibold">@item.ClientName</div>
+                                    <div style="font-size:.75rem;color:#6366f1;">@item.ClientCode</div>
+                                </td>
+                                <td style="font-size:.8rem;white-space:nowrap;">@item.ProductType</td>
+                                <td style="font-size:.79rem;min-width:180px;">
+                                    <div>@(string.IsNullOrWhiteSpace(item.ContactNumber) ? "-" : item.ContactNumber)</div>
+                                    <div class="text-muted">@(string.IsNullOrWhiteSpace(item.EmailID) ? "-" : item.EmailID)</div>
+                                </td>
+                                <td style="font-size:.79rem;min-width:220px;">
+                                    <div class="fw-semibold">@(string.IsNullOrWhiteSpace(item.ClientPersonName) ? "-" : item.ClientPersonName)</div>
+                                    <div class="text-muted" style="white-space:normal;word-break:break-word;">@(string.IsNullOrWhiteSpace(item.Address) ? "-" : item.Address)</div>
+                                </td>
+                                <td style="font-size:.79rem;min-width:220px;white-space:normal;word-break:break-word;">@(string.IsNullOrWhiteSpace(item.PurchasedProductSummary) ? "-" : item.PurchasedProductSummary)</td>
+                                <td style="font-size:.79rem;white-space:nowrap;">
+                                    @if (item.IsInternalUse)
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#dbeafe;color:#1d4ed8;font-size:.72rem;">Internal Use</span>
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(item.ReferenceClientCode))
+                                    {
+                                        <span class="fw-semibold">@item.ReferenceClientCode</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.IsActive)
+                                    {
+                                        <span class="badge badge-ok rounded-pill px-2 py-1" style="font-size:.72rem;">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-neu rounded-pill px-2 py-1" style="font-size:.72rem;">Inactive</span>
+                                    }
+                                </td>
+                                <td class="pe-3" style="font-size:.79rem;white-space:nowrap;">@item.LicenseStartDate.ToString("dd MMM yyyy")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

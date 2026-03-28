@@ -1,20 +1,45 @@
 @model List<CentralLicenceApp.Models.ProductMaster>
 @{
     ViewData["Title"] = "eProduct Master";
+    var activeProducts = Model.Count(x => x.IsActive);
+    var configuredModels = Model.Sum(x => x.PricingModelCount);
+    var liveOffers = Model.Sum(x => x.ActiveDiscountOfferCount);
 }
 
-<div class="d-flex align-items-center justify-content-between mb-4">
-    <div>
-        <h4 class="fw-bold mb-0" style="color:#1e293b;">eProduct Master</h4>
-        <p class="text-muted mb-0" style="font-size:.85rem;">@Model.Count product@(Model.Count == 1 ? string.Empty : "s") configured with pricing visibility</p>
+<div class="product-shell">
+    <div class="hero-panel mb-4">
+        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap position-relative" style="z-index:1;">
+            <div>
+                <div class="section-label mb-2">Business Unit Master</div>
+                <h3 class="fw-bold mb-1" style="color:#1e293b;">eProduct Master</h3>
+                <p class="mb-0" style="font-size:.9rem;color:#54657e;max-width:620px;">Manage your product catalog, pricing visibility, and promotional readiness from one place with a cleaner commercial overview.</p>
+            </div>
+            <a asp-action="Create" class="btn btn-primary align-self-start" style="background:#180a3c;border:none;border-radius:14px;padding:.8rem 1.1rem;box-shadow:0 10px 24px rgba(24,10,60,.18);">
+                <i class="bi bi-plus-lg me-1"></i> New Product
+            </a>
+        </div>
+        <div class="d-flex gap-3 flex-wrap mt-4 position-relative" style="z-index:1;">
+            <div class="hero-kpi">
+                <div class="hero-kpi-label">Products</div>
+                <div class="hero-kpi-value">@Model.Count</div>
+            </div>
+            <div class="hero-kpi">
+                <div class="hero-kpi-label">Active Products</div>
+                <div class="hero-kpi-value" style="color:#059669;">@activeProducts</div>
+            </div>
+            <div class="hero-kpi">
+                <div class="hero-kpi-label">Rate Models</div>
+                <div class="hero-kpi-value" style="color:#2563eb;">@configuredModels</div>
+            </div>
+            <div class="hero-kpi">
+                <div class="hero-kpi-label">Live Offers</div>
+                <div class="hero-kpi-value" style="color:#c2410c;">@liveOffers</div>
+            </div>
+        </div>
     </div>
-    <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
-        <i class="bi bi-plus-lg me-1"></i> New Product
-    </a>
-</div>
 
-<div class="card">
-    <div class="card-body p-0">
+    <div class="glass-card">
+        <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table tbl-clean mb-0">
                 <thead>
@@ -42,11 +67,12 @@
                         {
                             var hasLiveOffers = item.ActiveDiscountOfferCount > 0;
                             var expiryTone = item.ExpiringSoonDiscountOfferCount > 0 ? "#b45309" : "#64748b";
+                            var productTone = item.IsActive ? "#059669" : "#64748b";
                             <tr>
                                 <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@item.Id</td>
                                 <td>
                                     <div class="d-flex align-items-center gap-2">
-                                        <div style="width:34px;height:34px;background:#ede9fe;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#6d28d9;font-size:.95rem;">
+                                        <div class="product-avatar">
                                             <i class="bi bi-box-seam"></i>
                                         </div>
                                         <div>
@@ -55,8 +81,11 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td style="font-size:.84rem;">@item.ProductType</td>
+                                <td style="font-size:.84rem;">
+                                    <span class="badge rounded-pill px-2 py-1" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:.73rem;">@item.ProductType</span>
+                                </td>
                                 <td style="font-size:.82rem;min-width:180px;">
+                                    <div class="summary-box">
                                     <div class="fw-semibold">@item.PricingModelCount model@(item.PricingModelCount == 1 ? string.Empty : "s")</div>
                                     <div class="text-muted" style="font-size:.75rem;">
                                         @if (item.PricingModelCount == 0)
@@ -72,53 +101,58 @@
                                             }
                                         }
                                     </div>
+                                    </div>
                                 </td>
                                 <td style="font-size:.81rem;min-width:220px;">
                                     @if (item.DiscountOfferCount == 0)
                                     {
-                                        <div class="fw-semibold" style="color:#94a3b8;">No offers mapped</div>
-                                        <div class="text-muted" style="font-size:.75rem;">No promotion discount configured yet</div>
+                                        <div class="summary-box">
+                                            <div class="fw-semibold" style="color:#94a3b8;">No offers mapped</div>
+                                            <div class="text-muted" style="font-size:.75rem;">No promotion discount configured yet</div>
+                                        </div>
                                     }
                                     else
                                     {
-                                        <div class="fw-semibold" style="color:@(hasLiveOffers ? "#166534" : "#1e293b");">
-                                            @item.ActiveDiscountOfferCount live offer@(item.ActiveDiscountOfferCount == 1 ? string.Empty : "s")
-                                        </div>
-                                        <div class="text-muted" style="font-size:.75rem;">
-                                            @item.DiscountOfferCount total
-                                            @if (item.ActivePromoCodeCount > 0)
-                                            {
-                                                <span> • @item.ActivePromoCodeCount promo code@(item.ActivePromoCodeCount == 1 ? string.Empty : "s")</span>
-                                            }
-                                        </div>
-                                        @if (item.NextDiscountExpiryDate.HasValue)
-                                        {
-                                            <div style="font-size:.74rem;color:@expiryTone;">
-                                                Next expiry: @item.NextDiscountExpiryDate.Value.ToString("dd MMM yyyy")
-                                                @if (item.ExpiringSoonDiscountOfferCount > 0)
+                                        <div class="summary-box" style="background:@(hasLiveOffers ? "#f0fdf4" : "#f8fbff");border-color:@(hasLiveOffers ? "#bbf7d0" : "#e6eef8");">
+                                            <div class="fw-semibold" style="color:@(hasLiveOffers ? "#166534" : "#1e293b");">
+                                                @item.ActiveDiscountOfferCount live offer@(item.ActiveDiscountOfferCount == 1 ? string.Empty : "s")
+                                            </div>
+                                            <div class="text-muted" style="font-size:.75rem;">
+                                                @item.DiscountOfferCount total
+                                                @if (item.ActivePromoCodeCount > 0)
                                                 {
-                                                    <span> • @item.ExpiringSoonDiscountOfferCount expiring soon</span>
+                                                    <span> • @item.ActivePromoCodeCount promo code@(item.ActivePromoCodeCount == 1 ? string.Empty : "s")</span>
                                                 }
                                             </div>
-                                        }
+                                            @if (item.NextDiscountExpiryDate.HasValue)
+                                            {
+                                                <div style="font-size:.74rem;color:@expiryTone;">
+                                                    Next expiry: @item.NextDiscountExpiryDate.Value.ToString("dd MMM yyyy")
+                                                    @if (item.ExpiringSoonDiscountOfferCount > 0)
+                                                    {
+                                                        <span> • @item.ExpiringSoonDiscountOfferCount expiring soon</span>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
                                     }
                                 </td>
                                 <td>
                                     @if (item.IsActive)
                                     {
-                                        <span class="badge badge-ok rounded-pill px-2 py-1" style="font-size:.73rem;">Active</span>
+                                        <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;">Active</span>
                                     }
                                     else
                                     {
-                                        <span class="badge badge-neu rounded-pill px-2 py-1" style="font-size:.73rem;">Inactive</span>
+                                        <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:#e2e8f0;color:#475569;border:1px solid #cbd5e1;">Inactive</span>
                                     }
                                 </td>
-                                <td style="font-size:.82rem;">@item.CreatedAt.ToString("dd MMM yyyy")</td>
+                                <td style="font-size:.82rem;color:@productTone;">@item.CreatedAt.ToString("dd MMM yyyy")</td>
                                 <td class="pe-3">
                                     <div class="d-flex gap-1 flex-wrap justify-content-end">
-                                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info" title="View Product" style="border-radius:7px;"><i class="bi bi-eye"></i></a>
-                                        <a asp-controller="ProductRate" asp-action="Index" asp-route-productId="@item.Id" class="btn btn-sm btn-outline-primary" title="Rate List" style="border-radius:7px;"><i class="bi bi-tags me-1"></i>Rates</a>
-                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" title="Edit" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
+                                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm" title="View Product" style="border-radius:9px;background:#ecfeff;color:#0f766e;border:1px solid #a5f3fc;"><i class="bi bi-eye"></i></a>
+                                        <a asp-controller="ProductRate" asp-action="Index" asp-route-productId="@item.Id" class="btn btn-sm" title="Rate List" style="border-radius:9px;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;"><i class="bi bi-tags me-1"></i>Rates</a>
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm" title="Edit" style="border-radius:9px;background:#f8fafc;color:#475569;border:1px solid #dbe4f0;"><i class="bi bi-pencil"></i></a>
                                         <form asp-action="Delete" method="post"
                                               data-swal-confirm="true"
                                               data-swal-title="Delete Product?"
@@ -126,7 +160,7 @@
                                               data-swal-confirm-button="Yes, delete product">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@item.Id" />
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" style="border-radius:7px;"><i class="bi bi-trash"></i></button>
+                                            <button type="submit" class="btn btn-sm" title="Delete" style="border-radius:9px;background:#fff1f2;color:#dc2626;border:1px solid #fecdd3;"><i class="bi bi-trash"></i></button>
                                         </form>
                                     </div>
                                 </td>
@@ -136,5 +170,6 @@
                 </tbody>
             </table>
         </div>
+    </div>
     </div>
 </div>
