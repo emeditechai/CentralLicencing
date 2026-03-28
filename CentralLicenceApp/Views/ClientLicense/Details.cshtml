@@ -157,7 +157,59 @@
                                 }
                             </div>
                         </div>
-                        @if (!string.IsNullOrEmpty(cd.ProductPurchased))
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="text-muted mb-1" style="font-size:.75rem;">Internal Use</div>
+                            <div>
+                                @if (cd.IsInternalUse)
+                                {
+                                    <span class="badge rounded-pill px-2 py-1" style="background:#dbeafe;color:#1d4ed8;font-size:.72rem;">Yes</span>
+                                }
+                                else
+                                {
+                                    <span class="badge rounded-pill px-2 py-1" style="background:#f1f5f9;color:#475569;font-size:.72rem;">No</span>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-sm-6 col-lg-3">
+                            <div class="text-muted mb-1" style="font-size:.75rem;">Reference ClientCode</div>
+                            <div class="fw-semibold">@(string.IsNullOrWhiteSpace(cd.ReferenceClientCode) ? "—" : cd.ReferenceClientCode)</div>
+                        </div>
+                        @if (!cd.IsInternalUse && cd.PurchasedProducts.Any())
+                        {
+                            <div class="col-12">
+                                <div class="text-muted mb-1" style="font-size:.75rem;">Products Purchased</div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Product</th>
+                                                <th>Pricing Model</th>
+                                                <th>Base Price</th>
+                                                <th>AMC</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in cd.PurchasedProducts)
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <div class="fw-semibold">@item.ProductName</div>
+                                                        <div class="text-muted" style="font-size:.74rem;">@item.ProductCode</div>
+                                                    </td>
+                                                    <td><span class="badge rounded-pill px-2 py-1" style="background:#ede9fe;color:#6366f1;font-size:.75rem;">@item.PricingModel</span></td>
+                                                    <td class="fw-semibold">₹@item.BasePrice.ToString("0.00")</td>
+                                                    <td>
+                                                        <div class="fw-semibold">₹@item.AmcAmount.ToString("0.00")</div>
+                                                        <div class="text-muted" style="font-size:.74rem;">@item.AmcCalculationType • @item.AmcPercentage.ToString("0.####")%</div>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        }
+                        else if (!cd.IsInternalUse && !string.IsNullOrEmpty(cd.ProductPurchased))
                         {
                             <div class="col-sm-12 col-lg-9">
                                 <div class="text-muted mb-1" style="font-size:.75rem;">Products Purchased</div>

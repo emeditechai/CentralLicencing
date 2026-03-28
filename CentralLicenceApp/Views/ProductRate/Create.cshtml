@@ -1,0 +1,143 @@
+@model CentralLicenceApp.Models.ViewModels.ProductRateFormViewModel
+@{
+    ViewData["Title"] = "New Product Rate";
+    var products = ViewBag.Products as List<CentralLicenceApp.Models.ProductMaster> ?? new List<CentralLicenceApp.Models.ProductMaster>();
+    var pricingModels = ViewBag.PricingModels as List<CentralLicenceApp.Models.PricingModelMaster> ?? new List<CentralLicenceApp.Models.PricingModelMaster>();
+    var amcCalculationTypes = ViewBag.AmcCalculationTypes as string[] ?? System.Array.Empty<string>();
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="Index" asp-route-productId="@Model.ProductId" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">New Product Rate</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Map a pricing model to a product</p>
+    </div>
+</div>
+
+<div class="card" style="max-width:760px;">
+    <div class="card-body p-4">
+        <form asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.83rem;"></div>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="ProductId" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <select asp-for="ProductId" class="form-select" style="border-radius:10px;">
+                        <option value="0">Select Product</option>
+                        @foreach (var item in products)
+                        {
+                            <option value="@item.Id">@item.ProductName (@item.ProductCode)</option>
+                        }
+                    </select>
+                    <span asp-validation-for="ProductId" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="PricingModel" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <select asp-for="PricingModel" class="form-select" style="border-radius:10px;">
+                        <option value="">Select Pricing Model</option>
+                        @foreach (var item in pricingModels)
+                        {
+                            <option value="@item.ModelName">@item.ModelName</option>
+                        }
+                    </select>
+                    <span asp-validation-for="PricingModel" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Rate" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="Rate" class="form-control" type="number" step="0.01" min="0.01" style="border-radius:10px;" />
+                    <span asp-validation-for="Rate" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="AmcCalculationType" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <select asp-for="AmcCalculationType" class="form-select" style="border-radius:10px;">
+                        <option value="">Select AMC Type</option>
+                        @foreach (var item in amcCalculationTypes)
+                        {
+                            <option value="@item">@item</option>
+                        }
+                    </select>
+                    <span asp-validation-for="AmcCalculationType" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="AmcInputValue" class="form-label fw-semibold" style="font-size:.82rem;">AMC Value</label>
+                    <input asp-for="AmcInputValue" class="form-control" type="number" step="0.01" min="0.01" style="border-radius:10px;" />
+                    <div class="text-muted mt-1" style="font-size:.72rem;" id="amcInputHint">Enter AMC as percentage or flat amount based on AMC Type.</div>
+                    <span asp-validation-for="AmcInputValue" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                        <label asp-for="IsActive" class="form-check-label fw-semibold" style="font-size:.85rem;"></label>
+                    </div>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <div class="w-100 rounded-3 px-3 py-2" style="background:#f8fafc;border:1px solid #e2e8f0;">
+                        <div class="fw-semibold" style="font-size:.76rem;color:#64748b;">Calculated AMC Percentage</div>
+                        <div id="amcPercentagePreview" style="font-size:1rem;font-weight:700;color:#1e293b;">0.0000%</div>
+                    </div>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <div class="w-100 rounded-3 px-3 py-2" style="background:#f8fafc;border:1px solid #e2e8f0;">
+                        <div class="fw-semibold" style="font-size:.76rem;color:#64748b;">Calculated AMC Amount</div>
+                        <div id="amcAmountPreview" style="font-size:1rem;font-weight:700;color:#1e293b;">₹0.00</div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label asp-for="ProductSpecification" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <textarea asp-for="ProductSpecification" class="form-control" rows="3" style="border-radius:10px;"></textarea>
+                    <span asp-validation-for="ProductSpecification" class="text-danger small"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Features" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <textarea asp-for="Features" class="form-control" rows="4" style="border-radius:10px;" placeholder="List product features, benefits, or included modules"></textarea>
+                    <span asp-validation-for="Features" class="text-danger small"></span>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn text-white px-4" style="background:#180a3c;border:none;border-radius:10px;">
+                    <i class="bi bi-check2-circle me-1"></i> Save Product Rate
+                </button>
+                <a asp-action="Index" asp-route-productId="@Model.ProductId" class="btn btn-outline-secondary" style="border-radius:10px;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const rateInput = document.getElementById('Rate');
+            const amcTypeInput = document.getElementById('AmcCalculationType');
+            const amcValueInput = document.getElementById('AmcInputValue');
+            const amcInputHint = document.getElementById('amcInputHint');
+            const amountPreview = document.getElementById('amcAmountPreview');
+            const percentagePreview = document.getElementById('amcPercentagePreview');
+
+            const updateAmcPreview = () => {
+                const rate = parseFloat(rateInput?.value || '0') || 0;
+                const inputValue = parseFloat(amcValueInput?.value || '0') || 0;
+                const type = amcTypeInput?.value || 'Percentage';
+
+                if (type === 'Flat Amount') {
+                    const percentage = rate > 0 ? (inputValue / rate) * 100 : 0;
+                    amcInputHint.textContent = 'Enter the AMC flat amount. Percentage will be calculated automatically.';
+                    amountPreview.textContent = `₹${inputValue.toFixed(2)}`;
+                    percentagePreview.textContent = `${percentage.toFixed(4)}%`;
+                    return;
+                }
+
+                const amount = (rate * inputValue) / 100;
+                amcInputHint.textContent = 'Enter the AMC percentage. Amount will be calculated automatically.';
+                amountPreview.textContent = `₹${amount.toFixed(2)}`;
+                percentagePreview.textContent = `${inputValue.toFixed(4)}%`;
+            };
+
+            [rateInput, amcTypeInput, amcValueInput].forEach(input => input?.addEventListener('input', updateAmcPreview));
+            amcTypeInput?.addEventListener('change', updateAmcPreview);
+            updateAmcPreview();
+        })();
+    </script>
+}

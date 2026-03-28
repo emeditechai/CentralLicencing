@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace CentralLicenceApp.Models
 {
@@ -11,6 +12,9 @@ namespace CentralLicenceApp.Models
         public string? ProductPurchased { get; set; }   // comma-separated
         public DateTime? DOB { get; set; }
         public DateTime? Anniversarydate { get; set; }
+        public bool IsInternalUse { get; set; }
+        public string? ReferenceClientCode { get; set; }
         public bool IsActive { get; set; } = true;
+        public List<ClientPurchasedProduct> PurchasedProducts { get; set; } = new();
     }
 }

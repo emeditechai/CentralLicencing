@@ -1,0 +1,192 @@
+@model CentralLicenceApp.Models.ViewModels.ProductRateDiscountIndexViewModel
+@{
+    ViewData["Title"] = "Pricing Model Discounts";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4 gap-3 flex-wrap">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Pricing Model Discounts</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">
+            @if (Model.SelectedProductRate != null)
+            {
+                <span>Showing promotion discounts for <strong style="color:#6366f1;">@Model.SelectedProductRate.PricingModel</strong></span>
+            }
+            else
+            {
+                <span>@Model.Items.Count discount offer(s) across pricing models@(Model.TodayOnly ? " valid today" : string.Empty)</span>
+            }
+        </p>
+    </div>
+    <a asp-action="Create" asp-route-productRateId="@Model.SelectedProductRateId" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
+        <i class="bi bi-plus-lg me-1"></i> New Discount Offer
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Pricing Model</label>
+                <select name="productRateId" class="form-select" style="border-radius:10px;" onchange="this.form.submit()">
+                    <option value="">All Pricing Models</option>
+                    @foreach (var item in Model.ProductRates)
+                    {
+                        <option value="@item.Id" selected="@(Model.SelectedProductRateId == item.Id)">@item.ProductName - @item.PricingModel</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check form-switch pt-2 ps-4">
+                    <input class="form-check-input" type="checkbox" id="todayOnly" name="todayOnly" value="true" @(Model.TodayOnly ? "checked" : null)>
+                    <label class="form-check-label fw-semibold" for="todayOnly" style="font-size:.82rem;color:#475569;">Today only</label>
+                    <div class="text-muted" style="font-size:.72rem;">Show only offers valid today</div>
+                </div>
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;"><i class="bi bi-funnel me-1"></i> Filter</button>
+                <a asp-action="Index" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.SelectedProductRate != null)
+{
+    <div class="card mb-4" style="border:1px solid #e2e8f0;">
+        <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+                <div class="fw-semibold" style="font-size:1rem;color:#1e293b;">@Model.SelectedProductRate.ProductName</div>
+                <div style="font-size:.82rem;color:#6366f1;">@Model.SelectedProductRate.ProductCode • @Model.SelectedProductRate.ProductType • @Model.SelectedProductRate.PricingModel</div>
+                <div class="text-muted" style="font-size:.78rem;">Base Rate: ₹@Model.SelectedProductRate.Rate.ToString("0.00")</div>
+            </div>
+            <a asp-controller="ProductRate" asp-action="Index" asp-route-productId="@Model.SelectedProductRate.ProductId" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
+                <i class="bi bi-arrow-left me-1"></i> Back To Rate List
+            </a>
+        </div>
+    </div>
+}
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Offer</th>
+                        <th>Discount Model</th>
+                        <th>Promo Code</th>
+                        <th>Validity</th>
+                        <th>Status</th>
+                        <th class="pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Items.Any())
+                    {
+                        <tr><td colspan="7" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No discount offers found</td></tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model.Items)
+                        {
+                            var now = DateTime.Today;
+                            var isCurrentlyValid = item.IsActive && item.ValidFrom.Date <= now && item.ValidTo.Date >= now;
+                            var isExpired = item.IsActive && item.ValidTo.Date < now;
+                            var expiresToday = item.IsActive && item.ValidTo.Date == now;
+                            var expiresSoon = item.IsActive && item.ValidTo.Date > now && item.ValidTo.Date <= now.AddDays(3);
+                            var isScheduled = item.IsActive && item.ValidFrom.Date > now;
+                            var rowStyle = isExpired
+                                ? "background:#fff1f2;"
+                                : expiresToday
+                                    ? "background:#fffbeb;"
+                                    : expiresSoon
+                                        ? "background:#fff7ed;"
+                                        : isScheduled
+                                            ? "background:#eff6ff;"
+                                            : string.Empty;
+                            <tr style="@rowStyle">
+                                <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@item.Id</td>
+                                <td style="min-width:220px;">
+                                    <div class="fw-semibold" style="font-size:.86rem;">@item.DiscountName</div>
+                                    <div style="font-size:.75rem;color:#6366f1;">@item.ProductName • @item.PricingModel</div>
+                                    <div class="text-muted" style="font-size:.75rem;white-space:normal;word-break:break-word;">@(string.IsNullOrWhiteSpace(item.Description) ? "No description" : item.Description)</div>
+                                </td>
+                                <td style="font-size:.82rem;white-space:nowrap;">
+                                    <span class="badge rounded-pill px-2 py-1" style="background:#ede9fe;color:#5b21b6;">@item.DiscountType</span>
+                                    <div class="fw-semibold mt-1">@(item.DiscountType == "Percentage" ? item.DiscountValue.ToString("0.##") + "%" : "₹" + item.DiscountValue.ToString("0.00"))</div>
+                                </td>
+                                <td style="font-size:.8rem;white-space:nowrap;">@(string.IsNullOrWhiteSpace(item.PromoCode) ? "-" : item.PromoCode)</td>
+                                <td style="font-size:.8rem;white-space:nowrap;">
+                                    <div>@item.ValidFrom.ToString("dd MMM yyyy")</div>
+                                    <div class="text-muted">to @item.ValidTo.ToString("dd MMM yyyy")</div>
+                                    @if (expiresToday)
+                                    {
+                                        <div style="font-size:.72rem;color:#b45309;">Expires today</div>
+                                    }
+                                    else if (expiresSoon)
+                                    {
+                                        <div style="font-size:.72rem;color:#c2410c;">Expires within 3 days</div>
+                                    }
+                                    else if (isExpired)
+                                    {
+                                        <div style="font-size:.72rem;color:#be123c;">Expired</div>
+                                    }
+                                    else if (isScheduled)
+                                    {
+                                        <div style="font-size:.72rem;color:#2563eb;">Upcoming offer</div>
+                                    }
+                                </td>
+                                <td>
+                                    @if (isCurrentlyValid)
+                                    {
+                                        <span class="badge badge-ok rounded-pill px-2 py-1" style="font-size:.73rem;">Active</span>
+                                    }
+                                    else if (expiresToday)
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:#fef3c7;color:#92400e;">Expires Today</span>
+                                    }
+                                    else if (expiresSoon)
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:#fed7aa;color:#9a3412;">Expiring Soon</span>
+                                    }
+                                    else if (isExpired)
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:#ffe4e6;color:#be123c;">Expired</span>
+                                    }
+                                    else if (isScheduled)
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:#dbeafe;color:#1d4ed8;">Scheduled</span>
+                                    }
+                                    else if (item.IsActive)
+                                    {
+                                        <span class="badge badge-neu rounded-pill px-2 py-1" style="font-size:.73rem;">Scheduled/Expired</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-neu rounded-pill px-2 py-1" style="font-size:.73rem;">Inactive</span>
+                                    }
+                                </td>
+                                <td class="pe-3">
+                                    <div class="d-flex gap-1">
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
+                                        <form asp-action="Delete" method="post"
+                                              data-swal-confirm="true"
+                                              data-swal-title="Delete Discount Offer?"
+                                              data-swal-text="Discount offer <strong>@item.DiscountName</strong> will be deleted permanently."
+                                              data-swal-confirm-button="Yes, delete offer">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@item.Id" />
+                                            <input type="hidden" name="productRateId" value="@item.ProductRateId" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius:7px;"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -14,13 +14,19 @@ namespace CentralLicenceApp.Controllers
     {
         private readonly IClientDetailsRepository _detailsRepo;
         private readonly IClientLicenseRepository _licenseRepo;
+        private readonly IProductMasterRepository _productRepo;
+        private readonly IProductRateRepository _productRateRepo;
 
         public ClientDetailsController(
             IClientDetailsRepository detailsRepo,
-            IClientLicenseRepository licenseRepo)
+            IClientLicenseRepository licenseRepo,
+            IProductMasterRepository productRepo,
+            IProductRateRepository productRateRepo)
         {
             _detailsRepo = detailsRepo;
             _licenseRepo = licenseRepo;
+            _productRepo = productRepo;
+            _productRateRepo = productRateRepo;
         }
 
         // GET: /ClientDetails/Upsert?clientCode=xxx&productType=xxx
@@ -35,7 +41,8 @@ namespace CentralLicenceApp.Controllers
             {
                 ClientCode        = clientCode,
                 ClientName        = license.ClientName,
-                IsActive          = true
+                IsActive          = true,
+                PurchasedProducts = new()
             };
 
             if (existing != null)
@@ -43,15 +50,30 @@ namespace CentralLicenceApp.Controllers
                 vm.ID               = existing.ID;
                 vm.ClientPersonName = existing.ClientPersonName;
                 vm.Address          = existing.Address;
+                vm.IsInternalUse    = existing.IsInternalUse;
+                vm.ReferenceClientCode = existing.ReferenceClientCode;
                 vm.DOB              = existing.DOB;
                 vm.Anniversarydate  = existing.Anniversarydate;
                 vm.IsActive         = existing.IsActive;
-                vm.SelectedProducts = string.IsNullOrWhiteSpace(existing.ProductPurchased)
-                    ? new()
-                    : existing.ProductPurchased.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                               .Select(p => p.Trim()).ToList();
+                vm.PurchasedProducts = existing.PurchasedProducts.Select(p => new ClientPurchasedProductEntryViewModel
+                {
+                    ProductId = p.ProductId,
+                    ProductRateId = p.ProductRateId,
+                    ProductName = p.ProductName,
+                    PricingModel = p.PricingModel,
+                    BasePrice = p.BasePrice,
+                    AmcCalculationType = p.AmcCalculationType,
+                    AmcPercentage = p.AmcPercentage,
+                    AmcAmount = p.AmcAmount
+                }).ToList();
             }
 
+            if (!vm.PurchasedProducts.Any())
+            {
+                vm.PurchasedProducts.Add(new ClientPurchasedProductEntryViewModel());
+            }
+
+            await PopulateCatalogAsync();
             ViewBag.ProductType = productType;
             return View(vm);
         }
@@ -60,10 +82,57 @@ namespace CentralLicenceApp.Controllers
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Upsert(ClientDetailsViewModel vm, string? productType)
         {
+            if (vm.IsInternalUse)
+            {
+                vm.PurchasedProducts = new();
+            }
+            else
+            {
+                vm.PurchasedProducts = vm.PurchasedProducts
+                    .Where(x => x.ProductId.HasValue || x.ProductRateId.HasValue)
+                    .ToList();
+
+                await ValidatePurchasedProductsAsync(vm);
+            }
+
+            await ValidateReferenceClientCodeAsync(vm);
+
             if (!ModelState.IsValid)
             {
+                if (!vm.IsInternalUse && !vm.PurchasedProducts.Any())
+                {
+                    vm.PurchasedProducts.Add(new ClientPurchasedProductEntryViewModel());
+                }
+
+                await PopulateCatalogAsync();
                 ViewBag.ProductType = productType;
                 return View(vm);
+            }
+
+            var purchasedProducts = new System.Collections.Generic.List<ClientPurchasedProduct>();
+            foreach (var row in vm.PurchasedProducts)
+            {
+                var productRate = await _productRateRepo.GetByIdAsync(row.ProductRateId!.Value);
+                var product = await _productRepo.GetByIdAsync(row.ProductId!.Value);
+
+                if (productRate == null || product == null)
+                {
+                    continue;
+                }
+
+                purchasedProducts.Add(new ClientPurchasedProduct
+                {
+                    ProductId = product.Id,
+                    ProductRateId = productRate.Id,
+                    ProductCode = product.ProductCode,
+                    ProductName = product.ProductName,
+                    PricingModel = productRate.PricingModel,
+                    BasePrice = productRate.Rate,
+                    AmcCalculationType = productRate.AmcCalculationType,
+                    AmcPercentage = productRate.AmcPercentage,
+                    AmcAmount = productRate.AmcAmount,
+                    IsActive = true
+                });
             }
 
             var details = new ClientDetails
@@ -71,12 +140,15 @@ namespace CentralLicenceApp.Controllers
                 ClientCode        = vm.ClientCode,
                 ClientPersonName  = vm.ClientPersonName,
                 Address           = vm.Address,
-                ProductPurchased  = vm.SelectedProducts.Any()
-                                    ? string.Join(",", vm.SelectedProducts)
+                ProductPurchased  = purchasedProducts.Any()
+                                    ? string.Join(",", purchasedProducts.Select(x => x.ProductName).Distinct())
                                     : null,
                 DOB               = vm.DOB,
                 Anniversarydate   = vm.Anniversarydate,
-                IsActive          = vm.IsActive
+                IsInternalUse     = vm.IsInternalUse,
+                ReferenceClientCode = string.IsNullOrWhiteSpace(vm.ReferenceClientCode) ? null : vm.ReferenceClientCode.Trim(),
+                IsActive          = vm.IsActive,
+                PurchasedProducts = purchasedProducts
             };
 
             await _detailsRepo.UpsertAsync(details);
@@ -84,6 +156,83 @@ namespace CentralLicenceApp.Controllers
             TempData["Success"] = $"Client details for <strong>{vm.ClientCode}</strong> saved successfully.";
             return RedirectToAction("Index", "ClientLicense",
                 string.IsNullOrWhiteSpace(productType) ? null : new { productType });
+        }
+
+        private async Task PopulateCatalogAsync()
+        {
+            var products = (await _productRepo.GetAllActiveAsync()).ToList();
+            var productRates = (await _productRateRepo.GetAllAsync())
+                .Where(x => x.IsActive)
+                .ToList();
+
+            ViewBag.ProductCatalog = products;
+            ViewBag.ProductRateCatalog = productRates;
+        }
+
+        private async Task ValidatePurchasedProductsAsync(ClientDetailsViewModel vm)
+        {
+            if (!vm.PurchasedProducts.Any())
+            {
+                ModelState.AddModelError(nameof(ClientDetailsViewModel.PurchasedProducts), "Please add at least one purchased product.");
+                return;
+            }
+
+            var selectedRateIds = new System.Collections.Generic.HashSet<int>();
+
+            for (var index = 0; index < vm.PurchasedProducts.Count; index++)
+            {
+                var row = vm.PurchasedProducts[index];
+                if (!row.ProductId.HasValue)
+                {
+                    ModelState.AddModelError($"PurchasedProducts[{index}].ProductId", "Product is required.");
+                    continue;
+                }
+
+                if (!row.ProductRateId.HasValue)
+                {
+                    ModelState.AddModelError($"PurchasedProducts[{index}].ProductRateId", "Pricing Model is required.");
+                    continue;
+                }
+
+                if (!selectedRateIds.Add(row.ProductRateId.Value))
+                {
+                    ModelState.AddModelError($"PurchasedProducts[{index}].ProductRateId", "This pricing model is already selected.");
+                    continue;
+                }
+
+                var rate = await _productRateRepo.GetByIdAsync(row.ProductRateId.Value);
+                if (rate == null || !rate.IsActive)
+                {
+                    ModelState.AddModelError($"PurchasedProducts[{index}].ProductRateId", "Please select a valid active pricing model.");
+                    continue;
+                }
+
+                if (rate.ProductId != row.ProductId.Value)
+                {
+                    ModelState.AddModelError($"PurchasedProducts[{index}].ProductRateId", "Selected pricing model does not belong to the selected product.");
+                }
+            }
+        }
+
+        private async Task ValidateReferenceClientCodeAsync(ClientDetailsViewModel vm)
+        {
+            if (string.IsNullOrWhiteSpace(vm.ReferenceClientCode))
+            {
+                return;
+            }
+
+            var referenceCode = vm.ReferenceClientCode.Trim();
+            if (string.Equals(referenceCode, vm.ClientCode, StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError(nameof(ClientDetailsViewModel.ReferenceClientCode), "Reference ClientCode cannot be the same as the current ClientCode.");
+                return;
+            }
+
+            var referenceLicense = await _licenseRepo.GetByClientCodeAsync(referenceCode);
+            if (referenceLicense == null)
+            {
+                ModelState.AddModelError(nameof(ClientDetailsViewModel.ReferenceClientCode), "Reference ClientCode must match an existing client.");
+            }
         }
     }
 }

@@ -1,0 +1,120 @@
+@model List<CentralLicenceApp.Models.EmailLogEntry>
+@{
+    int page = ViewBag.Page;
+    int pageSize = ViewBag.PageSize;
+    int total = ViewBag.Total;
+    int totalPages = ViewBag.TotalPages;
+    string? selectedEmailType = ViewBag.EmailType;
+    string? fromDate = ViewBag.FromDate;
+    string? toDate = ViewBag.ToDate;
+    var availableEmailTypes = ViewBag.AvailableEmailTypes as List<string> ?? new List<string>();
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Email Log Audit</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">@total email event(s) captured for audit</p>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body py-3">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-sm-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">From Date</label>
+                <input type="date" name="fromDate" value="@fromDate" class="form-control" style="border-radius:10px;" />
+            </div>
+            <div class="col-sm-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">To Date</label>
+                <input type="date" name="toDate" value="@toDate" class="form-control" style="border-radius:10px;" />
+            </div>
+            <div class="col-sm-4">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Email Type</label>
+                <select name="emailType" class="form-select" style="border-radius:10px;">
+                    <option value="">All Email Types</option>
+                    @foreach (var type in availableEmailTypes)
+                    {
+                        <option value="@type" selected="@(selectedEmailType == type)">@type</option>
+                    }
+                </select>
+            </div>
+            <div class="col-sm-auto">
+                <button type="submit" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;"><i class="bi bi-funnel me-1"></i> Filter</button>
+                <a asp-action="Index" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Date</th>
+                        <th>Email Type</th>
+                        <th>Recipient</th>
+                        <th>Subject</th>
+                        <th>Status</th>
+                        <th>Triggered By</th>
+                        <th class="pe-3">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr><td colspan="8" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No email logs found</td></tr>
+                    }
+                    @foreach (var item in Model)
+                    {
+                        var statusClass = item.Status == "Sent" ? "badge-ok" : item.Status == "Failed" ? "badge-err" : "badge-neu";
+                        <tr>
+                            <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@item.Id</td>
+                            <td style="font-size:.8rem;white-space:nowrap;">@item.CreatedAt.ToString("dd MMM yyyy HH:mm")</td>
+                            <td style="font-size:.8rem;min-width:180px;">
+                                <div class="fw-semibold" style="color:#6366f1;">@item.EmailType</div>
+                                <div class="text-muted" style="font-size:.74rem;">@(string.IsNullOrWhiteSpace(item.TemplateKey) ? "Direct send" : item.TemplateKey)</div>
+                            </td>
+                            <td style="font-size:.8rem;min-width:200px;">
+                                <div class="fw-semibold">@(string.IsNullOrWhiteSpace(item.RecipientName) ? "—" : item.RecipientName)</div>
+                                <div class="text-muted">@(string.IsNullOrWhiteSpace(item.RecipientEmail) ? "—" : item.RecipientEmail)</div>
+                            </td>
+                            <td style="font-size:.8rem;min-width:240px;max-width:280px;white-space:normal;word-break:break-word;">@(string.IsNullOrWhiteSpace(item.Subject) ? "—" : item.Subject)</td>
+                            <td><span class="badge @statusClass rounded-pill px-2 py-1" style="font-size:.73rem;">@item.Status</span></td>
+                            <td style="font-size:.8rem;white-space:nowrap;">@(string.IsNullOrWhiteSpace(item.TriggeredBy) ? "system" : item.TriggeredBy)</td>
+                            <td class="pe-3" style="font-size:.78rem;min-width:260px;max-width:320px;white-space:normal;word-break:break-word;">
+                                @if (string.IsNullOrWhiteSpace(item.ErrorMessage))
+                                {
+                                    <span class="text-muted">@(string.IsNullOrWhiteSpace(item.Body) ? "Sent successfully" : (item.Body.Length > 120 ? item.Body.Substring(0, 120) + "..." : item.Body))</span>
+                                }
+                                else
+                                {
+                                    <span style="color:#dc2626;">@item.ErrorMessage</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (totalPages > 1)
+        {
+            <div class="d-flex align-items-center justify-content-between px-3 py-3 border-top" style="font-size:.82rem;">
+                <span class="text-muted">Showing @((page - 1) * pageSize + 1)–@(Math.Min(page * pageSize, total)) of @total</span>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        @for (int p = 1; p <= totalPages; p++)
+                        {
+                            <li class="page-item @(p == page ? "active" : "")">
+                                <a class="page-link" asp-action="Index" asp-route-page="@p" asp-route-fromDate="@fromDate" asp-route-toDate="@toDate" asp-route-emailType="@selectedEmailType">@p</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>

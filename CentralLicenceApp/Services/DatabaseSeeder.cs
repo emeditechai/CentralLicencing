@@ -29,12 +29,16 @@ namespace CentralLicenceApp.Services
                 await EnsureEmployeeDepartmentMasterAsync(conn);
                 await EnsureEmployeeDesignationMasterAsync(conn);
                 await EnsureEmployeeTypeMasterAsync(conn);
+                await EnsurePricingModelMasterAsync(conn);
                 await EnsureExpenseCategoryMasterAsync(conn);
+                await EnsureProductMasterTablesAsync(conn);
+                await EnsureProductRateDiscountOfferTableAsync(conn);
                 await EnsureExpenseRequestTablesAsync(conn);
                 await EnsureUserPushSubscriptionTableAsync(conn);
                 await EnsureUserMasterAsync(conn);
                 await SeedDefaultUsersAsync(conn);
                 await EnsureCompanySettingsTablesAsync(conn);
+                await EnsureEmailLogTableAsync(conn);
                 await EnsureEmailTemplatesTableAsync(conn);
                 await EnsureEmailRemindersTableAsync(conn);
                 await EnsureClientDetailsTableAsync(conn);
@@ -285,6 +289,43 @@ namespace CentralLicenceApp.Services
           ");
         }
 
+        private static async Task EnsurePricingModelMasterAsync(SqlConnection conn)
+        {
+          await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='PricingModelMaster')
+            BEGIN
+              CREATE TABLE [dbo].[PricingModelMaster] (
+                [Id]          INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                [ModelName]   NVARCHAR(50)   NOT NULL,
+                [Description] NVARCHAR(200)  NULL,
+                [IsActive]    BIT            NOT NULL DEFAULT 1,
+                [CreatedAt]   DATETIME       NOT NULL DEFAULT GETDATE()
+              );
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.indexes
+              WHERE name = 'UX_PricingModelMaster_ModelName'
+                AND object_id = OBJECT_ID('PricingModelMaster'))
+            BEGIN
+              CREATE UNIQUE INDEX UX_PricingModelMaster_ModelName
+                ON dbo.PricingModelMaster(ModelName);
+            END
+
+            IF NOT EXISTS (SELECT 1 FROM PricingModelMaster WHERE ModelName = 'Basic')
+              INSERT INTO PricingModelMaster (ModelName, Description, IsActive, CreatedAt)
+              VALUES ('Basic', 'Entry-level pricing model', 1, GETDATE());
+
+            IF NOT EXISTS (SELECT 1 FROM PricingModelMaster WHERE ModelName = 'Gold')
+              INSERT INTO PricingModelMaster (ModelName, Description, IsActive, CreatedAt)
+              VALUES ('Gold', 'Advanced pricing model', 1, GETDATE());
+
+            IF NOT EXISTS (SELECT 1 FROM PricingModelMaster WHERE ModelName = 'Premium')
+              INSERT INTO PricingModelMaster (ModelName, Description, IsActive, CreatedAt)
+              VALUES ('Premium', 'Highest-tier pricing model', 1, GETDATE());
+          ");
+        }
+
         private static async Task EnsureExpenseCategoryMasterAsync(SqlConnection conn)
         {
           await conn.ExecuteAsync(@"
@@ -327,6 +368,381 @@ namespace CentralLicenceApp.Services
             IF NOT EXISTS (SELECT 1 FROM ExpenseCategoryMaster WHERE CategoryName = 'Office Supplies')
               INSERT INTO ExpenseCategoryMaster (CategoryName, Description, IsActive, CreatedAt)
               VALUES ('Office Supplies', 'Stationery and office purchase expenses', 1, GETDATE());
+          ");
+        }
+
+        private static async Task EnsureProductMasterTablesAsync(SqlConnection conn)
+        {
+          await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='ProductMaster')
+            BEGIN
+              CREATE TABLE [dbo].[ProductMaster] (
+                [Id]          INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                [ProductCode] NVARCHAR(50)   NOT NULL,
+                [ProductName] NVARCHAR(150)  NOT NULL,
+                [ProductType] NVARCHAR(50)   NOT NULL,
+                [IsActive]    BIT            NOT NULL DEFAULT 1,
+                [CreatedAt]   DATETIME       NOT NULL DEFAULT GETDATE()
+              );
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductMaster')
+                AND name = 'Id')
+            BEGIN
+              THROW 50003, 'ProductMaster table exists but does not contain Id column. Fix the legacy table before running this migration.', 1;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductMaster')
+                AND name = 'ProductCode')
+            BEGIN
+              ALTER TABLE dbo.ProductMaster ADD [ProductCode] NVARCHAR(50) NULL;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductMaster')
+                AND name = 'ProductName')
+            BEGIN
+              ALTER TABLE dbo.ProductMaster ADD [ProductName] NVARCHAR(150) NULL;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductMaster')
+                AND name = 'ProductType')
+            BEGIN
+              ALTER TABLE dbo.ProductMaster ADD [ProductType] NVARCHAR(50) NULL;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductMaster')
+                AND name = 'IsActive')
+            BEGIN
+              ALTER TABLE dbo.ProductMaster ADD [IsActive] BIT NOT NULL DEFAULT 1;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductMaster')
+                AND name = 'CreatedAt')
+            BEGIN
+              ALTER TABLE dbo.ProductMaster ADD [CreatedAt] DATETIME NOT NULL DEFAULT GETDATE();
+            END
+
+            EXEC(N'
+              UPDATE dbo.ProductMaster
+              SET ProductCode = ''PRD-'' + RIGHT(''00000'' + CAST(Id AS VARCHAR(5)), 5)
+              WHERE NULLIF(LTRIM(RTRIM(ProductCode)), '''') IS NULL;
+
+              UPDATE dbo.ProductMaster
+              SET ProductName = ProductCode
+              WHERE NULLIF(LTRIM(RTRIM(ProductName)), '''') IS NULL;
+
+              UPDATE dbo.ProductMaster
+              SET ProductType = ''Healthcare''
+              WHERE NULLIF(LTRIM(RTRIM(ProductType)), '''') IS NULL;
+
+              ALTER TABLE dbo.ProductMaster ALTER COLUMN [ProductCode] NVARCHAR(50) NOT NULL;
+              ALTER TABLE dbo.ProductMaster ALTER COLUMN [ProductName] NVARCHAR(150) NOT NULL;
+              ALTER TABLE dbo.ProductMaster ALTER COLUMN [ProductType] NVARCHAR(50) NOT NULL;
+            ')
+
+            IF NOT EXISTS (
+              SELECT 1
+              FROM sys.key_constraints kc
+              INNER JOIN sys.index_columns ic
+                ON ic.object_id = kc.parent_object_id
+               AND ic.index_id = kc.unique_index_id
+              INNER JOIN sys.columns c
+                ON c.object_id = ic.object_id
+               AND c.column_id = ic.column_id
+              WHERE kc.parent_object_id = OBJECT_ID('dbo.ProductMaster')
+                AND kc.type IN ('PK', 'UQ')
+              GROUP BY kc.name
+              HAVING COUNT(*) = 1 AND MAX(c.name) = 'Id')
+            BEGIN
+              EXEC(N'
+                IF EXISTS (SELECT 1 FROM dbo.ProductMaster WHERE Id IS NULL)
+                BEGIN
+                  THROW 50004, ''ProductMaster contains NULL Id values. Fix those rows before running this migration.'', 1;
+                END;
+
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='ClientPurchasedProduct')
+                BEGIN
+                  CREATE TABLE [dbo].[ClientPurchasedProduct] (
+                    [Id]                 INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [ClientDetailsId]    INT            NOT NULL REFERENCES [dbo].[ClientDetails]([ID]) ON DELETE CASCADE,
+                    [ClientCode]         VARCHAR(20)    NOT NULL,
+                    [ProductId]          INT            NOT NULL REFERENCES [dbo].[ProductMaster]([Id]),
+                    [ProductRateId]      INT            NOT NULL REFERENCES [dbo].[ProductRate]([Id]),
+                    [ProductCode]        NVARCHAR(50)   NOT NULL,
+                    [ProductName]        NVARCHAR(150)  NOT NULL,
+                    [PricingModel]       NVARCHAR(50)   NOT NULL,
+                    [BasePrice]          DECIMAL(18,2)  NOT NULL,
+                    [AmcCalculationType] NVARCHAR(20)   NOT NULL,
+                    [AmcPercentage]      DECIMAL(18,4)  NOT NULL,
+                    [AmcAmount]          DECIMAL(18,2)  NOT NULL,
+                    [IsActive]           BIT            NOT NULL DEFAULT 1,
+                    [CreatedAt]          DATETIME       NOT NULL DEFAULT GETDATE()
+                  );
+                END
+                ELSE
+                BEGIN
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ClientCode')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ClientCode] VARCHAR(20) NULL;
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ProductId')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ProductId] INT NULL;
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ProductRateId')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ProductRateId] INT NULL;
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ProductCode')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ProductCode] NVARCHAR(50) NULL;
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ProductName')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ProductName] NVARCHAR(150) NULL;
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='PricingModel')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [PricingModel] NVARCHAR(50) NULL;
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='BasePrice')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [BasePrice] DECIMAL(18,2) NULL;
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='AmcCalculationType')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [AmcCalculationType] NVARCHAR(20) NULL;
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='AmcPercentage')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [AmcPercentage] DECIMAL(18,4) NULL;
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='AmcAmount')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [AmcAmount] DECIMAL(18,2) NULL;
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='IsActive')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [IsActive] BIT NOT NULL DEFAULT 1;
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='CreatedAt')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [CreatedAt] DATETIME NOT NULL DEFAULT GETDATE();
+                END
+
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_ClientPurchasedProduct_ClientCode' AND object_id=OBJECT_ID('ClientPurchasedProduct'))
+                  CREATE INDEX [IX_ClientPurchasedProduct_ClientCode] ON [dbo].[ClientPurchasedProduct]([ClientCode], [ProductName], [PricingModel]);
+
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='UX_ClientPurchasedProduct_ClientDetailsId_ProductRateId' AND object_id=OBJECT_ID('ClientPurchasedProduct'))
+                  CREATE UNIQUE INDEX [UX_ClientPurchasedProduct_ClientDetailsId_ProductRateId] ON [dbo].[ClientPurchasedProduct]([ClientDetailsId], [ProductRateId]);
+
+                IF EXISTS (
+                  SELECT Id
+                  FROM dbo.ProductMaster
+                  GROUP BY Id
+                  HAVING COUNT(1) > 1
+                )
+                BEGIN
+                  THROW 50005, ''ProductMaster contains duplicate Id values. Fix those rows before running this migration.'', 1;
+                END;
+
+                ALTER TABLE dbo.ProductMaster
+                ADD CONSTRAINT UQ_ProductMaster_Id UNIQUE (Id);
+              ')
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.indexes
+              WHERE name = 'UX_ProductMaster_ProductCode'
+                AND object_id = OBJECT_ID('ProductMaster'))
+            BEGIN
+              EXEC(N'CREATE UNIQUE INDEX UX_ProductMaster_ProductCode ON dbo.ProductMaster(ProductCode);')
+            END
+
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='ProductRate')
+            BEGIN
+              CREATE TABLE [dbo].[ProductRate] (
+                [Id]                   INT             IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                [ProductId]            INT             NOT NULL REFERENCES [dbo].[ProductMaster]([Id]),
+                [PricingModel]         NVARCHAR(50)    NOT NULL,
+                [ProductSpecification] NVARCHAR(500)   NULL,
+                [Features]             NVARCHAR(2000)  NULL,
+                [Rate]                 DECIMAL(18,2)   NOT NULL,
+                [AmcCalculationType]   NVARCHAR(20)    NOT NULL DEFAULT 'Percentage',
+                [AmcPercentage]        DECIMAL(18,4)   NOT NULL DEFAULT 0,
+                [AmcAmount]            DECIMAL(18,2)   NOT NULL DEFAULT 0,
+                [IsActive]             BIT             NOT NULL DEFAULT 1,
+                [CreatedAt]            DATETIME        NOT NULL DEFAULT GETDATE()
+              );
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductRate')
+                AND name = 'ProductId')
+            BEGIN
+              ALTER TABLE dbo.ProductRate ADD [ProductId] INT NULL;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductRate')
+                AND name = 'PricingModel')
+            BEGIN
+              ALTER TABLE dbo.ProductRate ADD [PricingModel] NVARCHAR(50) NULL;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductRate')
+                AND name = 'ProductSpecification')
+            BEGIN
+              ALTER TABLE dbo.ProductRate ADD [ProductSpecification] NVARCHAR(500) NULL;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductRate')
+                AND name = 'Features')
+            BEGIN
+              ALTER TABLE dbo.ProductRate ADD [Features] NVARCHAR(2000) NULL;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductRate')
+                AND name = 'Rate')
+            BEGIN
+              ALTER TABLE dbo.ProductRate ADD [Rate] DECIMAL(18,2) NOT NULL DEFAULT 0;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductRate')
+                AND name = 'AmcCalculationType')
+            BEGIN
+              ALTER TABLE dbo.ProductRate ADD [AmcCalculationType] NVARCHAR(20) NULL;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductRate')
+                AND name = 'AmcPercentage')
+            BEGIN
+              ALTER TABLE dbo.ProductRate ADD [AmcPercentage] DECIMAL(18,4) NULL;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductRate')
+                AND name = 'AmcAmount')
+            BEGIN
+              ALTER TABLE dbo.ProductRate ADD [AmcAmount] DECIMAL(18,2) NULL;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductRate')
+                AND name = 'IsActive')
+            BEGIN
+              ALTER TABLE dbo.ProductRate ADD [IsActive] BIT NOT NULL DEFAULT 1;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductRate')
+                AND name = 'CreatedAt')
+            BEGIN
+              ALTER TABLE dbo.ProductRate ADD [CreatedAt] DATETIME NOT NULL DEFAULT GETDATE();
+            END
+
+            EXEC(N'
+              UPDATE dbo.ProductRate
+              SET PricingModel = ''Basic''
+              WHERE NULLIF(LTRIM(RTRIM(PricingModel)), '''') IS NULL;
+
+              UPDATE dbo.ProductRate
+              SET AmcCalculationType = ''Percentage''
+              WHERE NULLIF(LTRIM(RTRIM(AmcCalculationType)), '''') IS NULL;
+
+              UPDATE dbo.ProductRate
+              SET AmcPercentage = 0
+              WHERE AmcPercentage IS NULL;
+
+              UPDATE dbo.ProductRate
+              SET AmcAmount = 0
+              WHERE AmcAmount IS NULL;
+
+              IF EXISTS (SELECT 1 FROM dbo.ProductRate WHERE ProductId IS NULL)
+              BEGIN
+                THROW 50001, ''ProductRate contains rows with NULL ProductId. Fix those rows before running this migration.'', 1;
+              END;
+
+              IF EXISTS (
+                SELECT 1
+                FROM dbo.ProductRate pr
+                LEFT JOIN dbo.ProductMaster pm ON pm.Id = pr.ProductId
+                WHERE pm.Id IS NULL
+              )
+              BEGIN
+                THROW 50002, ''ProductRate contains rows pointing to missing ProductMaster records. Fix those rows before running this migration.'', 1;
+              END;
+
+              ALTER TABLE dbo.ProductRate ALTER COLUMN [ProductId] INT NOT NULL;
+              ALTER TABLE dbo.ProductRate ALTER COLUMN [PricingModel] NVARCHAR(50) NOT NULL;
+              ALTER TABLE dbo.ProductRate ALTER COLUMN [AmcCalculationType] NVARCHAR(20) NOT NULL;
+              ALTER TABLE dbo.ProductRate ALTER COLUMN [AmcPercentage] DECIMAL(18,4) NOT NULL;
+              ALTER TABLE dbo.ProductRate ALTER COLUMN [AmcAmount] DECIMAL(18,2) NOT NULL;
+            ')
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.foreign_keys
+              WHERE name = 'FK_ProductRate_ProductMaster')
+            BEGIN
+              EXEC(N'
+                ALTER TABLE dbo.ProductRate
+                WITH CHECK ADD CONSTRAINT FK_ProductRate_ProductMaster
+                FOREIGN KEY (ProductId) REFERENCES dbo.ProductMaster(Id);
+              ')
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.indexes
+              WHERE name = 'UX_ProductRate_ProductId_PricingModel'
+                AND object_id = OBJECT_ID('ProductRate'))
+            BEGIN
+              EXEC(N'CREATE UNIQUE INDEX UX_ProductRate_ProductId_PricingModel ON dbo.ProductRate(ProductId, PricingModel);')
+            END
+          ");
+        }
+
+        private static async Task EnsureProductRateDiscountOfferTableAsync(SqlConnection conn)
+        {
+          await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='ProductRateDiscountOffer')
+            BEGIN
+              CREATE TABLE [dbo].[ProductRateDiscountOffer] (
+                [Id]            INT             IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                [ProductRateId] INT             NOT NULL REFERENCES [dbo].[ProductRate]([Id]),
+                [DiscountName]  NVARCHAR(100)   NOT NULL,
+                [DiscountType]  NVARCHAR(30)    NOT NULL,
+                [DiscountValue] DECIMAL(18,2)   NOT NULL,
+                [PromoCode]     NVARCHAR(50)    NULL,
+                [ValidFrom]     DATE            NOT NULL,
+                [ValidTo]       DATE            NOT NULL,
+                [Description]   NVARCHAR(500)   NULL,
+                [IsActive]      BIT             NOT NULL DEFAULT 1,
+                [CreatedAt]     DATETIME        NOT NULL DEFAULT GETDATE()
+              );
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.indexes
+              WHERE name = 'IX_ProductRateDiscountOffer_ProductRateId'
+                AND object_id = OBJECT_ID('ProductRateDiscountOffer'))
+            BEGIN
+              CREATE INDEX IX_ProductRateDiscountOffer_ProductRateId
+                ON dbo.ProductRateDiscountOffer(ProductRateId, ValidFrom DESC, ValidTo DESC);
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.indexes
+              WHERE name = 'UX_ProductRateDiscountOffer_PromoCode'
+                AND object_id = OBJECT_ID('ProductRateDiscountOffer'))
+            BEGIN
+              CREATE UNIQUE INDEX UX_ProductRateDiscountOffer_PromoCode
+                ON dbo.ProductRateDiscountOffer(PromoCode)
+                WHERE PromoCode IS NOT NULL;
+            END
           ");
         }
 
@@ -538,6 +954,38 @@ namespace CentralLicenceApp.Services
                 END");
         }
 
+                private static async Task EnsureEmailLogTableAsync(SqlConnection conn)
+                {
+                  await conn.ExecuteAsync(@"
+                    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='tbl_centralemaillog')
+                    BEGIN
+                      CREATE TABLE [dbo].[tbl_centralemaillog] (
+                        [Id]             INT             IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        [EmailType]      NVARCHAR(150)   NOT NULL,
+                        [TemplateKey]    NVARCHAR(100)   NULL,
+                        [RecipientEmail] NVARCHAR(200)   NULL,
+                        [RecipientName]  NVARCHAR(200)   NULL,
+                        [Subject]        NVARCHAR(300)   NULL,
+                        [Body]           NVARCHAR(MAX)   NULL,
+                        [Status]         NVARCHAR(30)    NOT NULL,
+                        [ErrorMessage]   NVARCHAR(1000)  NULL,
+                        [TriggeredBy]    NVARCHAR(100)   NULL,
+                        [CreatedAt]      DATETIME        NOT NULL DEFAULT GETDATE()
+                      );
+                    END
+
+                    IF NOT EXISTS (
+                      SELECT 1
+                      FROM sys.indexes
+                      WHERE name='IX_tbl_centralemaillog_CreatedAt_EmailType'
+                        AND object_id = OBJECT_ID('dbo.tbl_centralemaillog')
+                    )
+                    BEGIN
+                      CREATE INDEX IX_tbl_centralemaillog_CreatedAt_EmailType
+                      ON [dbo].[tbl_centralemaillog] ([CreatedAt] DESC, [EmailType] ASC);
+                    END");
+                }
+
         private static async Task EnsureUserPushSubscriptionTableAsync(SqlConnection conn)
         {
           await conn.ExecuteAsync(@"
@@ -597,6 +1045,8 @@ namespace CentralLicenceApp.Services
                         [ProductPurchased] VARCHAR(200)   NULL,
                         [DOB]              DATE           NULL,
                         [Anniversarydate]  DATE           NULL,
+                      [IsInternalUse]    BIT            NOT NULL DEFAULT 0,
+                      [ReferenceClientCode] VARCHAR(20) NULL,
                         [IsActive]         BIT            NOT NULL DEFAULT 1,
                         CONSTRAINT [UQ_ClientDetails_ClientCode] UNIQUE ([ClientCode])
                     );
@@ -613,9 +1063,64 @@ namespace CentralLicenceApp.Services
                         ALTER TABLE [dbo].[ClientDetails] ADD [DOB] DATE NULL;
                     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientDetails') AND name='Anniversarydate')
                         ALTER TABLE [dbo].[ClientDetails] ADD [Anniversarydate] DATE NULL;
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientDetails') AND name='IsInternalUse')
+                      ALTER TABLE [dbo].[ClientDetails] ADD [IsInternalUse] BIT NOT NULL DEFAULT 0;
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientDetails') AND name='ReferenceClientCode')
+                      ALTER TABLE [dbo].[ClientDetails] ADD [ReferenceClientCode] VARCHAR(20) NULL;
                     IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientDetails') AND name='IsActive')
                         ALTER TABLE [dbo].[ClientDetails] ADD [IsActive] BIT NOT NULL DEFAULT 1;
-                END");
+
+                    IF NOT EXISTS (
+                      SELECT 1 FROM sys.indexes
+                      WHERE name = 'IX_ClientDetails_ReferenceClientCode'
+                        AND object_id = OBJECT_ID('ClientDetails'))
+                      CREATE INDEX [IX_ClientDetails_ReferenceClientCode] ON [dbo].[ClientDetails]([ReferenceClientCode]);
+                  END
+
+                  IF NOT EXISTS (
+                    SELECT 1
+                    FROM sys.columns
+                    WHERE object_id = OBJECT_ID('dbo.ClientDetails')
+                      AND name = 'ID')
+                  BEGIN
+                    THROW 50006, 'ClientDetails table exists but does not contain ID column. Fix the legacy table before running this migration.', 1;
+                  END
+
+                  IF NOT EXISTS (
+                    SELECT 1
+                    FROM sys.key_constraints kc
+                    INNER JOIN sys.index_columns ic
+                      ON ic.object_id = kc.parent_object_id
+                       AND ic.index_id = kc.unique_index_id
+                    INNER JOIN sys.columns c
+                      ON c.object_id = ic.object_id
+                       AND c.column_id = ic.column_id
+                    WHERE kc.parent_object_id = OBJECT_ID('dbo.ClientDetails')
+                      AND kc.type IN ('PK', 'UQ')
+                    GROUP BY kc.name
+                    HAVING COUNT(*) = 1 AND MAX(c.name) = 'ID'
+                  )
+                  BEGIN
+                    EXEC(N'
+                      IF EXISTS (SELECT 1 FROM dbo.ClientDetails WHERE ID IS NULL)
+                      BEGIN
+                        THROW 50007, ''''ClientDetails contains NULL ID values. Fix those rows before running this migration.'''', 1;
+                      END;
+
+                      IF EXISTS (
+                        SELECT ID
+                        FROM dbo.ClientDetails
+                        GROUP BY ID
+                        HAVING COUNT(1) > 1
+                      )
+                      BEGIN
+                        THROW 50008, ''''ClientDetails contains duplicate ID values. Fix those rows before running this migration.'''', 1;
+                      END;
+
+                      ALTER TABLE dbo.ClientDetails
+                      ADD CONSTRAINT UQ_ClientDetails_ID UNIQUE (ID);
+                    ')
+                  END");
         }
 
         private static async Task EnsureCompanySettingsTablesAsync(SqlConnection conn)

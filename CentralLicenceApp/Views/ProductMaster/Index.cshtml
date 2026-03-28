@@ -1,0 +1,140 @@
+@model List<CentralLicenceApp.Models.ProductMaster>
+@{
+    ViewData["Title"] = "eProduct Master";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">eProduct Master</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">@Model.Count product@(Model.Count == 1 ? string.Empty : "s") configured with pricing visibility</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
+        <i class="bi bi-plus-lg me-1"></i> New Product
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Product</th>
+                        <th>Type</th>
+                        <th>Rate Models</th>
+                        <th>Discount Summary</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th class="pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No products found</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model)
+                        {
+                            var hasLiveOffers = item.ActiveDiscountOfferCount > 0;
+                            var expiryTone = item.ExpiringSoonDiscountOfferCount > 0 ? "#b45309" : "#64748b";
+                            <tr>
+                                <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@item.Id</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div style="width:34px;height:34px;background:#ede9fe;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#6d28d9;font-size:.95rem;">
+                                            <i class="bi bi-box-seam"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold" style="font-size:.88rem;">@item.ProductName</div>
+                                            <div style="font-size:.76rem;color:#6366f1;">@item.ProductCode</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="font-size:.84rem;">@item.ProductType</td>
+                                <td style="font-size:.82rem;min-width:180px;">
+                                    <div class="fw-semibold">@item.PricingModelCount model@(item.PricingModelCount == 1 ? string.Empty : "s")</div>
+                                    <div class="text-muted" style="font-size:.75rem;">
+                                        @if (item.PricingModelCount == 0)
+                                        {
+                                            <span>No rates mapped</span>
+                                        }
+                                        else
+                                        {
+                                            <span>@item.ActivePricingModelCount active</span>
+                                            @if (item.MinRate.HasValue && item.MaxRate.HasValue)
+                                            {
+                                                <span> • ₹@item.MinRate.Value.ToString("0.##") to ₹@item.MaxRate.Value.ToString("0.##")</span>
+                                            }
+                                        }
+                                    </div>
+                                </td>
+                                <td style="font-size:.81rem;min-width:220px;">
+                                    @if (item.DiscountOfferCount == 0)
+                                    {
+                                        <div class="fw-semibold" style="color:#94a3b8;">No offers mapped</div>
+                                        <div class="text-muted" style="font-size:.75rem;">No promotion discount configured yet</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="fw-semibold" style="color:@(hasLiveOffers ? "#166534" : "#1e293b");">
+                                            @item.ActiveDiscountOfferCount live offer@(item.ActiveDiscountOfferCount == 1 ? string.Empty : "s")
+                                        </div>
+                                        <div class="text-muted" style="font-size:.75rem;">
+                                            @item.DiscountOfferCount total
+                                            @if (item.ActivePromoCodeCount > 0)
+                                            {
+                                                <span> • @item.ActivePromoCodeCount promo code@(item.ActivePromoCodeCount == 1 ? string.Empty : "s")</span>
+                                            }
+                                        </div>
+                                        @if (item.NextDiscountExpiryDate.HasValue)
+                                        {
+                                            <div style="font-size:.74rem;color:@expiryTone;">
+                                                Next expiry: @item.NextDiscountExpiryDate.Value.ToString("dd MMM yyyy")
+                                                @if (item.ExpiringSoonDiscountOfferCount > 0)
+                                                {
+                                                    <span> • @item.ExpiringSoonDiscountOfferCount expiring soon</span>
+                                                }
+                                            </div>
+                                        }
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.IsActive)
+                                    {
+                                        <span class="badge badge-ok rounded-pill px-2 py-1" style="font-size:.73rem;">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-neu rounded-pill px-2 py-1" style="font-size:.73rem;">Inactive</span>
+                                    }
+                                </td>
+                                <td style="font-size:.82rem;">@item.CreatedAt.ToString("dd MMM yyyy")</td>
+                                <td class="pe-3">
+                                    <div class="d-flex gap-1 flex-wrap justify-content-end">
+                                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info" title="View Product" style="border-radius:7px;"><i class="bi bi-eye"></i></a>
+                                        <a asp-controller="ProductRate" asp-action="Index" asp-route-productId="@item.Id" class="btn btn-sm btn-outline-primary" title="Rate List" style="border-radius:7px;"><i class="bi bi-tags me-1"></i>Rates</a>
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" title="Edit" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
+                                        <form asp-action="Delete" method="post"
+                                              data-swal-confirm="true"
+                                              data-swal-title="Delete Product?"
+                                              data-swal-text="Product <strong>@item.ProductName</strong> will be deleted permanently."
+                                              data-swal-confirm-button="Yes, delete product">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@item.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" style="border-radius:7px;"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -15,6 +15,7 @@ var connStr = builder.Configuration.GetConnectionString("DefaultConnection")!;
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
+builder.Services.AddHttpContextAccessor();
 builder.Services.Configure<PushNotificationSettings>(builder.Configuration.GetSection("PushNotifications"));
 
 // Repositories
@@ -25,12 +26,17 @@ builder.Services.AddScoped<IRoleRepository>(_ => new RoleRepository(connStr));
 builder.Services.AddScoped<IEmployeeDepartmentRepository>(_ => new EmployeeDepartmentRepository(connStr));
 builder.Services.AddScoped<IEmployeeDesignationRepository>(_ => new EmployeeDesignationRepository(connStr));
 builder.Services.AddScoped<IEmployeeTypeRepository>(_ => new EmployeeTypeRepository(connStr));
+builder.Services.AddScoped<IPricingModelRepository>(_ => new PricingModelRepository(connStr));
 builder.Services.AddScoped<IExpenseCategoryRepository>(_ => new ExpenseCategoryRepository(connStr));
+builder.Services.AddScoped<IProductMasterRepository>(_ => new ProductMasterRepository(connStr));
+builder.Services.AddScoped<IProductRateRepository>(_ => new ProductRateRepository(connStr));
+builder.Services.AddScoped<IProductRateDiscountRepository>(_ => new ProductRateDiscountRepository(connStr));
 builder.Services.AddScoped<IExpenseRequestRepository>(_ => new ExpenseRequestRepository(connStr));
 builder.Services.AddScoped<ICompanySettingsRepository>(_ => new CompanySettingsRepository(connStr));
 builder.Services.AddScoped<ILocationRepository>(_ => new LocationRepository(connStr));
 builder.Services.AddScoped<IMailConfigRepository>(_ => new MailConfigRepository(connStr));
 builder.Services.AddScoped<IEmailTemplateRepository>(_ => new EmailTemplateRepository(connStr));
+builder.Services.AddScoped<IEmailLogRepository>(_ => new EmailLogRepository(connStr));
 builder.Services.AddScoped<IReminderRepository>(_ => new ReminderRepository(connStr));
 builder.Services.AddScoped<IClientDetailsRepository>(_ => new ClientDetailsRepository(connStr));
 builder.Services.AddScoped<IUserPushSubscriptionRepository>(_ => new UserPushSubscriptionRepository(connStr));

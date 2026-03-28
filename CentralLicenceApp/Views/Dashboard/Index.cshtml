@@ -1,9 +1,6 @@
 @model CentralLicenceApp.Models.ViewModels.DashboardViewModel
 @{
     ViewData["Title"] = "Dashboard";
-    var monthLabels   = Model.MonthlyStats.Select(m => m.Month).ToList();
-    var validCounts   = Model.MonthlyStats.Select(m => m.ValidCount).ToList();
-    var invalidCounts = Model.MonthlyStats.Select(m => m.InvalidCount).ToList();
     var selectedPT    = Model.SelectedProductType ?? "";
 }
 
@@ -137,28 +134,6 @@
     </div>
 </div>
 
-<!-- Charts Row -->
-<div class="row g-3 mb-4">
-    <div class="col-lg-8">
-        <div class="card h-100">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <span><i class="bi bi-bar-chart-fill me-2" style="color:#6366f1;"></i>Validation Trend (Last 6 Months)</span>
-            </div>
-            <div class="card-body">
-                <canvas id="trendChart" height="100"></canvas>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-4">
-        <div class="card h-100">
-            <div class="card-header"><i class="bi bi-pie-chart-fill me-2" style="color:#6366f1;"></i>Validation Status</div>
-            <div class="card-body d-flex align-items-center justify-content-center">
-                <canvas id="statusChart" style="max-height:220px;"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Tables Row -->
 <div class="row g-3">
     <div class="col-lg-6">
@@ -255,56 +230,3 @@
     </div>
 </div>
 
-@section Scripts {
-<script>
-    // Trend chart
-    const trendCtx = document.getElementById('trendChart').getContext('2d');
-    new Chart(trendCtx, {
-        type: 'bar',
-        data: {
-            labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(monthLabels)),
-            datasets: [
-                {
-                    label: 'Valid',
-                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(validCounts)),
-                    backgroundColor: 'rgba(99,102,241,0.8)',
-                    borderRadius: 6
-                },
-                {
-                    label: 'Invalid',
-                    data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(invalidCounts)),
-                    backgroundColor: 'rgba(239,68,68,0.7)',
-                    borderRadius: 6
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { position: 'top' } },
-            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-        }
-    });
-
-    // Status donut chart
-    const statusCtx = document.getElementById('statusChart').getContext('2d');
-    new Chart(statusCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Valid', 'Invalid'],
-            datasets: [{
-                data: [@(Model.TotalValidations - Model.FailedValidations), @Model.FailedValidations],
-                backgroundColor: ['#10b981', '#ef4444'],
-                borderWidth: 3,
-                borderColor: '#fff',
-                hoverOffset: 6
-            }]
-        },
-        options: {
-            cutout: '70%',
-            plugins: {
-                legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } }
-            }
-        }
-    });
-</script>
-}

@@ -63,10 +63,10 @@
             @{
                 var licencesOpen = ctrl == "ClientLicense" || ctrl == "LicenseHistory";
                 var masterOpen   = ctrl == "EmployeeDepartment" || ctrl == "EmployeeDesignation";
-                var businessUnitMasterOpen = ctrl == "ExpenseCategory";
+                var businessUnitMasterOpen = ctrl == "ExpenseCategory" || ctrl == "ProductMaster" || ctrl == "ProductRate";
                 var businessUnitTransactionOpen = ctrl == "ExpenseRequest";
                 var businessUnitOpen = businessUnitMasterOpen || businessUnitTransactionOpen;
-                var adminOpen    = ctrl == "User" || ctrl == "Role" || ctrl == "EmailConfig" || ctrl == "EmailTemplate" || ctrl == "CompanySettings" || masterOpen;
+                var adminOpen    = ctrl == "User" || ctrl == "Role" || ctrl == "EmailConfig" || ctrl == "EmailTemplate" || ctrl == "EmailLog" || ctrl == "CompanySettings" || masterOpen;
             }
             <a href="#section-licences" data-bs-toggle="collapse"
                class="nav-lbl nav-lbl-toggle mt-2"
@@ -105,6 +105,7 @@
                 </div>
                 <div class="nav-item"><a asp-controller="EmailConfig" asp-action="Index" class="@Act("EmailConfig")"><i class="bi bi-send-check"></i> Email Engine</a></div>
                 <div class="nav-item"><a asp-controller="EmailTemplate" asp-action="Index" class="@Act("EmailTemplate")"><i class="bi bi-file-earmark-text"></i> Email Templates</a></div>
+                <div class="nav-item"><a asp-controller="EmailLog" asp-action="Index" class="@Act("EmailLog")"><i class="bi bi-journal-text"></i> Email Logs</a></div>
                 </div><!-- /section-admin collapse -->
             }
 
@@ -117,7 +118,7 @@
             <div class="collapse @(businessUnitOpen ? "show" : "")" id="section-business-unit">
                 <div class="nav-item nav-item-nested">
                     <a href="#section-business-unit-transaction" data-bs-toggle="collapse" class="@(businessUnitTransactionOpen ? "active" : "")" aria-expanded="@(businessUnitTransactionOpen ? "true" : "false")">
-                        <i class="bi bi-arrow-left-right"></i> Transaction
+                        <i class="bi bi-arrow-left-right"></i> Expenses &amp; Advance
                         <i class="bi bi-chevron-down submenu-arrow"></i>
                     </a>
                 </div>
@@ -139,6 +140,8 @@
                     </div>
                     <div class="collapse @(businessUnitMasterOpen ? "show" : "")" id="section-business-unit-master">
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="ExpenseCategory" asp-action="Index" class="@Act("ExpenseCategory")"><i class="bi bi-receipt"></i> Expense Category</a></div>
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="ProductMaster" asp-action="Index" class="@Act("ProductMaster")"><i class="bi bi-box-seam"></i> eProduct Master</a></div>
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="ProductRate" asp-action="Index" class="@Act("ProductRate")"><i class="bi bi-tags"></i> Product Rate List</a></div>
                     </div>
                 }
             </div>

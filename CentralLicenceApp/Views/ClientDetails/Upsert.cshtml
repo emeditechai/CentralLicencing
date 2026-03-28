@@ -1,7 +1,24 @@
+@using System.Text.Json
+@using CentralLicenceApp.Models
+@using CentralLicenceApp.Models.ViewModels
 @model CentralLicenceApp.Models.ViewModels.ClientDetailsViewModel
 @{
     ViewData["Title"] = (Model.IsNew ? "Add" : "Edit") + " Client Details – " + Model.ClientCode;
     var productType = ViewBag.ProductType as string ?? "";
+    var productCatalog = ViewBag.ProductCatalog as List<ProductMaster> ?? new();
+    var productRateCatalog = ViewBag.ProductRateCatalog as List<ProductRate> ?? new();
+    var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    var productCatalogJson = JsonSerializer.Serialize(productCatalog.Select(x => new { x.Id, x.ProductName, x.ProductCode, x.ProductType }), jsonOptions);
+    var productRateCatalogJson = JsonSerializer.Serialize(productRateCatalog.Select(x => new {
+        x.Id,
+        x.ProductId,
+        x.PricingModel,
+        x.Rate,
+        x.AmcCalculationType,
+        x.AmcPercentage,
+        x.AmcAmount,
+        x.IsActive
+    }), jsonOptions);
 }
 
 <div class="d-flex align-items-center gap-3 mb-4">
@@ -23,7 +40,7 @@
     </div>
 </div>
 
-<div class="card" style="max-width:680px;">
+<div class="card" style="max-width:980px;">
     <div class="card-body p-4">
         <form asp-action="Upsert" method="post">
             @Html.AntiForgeryToken()
@@ -48,35 +65,96 @@
                     <textarea asp-for="Address" class="form-control" rows="2" placeholder="Full address…" style="border-radius:10px;"></textarea>
                 </div>
 
-                <!-- Products Purchased — multi-select checkbox dropdown -->
+                <div class="col-md-6">
+                    <label asp-for="ReferenceClientCode" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="ReferenceClientCode" class="form-control" placeholder="Enter existing ClientCode" style="border-radius:10px;" />
+                    <div class="text-muted mt-1" style="font-size:.72rem;">Use this to tag another client record as the same reference customer.</div>
+                    <span asp-validation-for="ReferenceClientCode" class="text-danger small"></span>
+                </div>
+
+                <div class="col-md-6 d-flex align-items-end">
+                    <div class="form-check mb-2">
+                        <input asp-for="IsInternalUse" class="form-check-input" type="checkbox" onchange="toggleInternalUseSection()" />
+                        <label asp-for="IsInternalUse" class="form-check-label fw-semibold" style="font-size:.85rem;"></label>
+                    </div>
+                </div>
+
                 <div class="col-md-12">
-                    <label class="form-label fw-semibold" style="font-size:.82rem;">Products Purchased</label>
-                    <div class="dropdown" id="productDropdown">
-                        <button type="button" id="productDropBtn"
-                                class="btn btn-white border w-100 d-flex align-items-center justify-content-between"
-                                style="border-radius:10px;font-size:.875rem;background:#fff;"
-                                onclick="toggleProductDropdown(event)">
-                            <span id="productDropLabel" style="color:#6b7280;">
-                                @(Model.SelectedProducts.Any() ? string.Join(", ", Model.SelectedProducts) : "Select products…")
-                            </span>
-                            <i class="bi bi-chevron-down ms-2" style="font-size:.75rem;color:#94a3b8;"></i>
-                        </button>
-                        <div id="productDropMenu"
-                             style="display:none;position:absolute;z-index:1050;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,.1);min-width:260px;padding:.5rem 0;">
-                            @foreach (var product in CentralLicenceApp.Models.ViewModels.ClientDetailsViewModel.AvailableProducts)
-                            {
-                                var isChecked = Model.SelectedProducts.Contains(product);
-                                <label class="d-flex align-items-center gap-2 px-3 py-2 product-option"
-                                       style="cursor:pointer;font-size:.875rem;margin:0;"
-                                       onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                                    <input type="checkbox" name="SelectedProducts" value="@product"
-                                           @(isChecked ? "checked" : "")
-                                           onchange="updateProductLabel()"
-                                           style="width:16px;height:16px;accent-color:#6366f1;cursor:pointer;" />
-                                    <span>@product</span>
-                                </label>
-                            }
+                    <div id="productsPurchasedSection">
+                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+                        <div>
+                            <label class="form-label fw-semibold mb-1" style="font-size:.82rem;">Products Purchased</label>
+                            <div class="text-muted" style="font-size:.76rem;">Select product, then pricing model. Base price and AMC details will be pulled automatically from eProduct Master.</div>
                         </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" style="border-radius:10px;" onclick="addPurchasedProductRow()">
+                            <i class="bi bi-plus-lg me-1"></i>Add Product
+                        </button>
+                    </div>
+                    <span asp-validation-for="PurchasedProducts" class="text-danger small d-block mb-2"></span>
+                    <div id="purchasedProductsContainer" class="d-flex flex-column gap-3">
+                        @for (var i = 0; i < Model.PurchasedProducts.Count; i++)
+                        {
+                            var row = Model.PurchasedProducts[i];
+                            <div class="purchase-row card border-0 shadow-sm" data-index="@i" style="background:#f8fbff;border-radius:16px;">
+                                <div class="card-body p-3 p-lg-4">
+                                    <div class="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap">
+                                        <div>
+                                            <div class="fw-semibold" style="font-size:.86rem;color:#1e293b;">Purchased Product @(i + 1)</div>
+                                            <div class="text-muted" style="font-size:.74rem;">Linked with pricing model snapshot for client records</div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" style="border-radius:10px;" onclick="removePurchasedProductRow(this)">
+                                            <i class="bi bi-trash me-1"></i>Remove
+                                        </button>
+                                    </div>
+
+                                    <div class="row g-3 align-items-start">
+                                        <div class="col-md-5">
+                                            <label class="form-label fw-semibold" style="font-size:.8rem;">Product Name</label>
+                                            <select name="PurchasedProducts[@i].ProductId" class="form-select product-select" style="border-radius:10px;" onchange="handleProductChange(this)">
+                                                <option value="">Select Product</option>
+                                                @foreach (var product in productCatalog)
+                                                {
+                                                    <option value="@product.Id" selected="@(row.ProductId == product.Id)">@product.ProductName (@product.ProductCode)</option>
+                                                }
+                                            </select>
+                                            <span class="text-danger small field-validation-valid" data-valmsg-for="PurchasedProducts[@i].ProductId" data-valmsg-replace="true"></span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold" style="font-size:.8rem;">Product Pricing Model</label>
+                                            <select name="PurchasedProducts[@i].ProductRateId" class="form-select pricing-model-select" style="border-radius:10px;" data-selected-rate-id="@row.ProductRateId" onchange="handleRateChange(this)">
+                                                <option value="">Select Pricing Model</option>
+                                            </select>
+                                            <span class="text-danger small field-validation-valid" data-valmsg-for="PurchasedProducts[@i].ProductRateId" data-valmsg-replace="true"></span>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label fw-semibold" style="font-size:.8rem;">Snapshot</label>
+                                            <div class="rounded-3 px-3 py-2 h-100 purchase-row-state" style="background:#eef4ff;border:1px solid #dbe5f4;min-height:44px;font-size:.76rem;color:#475569;display:flex;align-items:center;">Select pricing model to load details</div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="rounded-3 px-3 py-2 h-100" style="background:#fff;border:1px solid #e2e8f0;">
+                                                <div class="text-muted" style="font-size:.72rem;font-weight:700;letter-spacing:.04em;">BASE PRICE</div>
+                                                <div class="purchase-base-price fw-bold mt-1" style="font-size:1rem;color:#1e293b;">@(row.BasePrice > 0 ? "₹" + row.BasePrice.ToString("0.00") : "-")</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="rounded-3 px-3 py-2 h-100" style="background:#fff;border:1px solid #e2e8f0;">
+                                                <div class="text-muted" style="font-size:.72rem;font-weight:700;letter-spacing:.04em;">AMC TYPE / %</div>
+                                                <div class="purchase-amc-type fw-semibold mt-1" style="font-size:.88rem;color:#1e293b;">
+                                                    @(string.IsNullOrWhiteSpace(row.AmcCalculationType) ? "-" : row.AmcCalculationType + " • " + row.AmcPercentage.ToString("0.####") + "%")
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="rounded-3 px-3 py-2 h-100" style="background:#fff;border:1px solid #e2e8f0;">
+                                                <div class="text-muted" style="font-size:.72rem;font-weight:700;letter-spacing:.04em;">AMC AMOUNT</div>
+                                                <div class="purchase-amc-amount fw-bold mt-1" style="font-size:1rem;color:#1e293b;">@(row.AmcAmount > 0 ? "₹" + row.AmcAmount.ToString("0.00") : "-")</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
                     </div>
                 </div>
 
@@ -115,29 +193,173 @@
 @section Scripts {
 <partial name="_ValidationScriptsPartial" />
 <script>
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function (e) {
-        var menu = document.getElementById('productDropMenu');
-        if (!document.getElementById('productDropdown').contains(e.target)) {
-            menu.style.display = 'none';
+    const productCatalog = @Html.Raw(productCatalogJson);
+    const productRateCatalog = @Html.Raw(productRateCatalogJson);
+
+    function getRatesForProduct(productId) {
+        return productRateCatalog.filter(x => x.productId === Number(productId) && x.isActive);
+    }
+
+    function populatePricingModelSelect(row, selectedRateId) {
+        const productSelect = row.querySelector('.product-select');
+        const pricingModelSelect = row.querySelector('.pricing-model-select');
+        const rates = productSelect.value ? getRatesForProduct(productSelect.value) : [];
+
+        pricingModelSelect.innerHTML = '<option value="">Select Pricing Model</option>';
+        rates.forEach(rate => {
+            const option = document.createElement('option');
+            option.value = rate.id;
+            option.textContent = `${rate.pricingModel} - ₹${Number(rate.rate).toFixed(2)}`;
+            if (selectedRateId && Number(selectedRateId) === rate.id) {
+                option.selected = true;
+            }
+            pricingModelSelect.appendChild(option);
+        });
+    }
+
+    function updatePurchaseSnapshot(row) {
+        const pricingModelSelect = row.querySelector('.pricing-model-select');
+        const state = row.querySelector('.purchase-row-state');
+        const basePrice = row.querySelector('.purchase-base-price');
+        const amcType = row.querySelector('.purchase-amc-type');
+        const amcAmount = row.querySelector('.purchase-amc-amount');
+        const selectedRate = productRateCatalog.find(x => x.id === Number(pricingModelSelect.value));
+
+        if (!selectedRate) {
+            state.textContent = 'Select pricing model to load details';
+            basePrice.textContent = '-';
+            amcType.textContent = '-';
+            amcAmount.textContent = '-';
+            return;
         }
+
+        state.textContent = `Base ₹${Number(selectedRate.rate).toFixed(2)} with ${selectedRate.amcCalculationType} AMC snapshot.`;
+        basePrice.textContent = `₹${Number(selectedRate.rate).toFixed(2)}`;
+        amcType.textContent = `${selectedRate.amcCalculationType} • ${Number(selectedRate.amcPercentage).toFixed(4)}%`;
+        amcAmount.textContent = `₹${Number(selectedRate.amcAmount).toFixed(2)}`;
+    }
+
+    function handleProductChange(select) {
+        const row = select.closest('.purchase-row');
+        populatePricingModelSelect(row, null);
+        updatePurchaseSnapshot(row);
+    }
+
+    function handleRateChange(select) {
+        const row = select.closest('.purchase-row');
+        updatePurchaseSnapshot(row);
+    }
+
+    function toggleInternalUseSection() {
+        const isInternalUse = document.getElementById('IsInternalUse')?.checked;
+        const section = document.getElementById('productsPurchasedSection');
+        if (!section) {
+            return;
+        }
+
+        section.style.display = isInternalUse ? 'none' : '';
+    }
+
+    function addPurchasedProductRow() {
+        const container = document.getElementById('purchasedProductsContainer');
+        const index = container.querySelectorAll('.purchase-row').length;
+        const productOptions = productCatalog.map(product => `<option value="${product.id}">${product.productName} (${product.productCode})</option>`).join('');
+
+        const html = `
+            <div class="purchase-row card border-0 shadow-sm" data-index="${index}" style="background:#f8fbff;border-radius:16px;">
+                <div class="card-body p-3 p-lg-4">
+                    <div class="d-flex align-items-center justify-content-between mb-3 gap-2 flex-wrap">
+                        <div>
+                            <div class="fw-semibold" style="font-size:.86rem;color:#1e293b;">Purchased Product ${index + 1}</div>
+                            <div class="text-muted" style="font-size:.74rem;">Linked with pricing model snapshot for client records</div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" style="border-radius:10px;" onclick="removePurchasedProductRow(this)">
+                            <i class="bi bi-trash me-1"></i>Remove
+                        </button>
+                    </div>
+                    <div class="row g-3 align-items-start">
+                        <div class="col-md-5">
+                            <label class="form-label fw-semibold" style="font-size:.8rem;">Product Name</label>
+                            <select name="PurchasedProducts[${index}].ProductId" class="form-select product-select" style="border-radius:10px;" onchange="handleProductChange(this)">
+                                <option value="">Select Product</option>
+                                ${productOptions}
+                            </select>
+                            <span class="text-danger small field-validation-valid" data-valmsg-for="PurchasedProducts[${index}].ProductId" data-valmsg-replace="true"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" style="font-size:.8rem;">Product Pricing Model</label>
+                            <select name="PurchasedProducts[${index}].ProductRateId" class="form-select pricing-model-select" style="border-radius:10px;" onchange="handleRateChange(this)">
+                                <option value="">Select Pricing Model</option>
+                            </select>
+                            <span class="text-danger small field-validation-valid" data-valmsg-for="PurchasedProducts[${index}].ProductRateId" data-valmsg-replace="true"></span>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" style="font-size:.8rem;">Snapshot</label>
+                            <div class="rounded-3 px-3 py-2 h-100 purchase-row-state" style="background:#eef4ff;border:1px solid #dbe5f4;min-height:44px;font-size:.76rem;color:#475569;display:flex;align-items:center;">Select pricing model to load details</div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="rounded-3 px-3 py-2 h-100" style="background:#fff;border:1px solid #e2e8f0;">
+                                <div class="text-muted" style="font-size:.72rem;font-weight:700;letter-spacing:.04em;">BASE PRICE</div>
+                                <div class="purchase-base-price fw-bold mt-1" style="font-size:1rem;color:#1e293b;">-</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="rounded-3 px-3 py-2 h-100" style="background:#fff;border:1px solid #e2e8f0;">
+                                <div class="text-muted" style="font-size:.72rem;font-weight:700;letter-spacing:.04em;">AMC TYPE / %</div>
+                                <div class="purchase-amc-type fw-semibold mt-1" style="font-size:.88rem;color:#1e293b;">-</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="rounded-3 px-3 py-2 h-100" style="background:#fff;border:1px solid #e2e8f0;">
+                                <div class="text-muted" style="font-size:.72rem;font-weight:700;letter-spacing:.04em;">AMC AMOUNT</div>
+                                <div class="purchase-amc-amount fw-bold mt-1" style="font-size:1rem;color:#1e293b;">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+
+        container.insertAdjacentHTML('beforeend', html);
+    }
+
+    function removePurchasedProductRow(button) {
+        const container = document.getElementById('purchasedProductsContainer');
+        if (container.querySelectorAll('.purchase-row').length === 1) {
+            return;
+        }
+
+        button.closest('.purchase-row').remove();
+        reindexPurchasedProductRows();
+    }
+
+    function reindexPurchasedProductRows() {
+        document.querySelectorAll('#purchasedProductsContainer .purchase-row').forEach((row, index) => {
+            row.dataset.index = index;
+            const title = row.querySelector('.fw-semibold');
+            if (title) {
+                title.textContent = `Purchased Product ${index + 1}`;
+            }
+
+            row.querySelectorAll('select, input, span[data-valmsg-for]').forEach(element => {
+                if (element.name) {
+                    element.name = element.name.replace(/PurchasedProducts\[\d+\]/g, `PurchasedProducts[${index}]`);
+                }
+                const valMsgFor = element.getAttribute('data-valmsg-for');
+                if (valMsgFor) {
+                    element.setAttribute('data-valmsg-for', valMsgFor.replace(/PurchasedProducts\[\d+\]/g, `PurchasedProducts[${index}]`));
+                }
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('#purchasedProductsContainer .purchase-row').forEach(row => {
+            const selectedRateId = row.querySelector('.pricing-model-select').dataset.selectedRateId || null;
+            populatePricingModelSelect(row, selectedRateId);
+            updatePurchaseSnapshot(row);
+        });
+
+        toggleInternalUseSection();
     });
-
-    function toggleProductDropdown(e) {
-        e.stopPropagation();
-        var menu = document.getElementById('productDropMenu');
-        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-    }
-
-    function updateProductLabel() {
-        var checked = Array.from(document.querySelectorAll('input[name="SelectedProducts"]:checked'))
-                           .map(function(cb) { return cb.value; });
-        var label = document.getElementById('productDropLabel');
-        label.textContent = checked.length ? checked.join(', ') : 'Select products…';
-        label.style.color = checked.length ? '#1e293b' : '#6b7280';
-    }
-
-    // Init label on load
-    updateProductLabel();
 </script>
 }
