@@ -37,7 +37,7 @@
                         <option value="0">Select Pricing Model</option>
                         @foreach (var item in productRates)
                         {
-                            <option value="@item.Id">@item.ProductName - @item.PricingModel</option>
+                            <option value="@item.Id">@item.ProductName - @item.PricingModel - @item.BillingSummary</option>
                         }
                     </select>
                     <span asp-validation-for="ProductRateId" class="text-danger small"></span>

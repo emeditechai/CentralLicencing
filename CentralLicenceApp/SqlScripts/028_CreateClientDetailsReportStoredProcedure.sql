@@ -28,7 +28,7 @@ BEGIN
     FROM dbo.ClientAppLicense cl
     LEFT JOIN dbo.ClientDetails cd ON cd.ClientCode = cl.ClientCode
     OUTER APPLY (
-        SELECT STRING_AGG(CONCAT(cpp.ProductName, ' - ', cpp.PricingModel, ' (Base: ₹', CONVERT(VARCHAR(30), CAST(cpp.BasePrice AS DECIMAL(18,2))), ', AMC: ₹', CONVERT(VARCHAR(30), CAST(cpp.AmcAmount AS DECIMAL(18,2))), ')'), ', ')
+        SELECT STRING_AGG(CONCAT(cpp.ProductName, ' - ', cpp.PricingModel, ' / ', cpp.BillingModel, CASE WHEN NULLIF(LTRIM(RTRIM(cpp.BillingFrequency)), '') IS NULL THEN '' ELSE ' / ' + cpp.BillingFrequency END, ' (Base: ₹', CONVERT(VARCHAR(30), CAST(cpp.BasePrice AS DECIMAL(18,2))), ', AMC: ₹', CONVERT(VARCHAR(30), CAST(cpp.AmcAmount AS DECIMAL(18,2))), ')'), ', ')
             AS PurchasedProductSummary
         FROM dbo.ClientPurchasedProduct cpp
         WHERE cpp.ClientCode = cl.ClientCode

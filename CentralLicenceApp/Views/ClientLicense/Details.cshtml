@@ -196,11 +196,22 @@
                                                         <div class="fw-semibold">@item.ProductName</div>
                                                         <div class="text-muted" style="font-size:.74rem;">@item.ProductCode</div>
                                                     </td>
-                                                    <td><span class="badge rounded-pill px-2 py-1" style="background:#ede9fe;color:#6366f1;font-size:.75rem;">@item.PricingModel</span></td>
+                                                    <td>
+                                                        <span class="badge rounded-pill px-2 py-1" style="background:#ede9fe;color:#6366f1;font-size:.75rem;">@item.PricingModel</span>
+                                                        <div class="text-muted mt-1" style="font-size:.72rem;">@item.BillingSummary</div>
+                                                    </td>
                                                     <td class="fw-semibold">₹@item.BasePrice.ToString("0.00")</td>
                                                     <td>
-                                                        <div class="fw-semibold">₹@item.AmcAmount.ToString("0.00")</div>
-                                                        <div class="text-muted" style="font-size:.74rem;">@item.AmcCalculationType • @item.AmcPercentage.ToString("0.####")%</div>
+                                                        @if (string.IsNullOrWhiteSpace(item.AmcCalculationType))
+                                                        {
+                                                            <div class="fw-semibold">-</div>
+                                                            <div class="text-muted" style="font-size:.74rem;">No AMC</div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="fw-semibold">₹@item.AmcAmount.ToString("0.00")</div>
+                                                            <div class="text-muted" style="font-size:.74rem;">@item.AmcCalculationType • @item.AmcPercentage.ToString("0.####")%</div>
+                                                        }
                                                     </td>
                                                 </tr>
                                             }

@@ -152,6 +152,8 @@ BEGIN
         Id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
         ProductId INT NOT NULL,
         PricingModel NVARCHAR(50) NOT NULL,
+        BillingModel NVARCHAR(20) NOT NULL CONSTRAINT DF_ProductRate_BillingModel DEFAULT ('One Time'),
+        BillingFrequency NVARCHAR(20) NOT NULL CONSTRAINT DF_ProductRate_BillingFrequency DEFAULT (''),
         ProductSpecification NVARCHAR(500) NULL,
         Features NVARCHAR(2000) NULL,
         Rate DECIMAL(18,2) NOT NULL,
@@ -183,6 +185,28 @@ IF NOT EXISTS (
 BEGIN
     ALTER TABLE dbo.ProductRate
     ADD PricingModel NVARCHAR(50) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.ProductRate')
+      AND name = 'BillingModel'
+)
+BEGIN
+    ALTER TABLE dbo.ProductRate
+    ADD BillingModel NVARCHAR(20) NULL;
+END;
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.ProductRate')
+      AND name = 'BillingFrequency'
+)
+BEGIN
+    ALTER TABLE dbo.ProductRate
+    ADD BillingFrequency NVARCHAR(20) NULL;
 END;
 
 IF NOT EXISTS (
@@ -279,6 +303,14 @@ SET PricingModel = ''Basic''
 WHERE NULLIF(LTRIM(RTRIM(PricingModel)), '''') IS NULL;
 
 UPDATE dbo.ProductRate
+SET BillingModel = ''One Time''
+WHERE NULLIF(LTRIM(RTRIM(BillingModel)), '''') IS NULL;
+
+UPDATE dbo.ProductRate
+SET BillingFrequency = ''''
+WHERE BillingFrequency IS NULL;
+
+UPDATE dbo.ProductRate
 SET AmcCalculationType = ''Percentage''
 WHERE NULLIF(LTRIM(RTRIM(AmcCalculationType)), '''') IS NULL;
 
@@ -312,6 +344,12 @@ ALTER TABLE dbo.ProductRate
 ALTER COLUMN PricingModel NVARCHAR(50) NOT NULL;
 
 ALTER TABLE dbo.ProductRate
+ALTER COLUMN BillingModel NVARCHAR(20) NOT NULL;
+
+ALTER TABLE dbo.ProductRate
+ALTER COLUMN BillingFrequency NVARCHAR(20) NOT NULL;
+
+ALTER TABLE dbo.ProductRate
 ALTER COLUMN AmcCalculationType NVARCHAR(20) NOT NULL;
 
 ALTER TABLE dbo.ProductRate
@@ -334,12 +372,22 @@ BEGIN
     ');
 END;
 
-IF NOT EXISTS (
+IF EXISTS (
     SELECT 1
     FROM sys.indexes
     WHERE name = 'UX_ProductRate_ProductId_PricingModel'
       AND object_id = OBJECT_ID('dbo.ProductRate')
 )
 BEGIN
-    EXEC(N'CREATE UNIQUE INDEX UX_ProductRate_ProductId_PricingModel ON dbo.ProductRate (ProductId, PricingModel);');
+    DROP INDEX UX_ProductRate_ProductId_PricingModel ON dbo.ProductRate;
+END;
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = 'UX_ProductRate_ProductId_PricingModel_BillingModel_BillingFrequency'
+      AND object_id = OBJECT_ID('dbo.ProductRate')
+)
+BEGIN
+    EXEC(N'CREATE UNIQUE INDEX UX_ProductRate_ProductId_PricingModel_BillingModel_BillingFrequency ON dbo.ProductRate (ProductId, PricingModel, BillingModel, BillingFrequency);');
 END;

@@ -15,7 +15,7 @@
                 <p class="mb-0" style="font-size:.9rem;color:#54657e;max-width:620px;">
                     @if (Model.SelectedProductRate != null)
                     {
-                        <span>Showing promotion discounts for <strong style="color:#4338ca;">@Model.SelectedProductRate.PricingModel</strong> with visibility into active, scheduled, and expired campaigns.</span>
+                        <span>Showing promotion discounts for <strong style="color:#4338ca;">@Model.SelectedProductRate.PricingModel</strong> with the <strong style="color:#0f766e;">@Model.SelectedProductRate.BillingSummary</strong> commercial setup.</span>
                     }
                     else
                     {
@@ -56,7 +56,7 @@
                     <option value="">All Pricing Models</option>
                     @foreach (var item in Model.ProductRates)
                     {
-                        <option value="@item.Id" selected="@(Model.SelectedProductRateId == item.Id)">@item.ProductName - @item.PricingModel</option>
+                        <option value="@item.Id" selected="@(Model.SelectedProductRateId == item.Id)">@item.ProductName - @item.PricingModel - @item.BillingSummary</option>
                     }
                 </select>
             </div>
@@ -81,7 +81,7 @@
         <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3">
             <div>
                 <div class="fw-semibold" style="font-size:1rem;color:#1e293b;">@Model.SelectedProductRate.ProductName</div>
-                <div style="font-size:.82rem;color:#6366f1;">@Model.SelectedProductRate.ProductCode • @Model.SelectedProductRate.ProductType • @Model.SelectedProductRate.PricingModel</div>
+                <div style="font-size:.82rem;color:#6366f1;">@Model.SelectedProductRate.ProductCode • @Model.SelectedProductRate.ProductType • @Model.SelectedProductRate.PricingModel • @Model.SelectedProductRate.BillingSummary</div>
                 <div class="text-muted" style="font-size:.78rem;">Base Rate: ₹@Model.SelectedProductRate.Rate.ToString("0.00")</div>
             </div>
             <a asp-controller="ProductRate" asp-action="Index" asp-route-productId="@Model.SelectedProductRate.ProductId" class="btn btn-sm" style="border-radius:10px;background:#fff;color:#475569;border:1px solid #dbe4f0;">
@@ -135,7 +135,7 @@
                                 <td style="min-width:220px;">
                                     <div class="offer-block">
                                         <div class="fw-semibold" style="font-size:.86rem;">@item.DiscountName</div>
-                                        <div style="font-size:.75rem;color:#6366f1;">@item.ProductName • @item.PricingModel</div>
+                                        <div style="font-size:.75rem;color:#6366f1;">@item.ProductName • @item.PricingModel • @item.BillingSummary</div>
                                         <div class="text-muted" style="font-size:.75rem;white-space:normal;word-break:break-word;">@(string.IsNullOrWhiteSpace(item.Description) ? "No description" : item.Description)</div>
                                     </div>
                                 </td>

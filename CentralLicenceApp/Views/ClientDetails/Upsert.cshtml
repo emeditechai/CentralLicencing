@@ -13,6 +13,8 @@
         x.Id,
         x.ProductId,
         x.PricingModel,
+        x.BillingModel,
+        x.BillingFrequency,
         x.Rate,
         x.AmcCalculationType,
         x.AmcPercentage,
@@ -209,7 +211,8 @@
         rates.forEach(rate => {
             const option = document.createElement('option');
             option.value = rate.id;
-            option.textContent = `${rate.pricingModel} - ₹${Number(rate.rate).toFixed(2)}`;
+            const billingSummary = rate.billingFrequency ? `${rate.billingModel} / ${rate.billingFrequency}` : rate.billingModel;
+            option.textContent = `${rate.pricingModel} • ${billingSummary} - ₹${Number(rate.rate).toFixed(2)}`;
             if (selectedRateId && Number(selectedRateId) === rate.id) {
                 option.selected = true;
             }
@@ -233,10 +236,17 @@
             return;
         }
 
-        state.textContent = `Base ₹${Number(selectedRate.rate).toFixed(2)} with ${selectedRate.amcCalculationType} AMC snapshot.`;
+        const billingSummary = selectedRate.billingFrequency ? `${selectedRate.billingModel} / ${selectedRate.billingFrequency}` : selectedRate.billingModel;
+        state.textContent = selectedRate.amcCalculationType
+            ? `${selectedRate.pricingModel} • ${billingSummary}. Base ₹${Number(selectedRate.rate).toFixed(2)} with ${selectedRate.amcCalculationType} AMC snapshot.`
+            : `${selectedRate.pricingModel} • ${billingSummary}. Base ₹${Number(selectedRate.rate).toFixed(2)} with no AMC configured.`;
         basePrice.textContent = `₹${Number(selectedRate.rate).toFixed(2)}`;
-        amcType.textContent = `${selectedRate.amcCalculationType} • ${Number(selectedRate.amcPercentage).toFixed(4)}%`;
-        amcAmount.textContent = `₹${Number(selectedRate.amcAmount).toFixed(2)}`;
+        amcType.textContent = selectedRate.amcCalculationType
+            ? `${selectedRate.amcCalculationType} • ${Number(selectedRate.amcPercentage).toFixed(4)}%`
+            : '-';
+        amcAmount.textContent = selectedRate.amcCalculationType
+            ? `₹${Number(selectedRate.amcAmount).toFixed(2)}`
+            : '-';
     }
 
     function handleProductChange(select) {

@@ -41,6 +41,15 @@ namespace CentralLicenceApp.Models.ViewModels
         [StringLength(50)]
         public string PricingModel { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "Model is required")]
+        [Display(Name = "Model")]
+        [StringLength(20)]
+        public string BillingModel { get; set; } = string.Empty;
+
+        [Display(Name = "Frequency")]
+        [StringLength(20)]
+        public string BillingFrequency { get; set; } = string.Empty;
+
         [Display(Name = "Product Specification")]
         [StringLength(500)]
         public string? ProductSpecification { get; set; }
@@ -54,15 +63,12 @@ namespace CentralLicenceApp.Models.ViewModels
         [Range(typeof(decimal), "0.01", "999999999.99", ErrorMessage = "Rate must be greater than zero")]
         public decimal Rate { get; set; }
 
-        [Required(ErrorMessage = "AMC Type is required")]
         [Display(Name = "AMC Type")]
         [StringLength(20)]
         public string AmcCalculationType { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "AMC value is required")]
         [Display(Name = "AMC Value")]
-        [Range(typeof(decimal), "0.01", "999999999.99", ErrorMessage = "AMC value must be greater than zero")]
-        public decimal AmcInputValue { get; set; }
+        public decimal? AmcInputValue { get; set; }
 
         [Display(Name = "AMC Percentage")]
         public decimal CalculatedAmcPercentage { get; set; }

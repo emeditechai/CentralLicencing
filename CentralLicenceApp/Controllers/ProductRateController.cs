@@ -12,6 +12,8 @@ namespace CentralLicenceApp.Controllers
     public class ProductRateController : Controller
     {
         private static readonly string[] AmcCalculationTypes = { "Percentage", "Flat Amount" };
+        private static readonly string[] BillingModels = { "Subscription", "One Time" };
+        private static readonly string[] BillingFrequencies = { "Monthly", "Annual", "Quarterly", "Half Yearly" };
 
         private readonly IProductRateRepository _repo;
         private readonly IProductMasterRepository _productRepo;
@@ -46,7 +48,8 @@ namespace CentralLicenceApp.Controllers
             return View(new ProductRateFormViewModel
             {
                 ProductId = productId ?? 0,
-                AmcCalculationType = AmcCalculationTypes[0],
+                BillingModel = BillingModels[1],
+                AmcCalculationType = string.Empty,
                 IsActive = true
             });
         }
@@ -66,6 +69,8 @@ namespace CentralLicenceApp.Controllers
             {
                 ProductId = vm.ProductId,
                 PricingModel = vm.PricingModel.Trim(),
+                BillingModel = vm.BillingModel.Trim(),
+                BillingFrequency = NormalizeBillingFrequency(vm.BillingModel, vm.BillingFrequency),
                 ProductSpecification = vm.ProductSpecification?.Trim(),
                 Features = vm.Features?.Trim(),
                 Rate = vm.Rate,
@@ -91,11 +96,15 @@ namespace CentralLicenceApp.Controllers
                 Id = rate.Id,
                 ProductId = rate.ProductId,
                 PricingModel = rate.PricingModel,
+                BillingModel = rate.BillingModel,
+                BillingFrequency = rate.BillingFrequency,
                 ProductSpecification = rate.ProductSpecification,
                 Features = rate.Features,
                 Rate = rate.Rate,
-                AmcCalculationType = rate.AmcCalculationType,
-                AmcInputValue = rate.AmcCalculationType == "Flat Amount" ? rate.AmcAmount : rate.AmcPercentage,
+                AmcCalculationType = HasAmc(rate) ? rate.AmcCalculationType : string.Empty,
+                AmcInputValue = HasAmc(rate)
+                    ? (rate.AmcCalculationType == "Flat Amount" ? rate.AmcAmount : rate.AmcPercentage)
+                    : null,
                 CalculatedAmcPercentage = rate.AmcPercentage,
                 CalculatedAmcAmount = rate.AmcAmount,
                 IsActive = rate.IsActive
@@ -120,6 +129,8 @@ namespace CentralLicenceApp.Controllers
                 Id = vm.Id,
                 ProductId = vm.ProductId,
                 PricingModel = vm.PricingModel.Trim(),
+                BillingModel = vm.BillingModel.Trim(),
+                BillingFrequency = NormalizeBillingFrequency(vm.BillingModel, vm.BillingFrequency),
                 ProductSpecification = vm.ProductSpecification?.Trim(),
                 Features = vm.Features?.Trim(),
                 Rate = vm.Rate,
@@ -156,8 +167,23 @@ namespace CentralLicenceApp.Controllers
                 ModelState.AddModelError(nameof(ProductRateFormViewModel.PricingModel), "Please select a valid Pricing Model.");
             }
 
-            if (string.IsNullOrWhiteSpace(vm.AmcCalculationType)
-                || !AmcCalculationTypes.Contains(vm.AmcCalculationType.Trim()))
+            if (string.IsNullOrWhiteSpace(vm.BillingModel)
+                || !BillingModels.Contains(vm.BillingModel.Trim()))
+            {
+                ModelState.AddModelError(nameof(ProductRateFormViewModel.BillingModel), "Please select a valid Model.");
+            }
+
+            if (string.Equals(vm.BillingModel?.Trim(), "Subscription", System.StringComparison.OrdinalIgnoreCase)
+                && (string.IsNullOrWhiteSpace(vm.BillingFrequency)
+                    || !BillingFrequencies.Contains(vm.BillingFrequency.Trim())))
+            {
+                ModelState.AddModelError(nameof(ProductRateFormViewModel.BillingFrequency), "Please select a valid Frequency for subscription pricing.");
+            }
+
+            var hasAmcType = !string.IsNullOrWhiteSpace(vm.AmcCalculationType);
+            var hasAmcValue = vm.AmcInputValue.HasValue;
+
+            if (hasAmcType && !AmcCalculationTypes.Contains(vm.AmcCalculationType.Trim()))
             {
                 ModelState.AddModelError(nameof(ProductRateFormViewModel.AmcCalculationType), "Please select a valid AMC Type.");
             }
@@ -167,21 +193,37 @@ namespace CentralLicenceApp.Controllers
                 ModelState.AddModelError(nameof(ProductRateFormViewModel.Rate), "Rate must be greater than zero.");
             }
 
-            if (vm.AmcInputValue <= 0)
+            if (hasAmcType && !hasAmcValue)
+            {
+                ModelState.AddModelError(nameof(ProductRateFormViewModel.AmcInputValue), "Please enter AMC value when AMC Type is selected.");
+            }
+
+            if (!hasAmcType && hasAmcValue)
+            {
+                ModelState.AddModelError(nameof(ProductRateFormViewModel.AmcCalculationType), "Please select AMC Type when AMC Value is entered.");
+            }
+
+            if (hasAmcValue && vm.AmcInputValue <= 0)
             {
                 ModelState.AddModelError(nameof(ProductRateFormViewModel.AmcInputValue), "AMC value must be greater than zero.");
             }
 
-            if (vm.AmcCalculationType == "Percentage" && vm.AmcInputValue > 100)
+            if (hasAmcType && hasAmcValue && vm.AmcCalculationType == "Percentage" && vm.AmcInputValue > 100)
             {
                 ModelState.AddModelError(nameof(ProductRateFormViewModel.AmcInputValue), "AMC percentage cannot exceed 100.");
             }
 
             if (product != null
                 && !string.IsNullOrWhiteSpace(vm.PricingModel)
-                && await _repo.PricingModelExistsAsync(vm.ProductId, vm.PricingModel.Trim(), ignoreId))
+                && !string.IsNullOrWhiteSpace(vm.BillingModel)
+                && await _repo.RateVariantExistsAsync(
+                    vm.ProductId,
+                    vm.PricingModel.Trim(),
+                    vm.BillingModel.Trim(),
+                    NormalizeBillingFrequency(vm.BillingModel, vm.BillingFrequency),
+                    ignoreId))
             {
-                ModelState.AddModelError(nameof(ProductRateFormViewModel.PricingModel), "This pricing model is already mapped for the selected product.");
+                ModelState.AddModelError(nameof(ProductRateFormViewModel.PricingModel), "This pricing model and model/frequency combination is already mapped for the selected product.");
             }
         }
 
@@ -189,31 +231,57 @@ namespace CentralLicenceApp.Controllers
         {
             ViewBag.Products = (await _productRepo.GetAllAsync()).ToList();
             ViewBag.PricingModels = (await _pricingModelRepo.GetAllActiveAsync()).ToList();
+            ViewBag.BillingModels = BillingModels;
+            ViewBag.BillingFrequencies = BillingFrequencies;
             ViewBag.AmcCalculationTypes = AmcCalculationTypes;
         }
 
-        private static ProductRate CalculateAmc(decimal rate, string amcCalculationType, decimal amcInputValue)
+        private static string NormalizeBillingFrequency(string? billingModel, string? billingFrequency)
         {
+            return string.Equals(billingModel?.Trim(), "Subscription", System.StringComparison.OrdinalIgnoreCase)
+                ? (billingFrequency ?? string.Empty).Trim()
+                : string.Empty;
+        }
+
+        private static ProductRate CalculateAmc(decimal rate, string? amcCalculationType, decimal? amcInputValue)
+        {
+            if (string.IsNullOrWhiteSpace(amcCalculationType) || !amcInputValue.HasValue)
+            {
+                return new ProductRate
+                {
+                    AmcCalculationType = string.Empty,
+                    AmcPercentage = 0,
+                    AmcAmount = 0
+                };
+            }
+
             var normalizedType = amcCalculationType.Trim();
+            var normalizedValue = amcInputValue.Value;
 
             if (normalizedType == "Flat Amount")
             {
-                var percentage = rate == 0 ? 0 : decimal.Round((amcInputValue / rate) * 100m, 4, System.MidpointRounding.AwayFromZero);
+                var percentage = rate == 0 ? 0 : decimal.Round((normalizedValue / rate) * 100m, 4, System.MidpointRounding.AwayFromZero);
                 return new ProductRate
                 {
                     AmcCalculationType = normalizedType,
-                    AmcAmount = decimal.Round(amcInputValue, 2, System.MidpointRounding.AwayFromZero),
+                    AmcAmount = decimal.Round(normalizedValue, 2, System.MidpointRounding.AwayFromZero),
                     AmcPercentage = percentage
                 };
             }
 
-            var amount = decimal.Round((rate * amcInputValue) / 100m, 2, System.MidpointRounding.AwayFromZero);
+            var amount = decimal.Round((rate * normalizedValue) / 100m, 2, System.MidpointRounding.AwayFromZero);
             return new ProductRate
             {
                 AmcCalculationType = normalizedType,
-                AmcPercentage = decimal.Round(amcInputValue, 4, System.MidpointRounding.AwayFromZero),
+                AmcPercentage = decimal.Round(normalizedValue, 4, System.MidpointRounding.AwayFromZero),
                 AmcAmount = amount
             };
+        }
+
+        private static bool HasAmc(ProductRate rate)
+        {
+            return !string.IsNullOrWhiteSpace(rate.AmcCalculationType)
+                && (rate.AmcAmount > 0 || rate.AmcPercentage > 0);
         }
     }
 }

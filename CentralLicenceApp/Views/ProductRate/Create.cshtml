@@ -3,6 +3,8 @@
     ViewData["Title"] = "New Product Rate";
     var products = ViewBag.Products as List<CentralLicenceApp.Models.ProductMaster> ?? new List<CentralLicenceApp.Models.ProductMaster>();
     var pricingModels = ViewBag.PricingModels as List<CentralLicenceApp.Models.PricingModelMaster> ?? new List<CentralLicenceApp.Models.PricingModelMaster>();
+    var billingModels = ViewBag.BillingModels as string[] ?? System.Array.Empty<string>();
+    var billingFrequencies = ViewBag.BillingFrequencies as string[] ?? System.Array.Empty<string>();
     var amcCalculationTypes = ViewBag.AmcCalculationTypes as string[] ?? System.Array.Empty<string>();
 }
 
@@ -54,6 +56,28 @@
                     <span asp-validation-for="PricingModel" class="text-danger small"></span>
                 </div>
                 <div class="col-md-6">
+                    <label asp-for="BillingModel" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <select asp-for="BillingModel" class="form-select catalog-select">
+                        <option value="">Select Model</option>
+                        @foreach (var item in billingModels)
+                        {
+                            <option value="@item">@item</option>
+                        }
+                    </select>
+                    <span asp-validation-for="BillingModel" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6" id="billingFrequencyGroup">
+                    <label asp-for="BillingFrequency" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <select asp-for="BillingFrequency" class="form-select catalog-select">
+                        <option value="">Select Frequency</option>
+                        @foreach (var item in billingFrequencies)
+                        {
+                            <option value="@item">@item</option>
+                        }
+                    </select>
+                    <span asp-validation-for="BillingFrequency" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
                     <label asp-for="Rate" class="form-label fw-semibold" style="font-size:.82rem;"></label>
                     <input asp-for="Rate" class="form-control catalog-input" type="number" step="0.01" min="0.01" />
                     <span asp-validation-for="Rate" class="text-danger small"></span>
@@ -71,8 +95,8 @@
                 </div>
                 <div class="col-md-6">
                     <label asp-for="AmcInputValue" class="form-label fw-semibold" style="font-size:.82rem;">AMC Value</label>
-                    <input asp-for="AmcInputValue" class="form-control catalog-input" type="number" step="0.01" min="0.01" />
-                    <div class="catalog-help" id="amcInputHint">Enter AMC as percentage or flat amount based on AMC Type.</div>
+                    <input asp-for="AmcInputValue" class="form-control catalog-input" type="number" step="0.01" />
+                    <div class="catalog-help" id="amcInputHint">Optional. Enter AMC as percentage or flat amount if applicable.</div>
                     <span asp-validation-for="AmcInputValue" class="text-danger small"></span>
                 </div>
                 <div class="col-md-6 d-flex align-items-end">
@@ -124,16 +148,39 @@
     <script>
         (() => {
             const rateInput = document.getElementById('Rate');
+            const billingModelInput = document.getElementById('BillingModel');
+            const billingFrequencyGroup = document.getElementById('billingFrequencyGroup');
+            const billingFrequencyInput = document.getElementById('BillingFrequency');
             const amcTypeInput = document.getElementById('AmcCalculationType');
             const amcValueInput = document.getElementById('AmcInputValue');
             const amcInputHint = document.getElementById('amcInputHint');
             const amountPreview = document.getElementById('amcAmountPreview');
             const percentagePreview = document.getElementById('amcPercentagePreview');
 
+            const updateBillingFrequencyVisibility = () => {
+                const isSubscription = billingModelInput?.value === 'Subscription';
+                if (!billingFrequencyGroup || !billingFrequencyInput) {
+                    return;
+                }
+
+                billingFrequencyGroup.style.display = isSubscription ? '' : 'none';
+                billingFrequencyInput.disabled = !isSubscription;
+                if (!isSubscription) {
+                    billingFrequencyInput.value = '';
+                }
+            };
+
             const updateAmcPreview = () => {
                 const rate = parseFloat(rateInput?.value || '0') || 0;
                 const inputValue = parseFloat(amcValueInput?.value || '0') || 0;
                 const type = amcTypeInput?.value || 'Percentage';
+
+                if (!amcTypeInput?.value || !amcValueInput?.value) {
+                    amcInputHint.textContent = 'Optional. Enter AMC as percentage or flat amount if applicable.';
+                    amountPreview.textContent = '₹0.00';
+                    percentagePreview.textContent = '0.0000%';
+                    return;
+                }
 
                 if (type === 'Flat Amount') {
                     const percentage = rate > 0 ? (inputValue / rate) * 100 : 0;
@@ -150,7 +197,9 @@
             };
 
             [rateInput, amcTypeInput, amcValueInput].forEach(input => input?.addEventListener('input', updateAmcPreview));
+            billingModelInput?.addEventListener('change', updateBillingFrequencyVisibility);
             amcTypeInput?.addEventListener('change', updateAmcPreview);
+            updateBillingFrequencyVisibility();
             updateAmcPreview();
         })();
     </script>

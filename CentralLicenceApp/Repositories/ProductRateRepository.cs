@@ -30,6 +30,8 @@ namespace CentralLicenceApp.Repositories
                     p.ProductName,
                     p.ProductType,
                     pr.PricingModel,
+                    pr.BillingModel,
+                    pr.BillingFrequency,
                     pr.ProductSpecification,
                     pr.Features,
                     pr.Rate,
@@ -50,7 +52,7 @@ namespace CentralLicenceApp.Repositories
                     WHERE d.ProductRateId = pr.Id
                 ) dis
                 WHERE (@ProductId IS NULL OR pr.ProductId = @ProductId)
-                ORDER BY p.ProductName, pr.Rate, pr.PricingModel", new { ProductId = productId });
+                ORDER BY p.ProductName, pr.PricingModel, pr.BillingModel, pr.BillingFrequency, pr.Rate", new { ProductId = productId });
         }
 
         public async Task<ProductRate?> GetByIdAsync(int id)
@@ -64,6 +66,8 @@ namespace CentralLicenceApp.Repositories
                     p.ProductName,
                     p.ProductType,
                     pr.PricingModel,
+                    pr.BillingModel,
+                    pr.BillingFrequency,
                     pr.ProductSpecification,
                     pr.Features,
                     pr.Rate,
@@ -86,7 +90,7 @@ namespace CentralLicenceApp.Repositories
                 WHERE pr.Id = @Id", new { Id = id });
         }
 
-        public async Task<bool> PricingModelExistsAsync(int productId, string pricingModel, int? ignoreId = null)
+        public async Task<bool> RateVariantExistsAsync(int productId, string pricingModel, string billingModel, string billingFrequency, int? ignoreId = null)
         {
             using var conn = CreateConnection();
             return await conn.ExecuteScalarAsync<bool>(@"
@@ -95,9 +99,18 @@ namespace CentralLicenceApp.Repositories
                     FROM ProductRate
                     WHERE ProductId = @ProductId
                       AND PricingModel = @PricingModel
+                      AND BillingModel = @BillingModel
+                      AND ISNULL(BillingFrequency, '') = @BillingFrequency
                       AND (@IgnoreId IS NULL OR Id <> @IgnoreId)
                 ) THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END",
-                new { ProductId = productId, PricingModel = pricingModel, IgnoreId = ignoreId });
+                new
+                {
+                    ProductId = productId,
+                    PricingModel = pricingModel,
+                    BillingModel = billingModel,
+                    BillingFrequency = billingFrequency,
+                    IgnoreId = ignoreId
+                });
         }
 
         public async Task<int> CreateAsync(ProductRate productRate)
@@ -106,9 +119,9 @@ namespace CentralLicenceApp.Repositories
             productRate.CreatedAt = DateTime.Now;
             return await conn.ExecuteScalarAsync<int>(@"
                 INSERT INTO ProductRate
-                    (ProductId, PricingModel, ProductSpecification, Features, Rate, AmcCalculationType, AmcPercentage, AmcAmount, IsActive, CreatedAt)
+                    (ProductId, PricingModel, BillingModel, BillingFrequency, ProductSpecification, Features, Rate, AmcCalculationType, AmcPercentage, AmcAmount, IsActive, CreatedAt)
                 VALUES
-                    (@ProductId, @PricingModel, @ProductSpecification, @Features, @Rate, @AmcCalculationType, @AmcPercentage, @AmcAmount, @IsActive, @CreatedAt);
+                    (@ProductId, @PricingModel, @BillingModel, @BillingFrequency, @ProductSpecification, @Features, @Rate, @AmcCalculationType, @AmcPercentage, @AmcAmount, @IsActive, @CreatedAt);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);", productRate);
         }
 
@@ -119,6 +132,8 @@ namespace CentralLicenceApp.Repositories
                 UPDATE ProductRate SET
                     ProductId = @ProductId,
                     PricingModel = @PricingModel,
+                    BillingModel = @BillingModel,
+                    BillingFrequency = @BillingFrequency,
                     ProductSpecification = @ProductSpecification,
                     Features = @Features,
                     Rate = @Rate,

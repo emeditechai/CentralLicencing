@@ -93,6 +93,7 @@
                         <th class="ps-3">#</th>
                         <th>Product</th>
                         <th>Pricing Model</th>
+                        <th>Model / Frequency</th>
                         <th>Specification</th>
                         <th>Features</th>
                         <th>Rate</th>
@@ -105,7 +106,7 @@
                     @if (!Model.Items.Any())
                     {
                         <tr>
-                            <td colspan="9" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No product rates found</td>
+                            <td colspan="10" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No product rates found</td>
                         </tr>
                     }
                     else
@@ -128,12 +129,24 @@
                                         <span class="info-chip" style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;">@item.DiscountOfferCount offer(s)</span>
                                     </div>
                                 </td>
+                                <td style="font-size:.8rem;white-space:nowrap;min-width:150px;">
+                                    <div class="fw-semibold" style="color:#1e293b;">@item.BillingModel</div>
+                                    <div class="text-muted">@(string.IsNullOrWhiteSpace(item.BillingFrequency) ? "-" : item.BillingFrequency)</div>
+                                </td>
                                 <td style="font-size:.8rem;max-width:220px;white-space:normal;word-break:break-word;">@(string.IsNullOrWhiteSpace(item.ProductSpecification) ? "-" : item.ProductSpecification)</td>
                                 <td style="font-size:.8rem;max-width:260px;white-space:normal;word-break:break-word;">@(string.IsNullOrWhiteSpace(item.Features) ? "-" : item.Features)</td>
                                 <td style="font-size:.82rem;font-weight:700;white-space:nowrap;color:#1d4ed8;">₹@item.Rate.ToString("0.00")</td>
                                 <td style="font-size:.8rem;white-space:nowrap;min-width:140px;">
-                                    <div class="fw-semibold" style="color:#0f766e;">₹@item.AmcAmount.ToString("0.00")</div>
-                                    <div class="text-muted">@item.AmcPercentage.ToString("0.####")% • @item.AmcCalculationType</div>
+                                    @if (string.IsNullOrWhiteSpace(item.AmcCalculationType))
+                                    {
+                                        <div class="fw-semibold" style="color:#64748b;">-</div>
+                                        <div class="text-muted">No AMC</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="fw-semibold" style="color:#0f766e;">₹@item.AmcAmount.ToString("0.00")</div>
+                                        <div class="text-muted">@item.AmcPercentage.ToString("0.####")% • @item.AmcCalculationType</div>
+                                    }
                                 </td>
                                 <td>
                                     @if (item.IsActive)
@@ -152,7 +165,7 @@
                                         <form asp-action="Delete" method="post"
                                               data-swal-confirm="true"
                                               data-swal-title="Delete Product Rate?"
-                                              data-swal-text="Pricing model <strong>@item.PricingModel</strong> for <strong>@item.ProductName</strong> will be deleted permanently."
+                                                data-swal-text="Pricing model <strong>@item.PricingModel</strong> with <strong>@item.BillingSummary</strong> for <strong>@item.ProductName</strong> will be deleted permanently."
                                               data-swal-confirm-button="Yes, delete rate">
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@item.Id" />

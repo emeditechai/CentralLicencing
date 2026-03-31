@@ -484,6 +484,8 @@ namespace CentralLicenceApp.Services
                     [ProductCode]        NVARCHAR(50)   NOT NULL,
                     [ProductName]        NVARCHAR(150)  NOT NULL,
                     [PricingModel]       NVARCHAR(50)   NOT NULL,
+                    [BillingModel]       NVARCHAR(20)   NOT NULL DEFAULT ''One Time'',
+                    [BillingFrequency]   NVARCHAR(20)   NOT NULL DEFAULT '''',
                     [BasePrice]          DECIMAL(18,2)  NOT NULL,
                     [AmcCalculationType] NVARCHAR(20)   NOT NULL,
                     [AmcPercentage]      DECIMAL(18,4)  NOT NULL,
@@ -506,6 +508,10 @@ namespace CentralLicenceApp.Services
                     ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ProductName] NVARCHAR(150) NULL;
                   IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='PricingModel')
                     ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [PricingModel] NVARCHAR(50) NULL;
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='BillingModel')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [BillingModel] NVARCHAR(20) NULL;
+                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='BillingFrequency')
+                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [BillingFrequency] NVARCHAR(20) NULL;
                   IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='BasePrice')
                     ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [BasePrice] DECIMAL(18,2) NULL;
                   IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='AmcCalculationType')
@@ -519,6 +525,14 @@ namespace CentralLicenceApp.Services
                   IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='CreatedAt')
                     ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [CreatedAt] DATETIME NOT NULL DEFAULT GETDATE();
                 END
+
+                UPDATE dbo.ClientPurchasedProduct
+                SET BillingModel = 'One Time'
+                WHERE NULLIF(LTRIM(RTRIM(BillingModel)), '') IS NULL;
+
+                UPDATE dbo.ClientPurchasedProduct
+                SET BillingFrequency = ''
+                WHERE BillingFrequency IS NULL;
 
                 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_ClientPurchasedProduct_ClientCode' AND object_id=OBJECT_ID('ClientPurchasedProduct'))
                   CREATE INDEX [IX_ClientPurchasedProduct_ClientCode] ON [dbo].[ClientPurchasedProduct]([ClientCode], [ProductName], [PricingModel]);
@@ -555,6 +569,8 @@ namespace CentralLicenceApp.Services
                 [Id]                   INT             IDENTITY(1,1) NOT NULL PRIMARY KEY,
                 [ProductId]            INT             NOT NULL REFERENCES [dbo].[ProductMaster]([Id]),
                 [PricingModel]         NVARCHAR(50)    NOT NULL,
+                [BillingModel]         NVARCHAR(20)    NOT NULL DEFAULT 'One Time',
+                [BillingFrequency]     NVARCHAR(20)    NOT NULL DEFAULT '',
                 [ProductSpecification] NVARCHAR(500)   NULL,
                 [Features]             NVARCHAR(2000)  NULL,
                 [Rate]                 DECIMAL(18,2)   NOT NULL,
@@ -580,6 +596,22 @@ namespace CentralLicenceApp.Services
                 AND name = 'PricingModel')
             BEGIN
               ALTER TABLE dbo.ProductRate ADD [PricingModel] NVARCHAR(50) NULL;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductRate')
+                AND name = 'BillingModel')
+            BEGIN
+              ALTER TABLE dbo.ProductRate ADD [BillingModel] NVARCHAR(20) NULL;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.columns
+              WHERE object_id = OBJECT_ID('dbo.ProductRate')
+                AND name = 'BillingFrequency')
+            BEGIN
+              ALTER TABLE dbo.ProductRate ADD [BillingFrequency] NVARCHAR(20) NULL;
             END
 
             IF NOT EXISTS (
@@ -652,6 +684,14 @@ namespace CentralLicenceApp.Services
               WHERE NULLIF(LTRIM(RTRIM(PricingModel)), '''') IS NULL;
 
               UPDATE dbo.ProductRate
+              SET BillingModel = ''One Time''
+              WHERE NULLIF(LTRIM(RTRIM(BillingModel)), '''') IS NULL;
+
+              UPDATE dbo.ProductRate
+              SET BillingFrequency = ''''
+              WHERE BillingFrequency IS NULL;
+
+              UPDATE dbo.ProductRate
               SET AmcCalculationType = ''Percentage''
               WHERE NULLIF(LTRIM(RTRIM(AmcCalculationType)), '''') IS NULL;
 
@@ -680,6 +720,8 @@ namespace CentralLicenceApp.Services
 
               ALTER TABLE dbo.ProductRate ALTER COLUMN [ProductId] INT NOT NULL;
               ALTER TABLE dbo.ProductRate ALTER COLUMN [PricingModel] NVARCHAR(50) NOT NULL;
+              ALTER TABLE dbo.ProductRate ALTER COLUMN [BillingModel] NVARCHAR(20) NOT NULL;
+              ALTER TABLE dbo.ProductRate ALTER COLUMN [BillingFrequency] NVARCHAR(20) NOT NULL;
               ALTER TABLE dbo.ProductRate ALTER COLUMN [AmcCalculationType] NVARCHAR(20) NOT NULL;
               ALTER TABLE dbo.ProductRate ALTER COLUMN [AmcPercentage] DECIMAL(18,4) NOT NULL;
               ALTER TABLE dbo.ProductRate ALTER COLUMN [AmcAmount] DECIMAL(18,2) NOT NULL;
@@ -696,12 +738,20 @@ namespace CentralLicenceApp.Services
               ')
             END
 
-            IF NOT EXISTS (
+            IF EXISTS (
               SELECT 1 FROM sys.indexes
               WHERE name = 'UX_ProductRate_ProductId_PricingModel'
                 AND object_id = OBJECT_ID('ProductRate'))
             BEGIN
-              EXEC(N'CREATE UNIQUE INDEX UX_ProductRate_ProductId_PricingModel ON dbo.ProductRate(ProductId, PricingModel);')
+              DROP INDEX UX_ProductRate_ProductId_PricingModel ON dbo.ProductRate;
+            END
+
+            IF NOT EXISTS (
+              SELECT 1 FROM sys.indexes
+              WHERE name = 'UX_ProductRate_ProductId_PricingModel_BillingModel_BillingFrequency'
+                AND object_id = OBJECT_ID('ProductRate'))
+            BEGIN
+              EXEC(N'CREATE UNIQUE INDEX UX_ProductRate_ProductId_PricingModel_BillingModel_BillingFrequency ON dbo.ProductRate(ProductId, PricingModel, BillingModel, BillingFrequency);')
             END
           ");
         }
@@ -1155,7 +1205,7 @@ namespace CentralLicenceApp.Services
                     FROM dbo.ClientAppLicense cl
                     LEFT JOIN dbo.ClientDetails cd ON cd.ClientCode = cl.ClientCode
                     OUTER APPLY (
-                      SELECT STRING_AGG(CONCAT(cpp.ProductName, '' - '', cpp.PricingModel, '' (Base: Rs '', CONVERT(VARCHAR(30), CAST(cpp.BasePrice AS DECIMAL(18,2))), '', AMC: Rs '', CONVERT(VARCHAR(30), CAST(cpp.AmcAmount AS DECIMAL(18,2))), '')''), '', '')
+                      SELECT STRING_AGG(CONCAT(cpp.ProductName, '' - '', cpp.PricingModel, '' / '', cpp.BillingModel, CASE WHEN NULLIF(LTRIM(RTRIM(cpp.BillingFrequency)), '''') IS NULL THEN '''' ELSE '' / '' + cpp.BillingFrequency END, '' (Base: Rs '', CONVERT(VARCHAR(30), CAST(cpp.BasePrice AS DECIMAL(18,2))), '', AMC: Rs '', CONVERT(VARCHAR(30), CAST(cpp.AmcAmount AS DECIMAL(18,2))), '')''), '', '')
                         AS PurchasedProductSummary
                       FROM dbo.ClientPurchasedProduct cpp
                       WHERE cpp.ClientCode = cl.ClientCode

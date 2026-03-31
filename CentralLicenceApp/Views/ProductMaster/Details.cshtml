@@ -300,6 +300,7 @@
                 <thead>
                     <tr>
                         <th class="ps-3">Pricing Model</th>
+                        <th>Model / Frequency</th>
                         <th>Rate</th>
                         <th>AMC</th>
                         <th>Specification</th>
@@ -313,7 +314,7 @@
                     @if (!Model.ProductRates.Any())
                     {
                         <tr>
-                            <td colspan="8" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No pricing models mapped for this product</td>
+                            <td colspan="9" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No pricing models mapped for this product</td>
                         </tr>
                     }
                     else
@@ -328,10 +329,22 @@
                                         @item.PricingModel
                                     </span>
                                 </td>
+                                <td style="font-size:.8rem;white-space:nowrap;min-width:150px;">
+                                    <div class="fw-semibold">@item.BillingModel</div>
+                                    <div class="pd-secondary-block">@(string.IsNullOrWhiteSpace(item.BillingFrequency) ? "-" : item.BillingFrequency)</div>
+                                </td>
                                 <td style="font-size:.82rem;font-weight:700;white-space:nowrap;">₹@item.Rate.ToString("0.00")</td>
                                 <td style="font-size:.8rem;white-space:nowrap;min-width:140px;">
-                                    <div class="fw-semibold">₹@item.AmcAmount.ToString("0.00")</div>
-                                    <div class="pd-secondary-block">@item.AmcPercentage.ToString("0.####")% • @item.AmcCalculationType</div>
+                                    @if (string.IsNullOrWhiteSpace(item.AmcCalculationType))
+                                    {
+                                        <div class="fw-semibold">-</div>
+                                        <div class="pd-secondary-block">No AMC</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="fw-semibold">₹@item.AmcAmount.ToString("0.00")</div>
+                                        <div class="pd-secondary-block">@item.AmcPercentage.ToString("0.####")% • @item.AmcCalculationType</div>
+                                    }
                                 </td>
                                 <td style="font-size:.79rem;max-width:220px;white-space:normal;word-break:break-word;line-height:1.45;">@(string.IsNullOrWhiteSpace(item.ProductSpecification) ? "-" : item.ProductSpecification)</td>
                                 <td style="font-size:.79rem;max-width:260px;white-space:normal;word-break:break-word;line-height:1.45;">@(string.IsNullOrWhiteSpace(item.Features) ? "-" : item.Features)</td>

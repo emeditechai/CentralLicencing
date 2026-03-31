@@ -10,6 +10,8 @@ namespace CentralLicenceApp.Models
         public string ProductName { get; set; } = string.Empty;
         public string ProductType { get; set; } = string.Empty;
         public string PricingModel { get; set; } = string.Empty;
+        public string BillingModel { get; set; } = string.Empty;
+        public string BillingFrequency { get; set; } = string.Empty;
         public decimal BaseRate { get; set; }
         public string DiscountName { get; set; } = string.Empty;
         public string DiscountType { get; set; } = string.Empty;
@@ -20,5 +22,11 @@ namespace CentralLicenceApp.Models
         public string? Description { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; }
+
+        public bool IsSubscription => string.Equals(BillingModel, "Subscription", StringComparison.OrdinalIgnoreCase);
+
+        public string BillingSummary => IsSubscription && !string.IsNullOrWhiteSpace(BillingFrequency)
+            ? $"{BillingModel} • {BillingFrequency}"
+            : BillingModel;
     }
 }

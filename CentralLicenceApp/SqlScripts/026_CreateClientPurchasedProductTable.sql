@@ -10,6 +10,8 @@ BEGIN
         ProductCode NVARCHAR(50) NOT NULL,
         ProductName NVARCHAR(150) NOT NULL,
         PricingModel NVARCHAR(50) NOT NULL,
+        BillingModel NVARCHAR(20) NOT NULL CONSTRAINT DF_ClientPurchasedProduct_BillingModel DEFAULT ('One Time'),
+        BillingFrequency NVARCHAR(20) NOT NULL CONSTRAINT DF_ClientPurchasedProduct_BillingFrequency DEFAULT (''),
         BasePrice DECIMAL(18,2) NOT NULL,
         AmcCalculationType NVARCHAR(20) NOT NULL,
         AmcPercentage DECIMAL(18,4) NOT NULL,
@@ -95,6 +97,16 @@ BEGIN
     ALTER TABLE dbo.ClientPurchasedProduct ADD PricingModel NVARCHAR(50) NULL;
 END;
 
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ClientPurchasedProduct') AND name = 'BillingModel')
+BEGIN
+    ALTER TABLE dbo.ClientPurchasedProduct ADD BillingModel NVARCHAR(20) NULL;
+END;
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ClientPurchasedProduct') AND name = 'BillingFrequency')
+BEGIN
+    ALTER TABLE dbo.ClientPurchasedProduct ADD BillingFrequency NVARCHAR(20) NULL;
+END;
+
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ClientPurchasedProduct') AND name = 'BasePrice')
 BEGIN
     ALTER TABLE dbo.ClientPurchasedProduct ADD BasePrice DECIMAL(18,2) NULL;
@@ -135,6 +147,8 @@ WHERE NULLIF(LTRIM(RTRIM(cpp.ClientCode)), '''') IS NULL;
 UPDATE dbo.ClientPurchasedProduct SET ProductCode = '''' WHERE ProductCode IS NULL;
 UPDATE dbo.ClientPurchasedProduct SET ProductName = '''' WHERE ProductName IS NULL;
 UPDATE dbo.ClientPurchasedProduct SET PricingModel = '''' WHERE PricingModel IS NULL;
+UPDATE dbo.ClientPurchasedProduct SET BillingModel = ''One Time'' WHERE NULLIF(LTRIM(RTRIM(BillingModel)), '''') IS NULL;
+UPDATE dbo.ClientPurchasedProduct SET BillingFrequency = '''' WHERE BillingFrequency IS NULL;
 UPDATE dbo.ClientPurchasedProduct SET BasePrice = 0 WHERE BasePrice IS NULL;
 UPDATE dbo.ClientPurchasedProduct SET AmcCalculationType = ''Percentage'' WHERE NULLIF(LTRIM(RTRIM(AmcCalculationType)), '''') IS NULL;
 UPDATE dbo.ClientPurchasedProduct SET AmcPercentage = 0 WHERE AmcPercentage IS NULL;
@@ -144,6 +158,8 @@ ALTER TABLE dbo.ClientPurchasedProduct ALTER COLUMN ClientCode VARCHAR(20) NOT N
 ALTER TABLE dbo.ClientPurchasedProduct ALTER COLUMN ProductCode NVARCHAR(50) NOT NULL;
 ALTER TABLE dbo.ClientPurchasedProduct ALTER COLUMN ProductName NVARCHAR(150) NOT NULL;
 ALTER TABLE dbo.ClientPurchasedProduct ALTER COLUMN PricingModel NVARCHAR(50) NOT NULL;
+ALTER TABLE dbo.ClientPurchasedProduct ALTER COLUMN BillingModel NVARCHAR(20) NOT NULL;
+ALTER TABLE dbo.ClientPurchasedProduct ALTER COLUMN BillingFrequency NVARCHAR(20) NOT NULL;
 ALTER TABLE dbo.ClientPurchasedProduct ALTER COLUMN BasePrice DECIMAL(18,2) NOT NULL;
 ALTER TABLE dbo.ClientPurchasedProduct ALTER COLUMN AmcCalculationType NVARCHAR(20) NOT NULL;
 ALTER TABLE dbo.ClientPurchasedProduct ALTER COLUMN AmcPercentage DECIMAL(18,4) NOT NULL;

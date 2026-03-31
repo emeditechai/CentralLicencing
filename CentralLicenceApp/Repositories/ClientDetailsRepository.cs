@@ -92,10 +92,10 @@ namespace CentralLicenceApp.Repositories
             {
                 const string insertPurchasedProductSql = @"
                     INSERT INTO ClientPurchasedProduct
-                        (ClientDetailsId, ClientCode, ProductId, ProductRateId, ProductCode, ProductName, PricingModel, BasePrice,
+                        (ClientDetailsId, ClientCode, ProductId, ProductRateId, ProductCode, ProductName, PricingModel, BillingModel, BillingFrequency, BasePrice,
                          AmcCalculationType, AmcPercentage, AmcAmount, IsActive, CreatedAt)
                     VALUES
-                        (@ClientDetailsId, @ClientCode, @ProductId, @ProductRateId, @ProductCode, @ProductName, @PricingModel, @BasePrice,
+                        (@ClientDetailsId, @ClientCode, @ProductId, @ProductRateId, @ProductCode, @ProductName, @PricingModel, @BillingModel, @BillingFrequency, @BasePrice,
                          @AmcCalculationType, @AmcPercentage, @AmcAmount, @IsActive, GETDATE());";
 
                 foreach (var item in details.PurchasedProducts)
@@ -129,6 +129,8 @@ namespace CentralLicenceApp.Repositories
                     ProductCode,
                     ProductName,
                     PricingModel,
+                    BillingModel,
+                    BillingFrequency,
                     BasePrice,
                     AmcCalculationType,
                     AmcPercentage,
@@ -137,7 +139,7 @@ namespace CentralLicenceApp.Repositories
                     CreatedAt
                 FROM ClientPurchasedProduct
                 WHERE ClientCode = @ClientCode
-                ORDER BY ProductName, PricingModel", new { ClientCode = clientCode });
+                ORDER BY ProductName, PricingModel, BillingModel, BillingFrequency", new { ClientCode = clientCode });
 
             return items.ToList();
         }
