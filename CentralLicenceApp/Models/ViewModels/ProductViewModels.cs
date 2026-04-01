@@ -65,7 +65,7 @@ namespace CentralLicenceApp.Models.ViewModels
 
         [Display(Name = "AMC Type")]
         [StringLength(20)]
-        public string AmcCalculationType { get; set; } = string.Empty;
+        public string? AmcCalculationType { get; set; }
 
         [Display(Name = "AMC Value")]
         public decimal? AmcInputValue { get; set; }

@@ -183,7 +183,7 @@ namespace CentralLicenceApp.Controllers
             var hasAmcType = !string.IsNullOrWhiteSpace(vm.AmcCalculationType);
             var hasAmcValue = vm.AmcInputValue.HasValue;
 
-            if (hasAmcType && !AmcCalculationTypes.Contains(vm.AmcCalculationType.Trim()))
+            if (hasAmcType && !AmcCalculationTypes.Contains(vm.AmcCalculationType!.Trim()))
             {
                 ModelState.AddModelError(nameof(ProductRateFormViewModel.AmcCalculationType), "Please select a valid AMC Type.");
             }

@@ -3,6 +3,20 @@
 @{
     ViewData["Title"] = "Product Details";
     var product = Model.Product;
+    var pricingModelOptions = Model.ProductRates
+        .Select(rate => rate.PricingModel)
+        .Where(value => !string.IsNullOrWhiteSpace(value))
+        .Distinct()
+        .OrderBy(value => value)
+        .ToList();
+    var billingOptions = Model.ProductRates
+        .Select(rate => string.IsNullOrWhiteSpace(rate.BillingFrequency)
+            ? rate.BillingModel
+            : $"{rate.BillingModel} / {rate.BillingFrequency}")
+        .Where(value => !string.IsNullOrWhiteSpace(value))
+        .Distinct()
+        .OrderBy(value => value)
+        .ToList();
 }
 
 <style>
@@ -124,6 +138,105 @@
         box-shadow: var(--pd-shadow);
     }
 
+    .product-details-page .pd-toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(0, .9fr) minmax(0, .9fr) auto;
+        gap: .9rem;
+        padding: 1rem 1.25rem 1.15rem;
+        background: linear-gradient(180deg, rgba(247, 250, 255, 0.96) 0%, rgba(240, 246, 255, 0.92) 100%);
+        border-bottom: 1px solid #e5edf7;
+    }
+
+    .product-details-page .pd-toolbar-stat {
+        display: flex;
+        align-items: center;
+        gap: .9rem;
+        min-width: 0;
+        padding: .95rem 1rem;
+        border: 1px solid rgba(191, 209, 255, 0.9);
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(255,255,255,.98) 0%, rgba(236,243,255,.96) 100%);
+        box-shadow: 0 12px 24px rgba(49, 71, 168, 0.08);
+    }
+
+    .product-details-page .pd-toolbar-stat-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #2746b3;
+        background: linear-gradient(135deg, #e4edff 0%, #d9f1ff 100%);
+        font-size: 1.1rem;
+        flex-shrink: 0;
+    }
+
+    .product-details-page .pd-toolbar-stat-title {
+        color: var(--pd-muted);
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+    }
+
+    .product-details-page .pd-toolbar-stat-value {
+        color: var(--pd-ink);
+        font-size: 1.25rem;
+        font-weight: 800;
+        line-height: 1.1;
+    }
+
+    .product-details-page .pd-toolbar-stat-note {
+        color: var(--pd-muted);
+        font-size: .78rem;
+        margin-top: .1rem;
+    }
+
+    .product-details-page .pd-filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: .32rem;
+        min-width: 0;
+    }
+
+    .product-details-page .pd-filter-label {
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        color: var(--pd-muted);
+        text-transform: uppercase;
+    }
+
+    .product-details-page .pd-filter-control {
+        height: 46px;
+        border-radius: 14px;
+        border: 1px solid #cfdbeb;
+        background: rgba(255,255,255,.96);
+        color: #1e293b;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+    }
+
+    .product-details-page .pd-filter-control:focus {
+        border-color: #8fb0ff;
+        box-shadow: 0 0 0 .2rem rgba(49, 71, 168, .12);
+    }
+
+    .product-details-page .pd-toolbar-actions {
+        display: flex;
+        align-items: end;
+        justify-content: flex-end;
+    }
+
+    .product-details-page .pd-reset-btn {
+        min-width: 128px;
+        height: 46px;
+        border-radius: 14px;
+        border: 1px solid #d8e1ee;
+        background: #fff;
+        color: #334155;
+        font-weight: 700;
+    }
+
     .product-details-page .pd-table-header {
         background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
         border-bottom: 1px solid #e5edf7;
@@ -143,6 +256,233 @@
 
     .product-details-page .pd-table-shell table tbody tr:hover {
         background: #f8fbff;
+    }
+
+    .product-details-page .pd-table-shell table tbody td {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        vertical-align: middle;
+        border-color: #edf2f8;
+    }
+
+    .product-details-page .pd-rate-cell {
+        display: flex;
+        flex-direction: column;
+        gap: .18rem;
+        white-space: nowrap;
+    }
+
+    .product-details-page .pd-rate-main {
+        font-size: .98rem;
+        font-weight: 800;
+        color: #172554;
+    }
+
+    .product-details-page .pd-rate-note {
+        color: var(--pd-muted);
+        font-size: .74rem;
+    }
+
+    .product-details-page .pd-amc-card,
+    .product-details-page .pd-detail-card,
+    .product-details-page .pd-offer-card {
+        border: 1px solid #ebf0f6;
+        border-radius: 16px;
+        padding: .72rem .85rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+    }
+
+    .product-details-page .pd-amc-card {
+        min-width: 150px;
+    }
+
+    .product-details-page .pd-amc-main,
+    .product-details-page .pd-offer-main,
+    .product-details-page .pd-detail-main {
+        font-size: .82rem;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1.4;
+    }
+
+    .product-details-page .pd-amc-note,
+    .product-details-page .pd-offer-note,
+    .product-details-page .pd-detail-note {
+        font-size: .74rem;
+        color: var(--pd-muted);
+        margin-top: .22rem;
+        line-height: 1.4;
+    }
+
+    .product-details-page .pd-detail-text {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: normal;
+    }
+
+    .product-details-page .pd-detail-text.is-expanded {
+        display: block;
+        -webkit-line-clamp: unset;
+        overflow: visible;
+    }
+
+    .product-details-page .pd-expand-btn {
+        margin-top: .35rem;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #3156c9;
+        font-size: .73rem;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .product-details-page .pd-expand-btn:hover {
+        color: #223f96;
+    }
+
+    .product-details-page .pd-billing-stack {
+        display: flex;
+        flex-direction: column;
+        gap: .22rem;
+        min-width: 160px;
+    }
+
+    .product-details-page .pd-billing-main {
+        color: #0f172a;
+        font-size: .84rem;
+        font-weight: 700;
+    }
+
+    .product-details-page .pd-billing-sub {
+        color: var(--pd-muted);
+        font-size: .74rem;
+    }
+
+    .product-details-page .pd-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .44rem .72rem;
+        border-radius: 999px;
+        font-size: .74rem;
+        font-weight: 800;
+        letter-spacing: .01em;
+        border: 1px solid transparent;
+    }
+
+    .product-details-page .pd-status-pill.is-active {
+        color: #166534;
+        background: #eafbf0;
+        border-color: #cdeed8;
+    }
+
+    .product-details-page .pd-status-pill.is-inactive {
+        color: #475569;
+        background: #f1f5f9;
+        border-color: #dbe3ec;
+    }
+
+    .product-details-page .pd-table-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.25rem 1.15rem;
+        border-top: 1px solid #e5edf7;
+        background: linear-gradient(180deg, #fcfdff 0%, #f6f9ff 100%);
+    }
+
+    .product-details-page .pd-pagination-meta {
+        color: var(--pd-muted);
+        font-size: .82rem;
+    }
+
+    .product-details-page .pd-pagination-controls {
+        display: flex;
+        align-items: center;
+        gap: .55rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .product-details-page .pd-page-btn {
+        min-width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        border: 1px solid #d7e1ef;
+        background: #fff;
+        color: #334155;
+        font-weight: 700;
+        transition: all .18s ease;
+    }
+
+    .product-details-page .pd-page-btn:hover:not(:disabled) {
+        border-color: #9fb9ff;
+        color: #2746b3;
+        background: #f8fbff;
+    }
+
+    .product-details-page .pd-page-btn.active {
+        border-color: #3147a8;
+        background: linear-gradient(135deg, #3147a8 0%, #22357f 100%);
+        color: #fff;
+        box-shadow: 0 10px 18px rgba(49, 71, 168, 0.18);
+    }
+
+    .product-details-page .pd-page-btn:disabled {
+        opacity: .55;
+        cursor: not-allowed;
+        box-shadow: none;
+    }
+
+    .product-details-page .pd-action-btn {
+        height: 38px;
+        min-width: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 .8rem;
+        border-radius: 10px;
+        font-size: .82rem;
+        line-height: 1;
+    }
+
+    .product-details-page .pd-action-btn.icon-only {
+        padding: 0;
+        width: 38px;
+    }
+
+    .product-details-page .pd-action-btn i {
+        font-size: .9rem;
+        line-height: 1;
+    }
+
+    .product-details-page .pd-action-bar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: .4rem;
+        min-width: 156px;
+        margin-left: auto;
+    }
+
+    .product-details-page .pd-empty-filter {
+        display: none;
+    }
+
+    .product-details-page .pd-empty-state {
+        padding: 2.4rem 1rem;
+        text-align: center;
+        color: var(--pd-muted);
+    }
+
+    .product-details-page .pd-empty-state i {
+        font-size: 2rem;
+        color: #9db0c7;
     }
 
     .product-details-page .pd-pricing-pill {
@@ -177,6 +517,27 @@
     @@media (max-width: 768px) {
         .product-details-page .pd-hero {
             max-width: 100%;
+        }
+
+        .product-details-page .pd-toolbar {
+            grid-template-columns: 1fr;
+        }
+
+        .product-details-page .pd-toolbar-actions {
+            justify-content: stretch;
+        }
+
+        .product-details-page .pd-reset-btn {
+            width: 100%;
+        }
+
+        .product-details-page .pd-table-footer {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .product-details-page .pd-pagination-controls {
+            justify-content: center;
         }
 
         .product-details-page .pd-card-value {
@@ -294,6 +655,46 @@
         </div>
         <a asp-controller="ProductRate" asp-action="Index" asp-route-productId="@product.Id" class="btn btn-sm btn-outline-primary" style="border-radius:10px;border-color:#bfd1ff;color:#2f5bea;"><i class="bi bi-tags me-1"></i>Open Rate List</a>
     </div>
+    @if (Model.ProductRates.Any())
+    {
+        <div class="pd-toolbar">
+            <div class="pd-toolbar-stat">
+                <div class="pd-toolbar-stat-icon">
+                    <i class="bi bi-sliders2"></i>
+                </div>
+                <div>
+                    <div class="pd-toolbar-stat-title">Visible Records</div>
+                    <div class="pd-toolbar-stat-value"><span id="pdVisibleCount">@Model.ProductRates.Count</span> / @Model.ProductRates.Count</div>
+                    <div class="pd-toolbar-stat-note">Client-side filter and pagination for mapped rates</div>
+                </div>
+            </div>
+            <div class="pd-filter-group">
+                <label class="pd-filter-label" for="pdPricingModelFilter">Pricing Model</label>
+                <select id="pdPricingModelFilter" class="form-select pd-filter-control">
+                    <option value="">All pricing models</option>
+                    @foreach (var option in pricingModelOptions)
+                    {
+                        <option value="@option">@option</option>
+                    }
+                </select>
+            </div>
+            <div class="pd-filter-group">
+                <label class="pd-filter-label" for="pdBillingFilter">Model / Frequency</label>
+                <select id="pdBillingFilter" class="form-select pd-filter-control">
+                    <option value="">All models / frequency</option>
+                    @foreach (var option in billingOptions)
+                    {
+                        <option value="@option">@option</option>
+                    }
+                </select>
+            </div>
+            <div class="pd-toolbar-actions">
+                <button type="button" class="btn pd-reset-btn" id="pdResetFilters">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filters
+                </button>
+            </div>
+        </div>
+    }
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table tbl-clean mb-0">
@@ -322,58 +723,244 @@
                         foreach (var item in Model.ProductRates)
                         {
                             var pricingModelTheme = PricingModelBadgeThemeHelper.Resolve(item.PricingModel);
-                            <tr>
+                            var billingSummary = string.IsNullOrWhiteSpace(item.BillingFrequency)
+                                ? item.BillingModel
+                                : $"{item.BillingModel} / {item.BillingFrequency}";
+                            <tr class="pd-rate-row"
+                                data-pricing-model="@item.PricingModel"
+                                data-billing-summary="@billingSummary">
                                 <td class="ps-3" style="min-width:150px;">
                                     <span class="pd-pricing-pill"
                                           style="background:@pricingModelTheme.BackgroundColor;color:@pricingModelTheme.TextColor;border:1px solid @pricingModelTheme.BorderColor;">
                                         @item.PricingModel
                                     </span>
                                 </td>
-                                <td style="font-size:.8rem;white-space:nowrap;min-width:150px;">
-                                    <div class="fw-semibold">@item.BillingModel</div>
-                                    <div class="pd-secondary-block">@(string.IsNullOrWhiteSpace(item.BillingFrequency) ? "-" : item.BillingFrequency)</div>
+                                <td style="min-width:170px;">
+                                    <div class="pd-billing-stack">
+                                        <div class="pd-billing-main">@item.BillingModel</div>
+                                        <div class="pd-billing-sub">@(string.IsNullOrWhiteSpace(item.BillingFrequency) ? "-" : item.BillingFrequency)</div>
+                                    </div>
                                 </td>
-                                <td style="font-size:.82rem;font-weight:700;white-space:nowrap;">₹@item.Rate.ToString("0.00")</td>
-                                <td style="font-size:.8rem;white-space:nowrap;min-width:140px;">
+                                <td>
+                                    <div class="pd-rate-cell">
+                                        <div class="pd-rate-main">₹@item.Rate.ToString("0.00")</div>
+                                        <div class="pd-rate-note">Base price for this mapped plan</div>
+                                    </div>
+                                </td>
+                                <td>
                                     @if (string.IsNullOrWhiteSpace(item.AmcCalculationType))
                                     {
-                                        <div class="fw-semibold">-</div>
-                                        <div class="pd-secondary-block">No AMC</div>
+                                        <div class="pd-amc-card">
+                                            <div class="pd-amc-main">-</div>
+                                            <div class="pd-amc-note">No AMC configured</div>
+                                        </div>
                                     }
                                     else
                                     {
-                                        <div class="fw-semibold">₹@item.AmcAmount.ToString("0.00")</div>
-                                        <div class="pd-secondary-block">@item.AmcPercentage.ToString("0.####")% • @item.AmcCalculationType</div>
+                                        <div class="pd-amc-card">
+                                            <div class="pd-amc-main">₹@item.AmcAmount.ToString("0.00")</div>
+                                            <div class="pd-amc-note">@item.AmcPercentage.ToString("0.####")% • @item.AmcCalculationType</div>
+                                        </div>
                                     }
                                 </td>
-                                <td style="font-size:.79rem;max-width:220px;white-space:normal;word-break:break-word;line-height:1.45;">@(string.IsNullOrWhiteSpace(item.ProductSpecification) ? "-" : item.ProductSpecification)</td>
-                                <td style="font-size:.79rem;max-width:260px;white-space:normal;word-break:break-word;line-height:1.45;">@(string.IsNullOrWhiteSpace(item.Features) ? "-" : item.Features)</td>
-                                <td style="font-size:.79rem;white-space:nowrap;">
-                                    <div class="fw-semibold">@item.DiscountOfferCount offer@(item.DiscountOfferCount == 1 ? string.Empty : "s")</div>
-                                    <div class="pd-secondary-block">@item.ActiveDiscountOfferCount active</div>
+                                <td style="max-width:220px;">
+                                    <div class="pd-detail-card">
+                                        <div class="pd-detail-main pd-detail-text" data-expanded="false">@(string.IsNullOrWhiteSpace(item.ProductSpecification) ? "Not provided" : item.ProductSpecification)</div>
+                                        @if (!string.IsNullOrWhiteSpace(item.ProductSpecification))
+                                        {
+                                            <button type="button" class="pd-expand-btn" data-expand-text="true">See more</button>
+                                        }
+                                        <div class="pd-detail-note">Specification</div>
+                                    </div>
+                                </td>
+                                <td style="max-width:260px;">
+                                    <div class="pd-detail-card">
+                                        <div class="pd-detail-main pd-detail-text" data-expanded="false">@(string.IsNullOrWhiteSpace(item.Features) ? "Not provided" : item.Features)</div>
+                                        @if (!string.IsNullOrWhiteSpace(item.Features))
+                                        {
+                                            <button type="button" class="pd-expand-btn" data-expand-text="true">See more</button>
+                                        }
+                                        <div class="pd-detail-note">Feature summary</div>
+                                    </div>
+                                </td>
+                                <td style="white-space:nowrap;">
+                                    <div class="pd-offer-card">
+                                        <div class="pd-offer-main">@item.DiscountOfferCount offer@(item.DiscountOfferCount == 1 ? string.Empty : "s")</div>
+                                        <div class="pd-offer-note">@item.ActiveDiscountOfferCount active right now</div>
+                                    </div>
                                 </td>
                                 <td>
                                     @if (item.IsActive)
                                     {
-                                        <span class="badge badge-ok rounded-pill px-2 py-1" style="font-size:.73rem;">Active</span>
+                                        <span class="pd-status-pill is-active"><i class="bi bi-check-circle-fill"></i>Active</span>
                                     }
                                     else
                                     {
-                                        <span class="badge badge-neu rounded-pill px-2 py-1" style="font-size:.73rem;">Inactive</span>
+                                        <span class="pd-status-pill is-inactive"><i class="bi bi-pause-circle-fill"></i>Inactive</span>
                                     }
                                 </td>
                                 <td class="pe-3">
-                                    <div class="d-flex gap-1 flex-wrap justify-content-end">
-                                        <a asp-controller="ProductRateDiscount" asp-action="Index" asp-route-productRateId="@item.Id" class="btn btn-sm btn-outline-primary" style="border-radius:7px;"><i class="bi bi-percent me-1"></i>Discounts</a>
-                                        <a asp-controller="ProductRate" asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
+                                    <div class="pd-action-bar">
+                                        <a asp-controller="ProductRateDiscount" asp-action="Index" asp-route-productRateId="@item.Id" class="btn btn-sm btn-outline-primary pd-action-btn" style="border-radius:10px;"><i class="bi bi-percent me-1"></i>Discounts</a>
+                                        <a asp-controller="ProductRate" asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary pd-action-btn icon-only" style="border-radius:10px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
                                     </div>
                                 </td>
                             </tr>
                         }
+                        <tr id="pdNoFilterResultsRow" class="pd-empty-filter">
+                            <td colspan="9">
+                                <div class="pd-empty-state">
+                                    <i class="bi bi-funnel"></i>
+                                    <div class="fw-bold mt-2" style="color:#1e293b;">No matching pricing models</div>
+                                    <div class="mt-1">Try a different Pricing Model or Model / Frequency filter.</div>
+                                </div>
+                            </td>
+                        </tr>
                     }
                 </tbody>
             </table>
         </div>
     </div>
+    @if (Model.ProductRates.Any())
+    {
+        <div class="pd-table-footer">
+            <div class="pd-pagination-meta" id="pdPaginationMeta">Showing 1 to @Math.Min(Model.ProductRates.Count, 5) of @Model.ProductRates.Count records</div>
+            <div class="pd-pagination-controls">
+                <button type="button" class="pd-page-btn" id="pdPrevPage" aria-label="Previous page">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <div id="pdPageNumbers" class="d-flex gap-2 flex-wrap"></div>
+                <button type="button" class="pd-page-btn" id="pdNextPage" aria-label="Next page">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    }
 </div>
 </div>
+
+@if (Model.ProductRates.Any())
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const pricingFilter = document.getElementById('pdPricingModelFilter');
+            const billingFilter = document.getElementById('pdBillingFilter');
+            const resetButton = document.getElementById('pdResetFilters');
+            const rows = Array.from(document.querySelectorAll('.pd-rate-row'));
+            const visibleCount = document.getElementById('pdVisibleCount');
+            const emptyRow = document.getElementById('pdNoFilterResultsRow');
+            const pageNumbers = document.getElementById('pdPageNumbers');
+            const prevButton = document.getElementById('pdPrevPage');
+            const nextButton = document.getElementById('pdNextPage');
+            const paginationMeta = document.getElementById('pdPaginationMeta');
+
+            if (!rows.length) {
+                return;
+            }
+
+            const pageSize = 5;
+            let currentPage = 1;
+
+            function getFilteredRows() {
+                const pricingValue = (pricingFilter.value || '').trim().toLowerCase();
+                const billingValue = (billingFilter.value || '').trim().toLowerCase();
+
+                return rows.filter(function (row) {
+                    const rowPricing = (row.dataset.pricingModel || '').trim().toLowerCase();
+                    const rowBilling = (row.dataset.billingSummary || '').trim().toLowerCase();
+                    const matchesPricing = !pricingValue || rowPricing === pricingValue;
+                    const matchesBilling = !billingValue || rowBilling === billingValue;
+                    return matchesPricing && matchesBilling;
+                });
+            }
+
+            function renderPagination(filteredRows) {
+                const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+                currentPage = Math.min(currentPage, totalPages);
+                pageNumbers.innerHTML = '';
+
+                for (let page = 1; page <= totalPages; page++) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'pd-page-btn' + (page === currentPage ? ' active' : '');
+                    button.textContent = page;
+                    button.addEventListener('click', function () {
+                        currentPage = page;
+                        updateTable();
+                    });
+                    pageNumbers.appendChild(button);
+                }
+
+                prevButton.disabled = currentPage <= 1 || !filteredRows.length;
+                nextButton.disabled = currentPage >= totalPages || !filteredRows.length;
+            }
+
+            function updateTable() {
+                const filteredRows = getFilteredRows();
+                const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+                const startIndex = (currentPage - 1) * pageSize;
+                const endIndex = startIndex + pageSize;
+                const pagedRows = filteredRows.slice(startIndex, endIndex);
+
+                rows.forEach(function (row) {
+                    row.style.display = pagedRows.includes(row) ? '' : 'none';
+                });
+
+                visibleCount.textContent = filteredRows.length.toString();
+                emptyRow.style.display = filteredRows.length ? 'none' : '';
+
+                if (!filteredRows.length) {
+                    paginationMeta.textContent = 'Showing 0 of 0 records';
+                } else {
+                    paginationMeta.textContent = 'Showing ' + (startIndex + 1) + ' to ' + Math.min(endIndex, filteredRows.length) + ' of ' + filteredRows.length + ' records';
+                }
+
+                renderPagination(filteredRows);
+            }
+
+            pricingFilter.addEventListener('change', function () {
+                currentPage = 1;
+                updateTable();
+            });
+
+            billingFilter.addEventListener('change', function () {
+                currentPage = 1;
+                updateTable();
+            });
+
+            resetButton.addEventListener('click', function () {
+                pricingFilter.value = '';
+                billingFilter.value = '';
+                currentPage = 1;
+                updateTable();
+            });
+
+            prevButton.addEventListener('click', function () {
+                if (currentPage > 1) {
+                    currentPage -= 1;
+                    updateTable();
+                }
+            });
+
+            nextButton.addEventListener('click', function () {
+                const filteredRows = getFilteredRows();
+                const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+                if (currentPage < totalPages) {
+                    currentPage += 1;
+                    updateTable();
+                }
+            });
+
+            document.querySelectorAll('[data-expand-text="true"]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    const textBlock = button.parentElement.querySelector('.pd-detail-text');
+                    const isExpanded = textBlock.classList.toggle('is-expanded');
+                    textBlock.dataset.expanded = isExpanded ? 'true' : 'false';
+                    button.textContent = isExpanded ? 'See less' : 'See more';
+                });
+            });
+
+            updateTable();
+        });
+    </script>
+}

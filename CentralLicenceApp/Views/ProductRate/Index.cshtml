@@ -5,7 +5,402 @@
     var activeRates = Model.Items.Count(x => x.IsActive);
     var discountMappedRates = Model.Items.Count(x => x.DiscountOfferCount > 0);
     var averageRate = Model.Items.Any() ? Model.Items.Average(x => x.Rate) : 0;
+    var pricingModelOptions = Model.Items
+        .Select(item => item.PricingModel)
+        .Where(value => !string.IsNullOrWhiteSpace(value))
+        .Distinct()
+        .OrderBy(value => value)
+        .ToList();
+    var billingOptions = Model.Items
+        .Select(item => string.IsNullOrWhiteSpace(item.BillingFrequency)
+            ? item.BillingModel
+            : $"{item.BillingModel} / {item.BillingFrequency}")
+        .Where(value => !string.IsNullOrWhiteSpace(value))
+        .Distinct()
+        .OrderBy(value => value)
+        .ToList();
 }
+
+<style>
+    .rate-shell {
+        --rl-ink: #1e293b;
+        --rl-muted: #64748b;
+        --rl-border: #dbe4f0;
+        --rl-surface: #ffffff;
+        --rl-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+        --rl-shadow-soft: 0 12px 28px rgba(15, 23, 42, 0.06);
+        --rl-indigo: #2f3f9f;
+        --rl-cyan: #0f7ea8;
+        --rl-emerald: #0f9f74;
+    }
+
+    .rate-shell .rl-filter-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr) minmax(0, .85fr) auto;
+        gap: .9rem;
+        padding: 1rem 1.15rem 1.15rem;
+        border-top: 1px solid #e8eef6;
+        background: linear-gradient(180deg, rgba(251, 253, 255, 1) 0%, rgba(243, 247, 255, .95) 100%);
+    }
+
+    .rate-shell .rl-filter-stat {
+        display: flex;
+        align-items: center;
+        gap: .85rem;
+        min-width: 0;
+        padding: .9rem 1rem;
+        border-radius: 18px;
+        border: 1px solid rgba(191, 209, 255, 0.9);
+        background: linear-gradient(135deg, #ffffff 0%, #eef4ff 100%);
+        box-shadow: 0 12px 24px rgba(49, 71, 168, 0.08);
+    }
+
+    .rate-shell .rl-filter-stat-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.05rem;
+        color: #2746b3;
+        background: linear-gradient(135deg, #e3ebff 0%, #daf1ff 100%);
+        flex-shrink: 0;
+    }
+
+    .rate-shell .rl-filter-stat-label {
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        color: var(--rl-muted);
+        text-transform: uppercase;
+    }
+
+    .rate-shell .rl-filter-stat-value {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--rl-ink);
+        line-height: 1.1;
+    }
+
+    .rate-shell .rl-filter-stat-note {
+        margin-top: .12rem;
+        color: var(--rl-muted);
+        font-size: .78rem;
+    }
+
+    .rate-shell .rl-filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: .3rem;
+        min-width: 0;
+    }
+
+    .rate-shell .rl-filter-label {
+        font-size: .72rem;
+        font-weight: 800;
+        letter-spacing: .08em;
+        color: var(--rl-muted);
+        text-transform: uppercase;
+    }
+
+    .rate-shell .rl-filter-control {
+        height: 46px;
+        border-radius: 14px;
+        border: 1px solid #cfdbeb;
+        background: #fff;
+        color: var(--rl-ink);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.75);
+    }
+
+    .rate-shell .rl-filter-control:focus {
+        border-color: #8fb0ff;
+        box-shadow: 0 0 0 .2rem rgba(49, 71, 168, .12);
+    }
+
+    .rate-shell .rl-filter-actions {
+        display: flex;
+        align-items: end;
+        justify-content: flex-end;
+    }
+
+    .rate-shell .rl-reset-btn {
+        min-width: 128px;
+        height: 46px;
+        border-radius: 14px;
+        border: 1px solid #d8e1ee;
+        background: #fff;
+        color: #334155;
+        font-weight: 700;
+    }
+
+    .rate-shell .rl-table-shell {
+        border-radius: 22px;
+        overflow: hidden;
+        box-shadow: var(--rl-shadow);
+        background: var(--rl-surface);
+        border: 1px solid rgba(219, 228, 240, 0.9);
+    }
+
+    .rate-shell .rl-table-shell table thead th {
+        background: #fbfdff;
+        color: #6b7280;
+        font-size: .74rem;
+        font-weight: 800;
+        letter-spacing: .05em;
+        border-color: #edf2f8;
+    }
+
+    .rate-shell .rl-table-shell table tbody td {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        border-color: #edf2f8;
+        vertical-align: middle;
+    }
+
+    .rate-shell .rl-table-shell table tbody tr {
+        transition: background-color .18s ease;
+    }
+
+    .rate-shell .rl-table-shell table tbody tr:hover {
+        background: #f8fbff;
+    }
+
+    .rate-shell .rl-product-block {
+        display: flex;
+        flex-direction: column;
+        gap: .2rem;
+    }
+
+    .rate-shell .rl-product-title {
+        font-size: .88rem;
+        font-weight: 700;
+        color: var(--rl-ink);
+    }
+
+    .rate-shell .rl-product-code {
+        font-size: .75rem;
+        color: #6366f1;
+    }
+
+    .rate-shell .rl-pricing-stack,
+    .rate-shell .rl-billing-stack,
+    .rate-shell .rl-rate-stack {
+        display: flex;
+        flex-direction: column;
+        gap: .28rem;
+    }
+
+    .rate-shell .rl-rate-main {
+        font-size: .98rem;
+        font-weight: 800;
+        color: #1d4ed8;
+        white-space: nowrap;
+    }
+
+    .rate-shell .rl-rate-note,
+    .rate-shell .rl-billing-note {
+        font-size: .74rem;
+        color: var(--rl-muted);
+    }
+
+    .rate-shell .rl-card {
+        border: 1px solid #ebf0f6;
+        border-radius: 16px;
+        padding: .72rem .84rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+        min-width: 0;
+    }
+
+    .rate-shell .rl-card-main {
+        font-size: .81rem;
+        font-weight: 700;
+        color: var(--rl-ink);
+        line-height: 1.4;
+        word-break: break-word;
+    }
+
+    .rate-shell .rl-card-note {
+        margin-top: .2rem;
+        font-size: .74rem;
+        color: var(--rl-muted);
+        line-height: 1.4;
+    }
+
+    .rate-shell .rl-detail-text {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: normal;
+    }
+
+    .rate-shell .rl-detail-text.is-expanded {
+        display: block;
+        -webkit-line-clamp: unset;
+        overflow: visible;
+    }
+
+    .rate-shell .rl-expand-btn {
+        margin-top: .35rem;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #3156c9;
+        font-size: .73rem;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .rate-shell .rl-expand-btn:hover {
+        color: #223f96;
+    }
+
+    .rate-shell .rl-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .44rem .72rem;
+        border-radius: 999px;
+        font-size: .74rem;
+        font-weight: 800;
+        border: 1px solid transparent;
+    }
+
+    .rate-shell .rl-status-pill.is-active {
+        background: #dcfce7;
+        color: #166534;
+        border-color: #bbf7d0;
+    }
+
+    .rate-shell .rl-status-pill.is-inactive {
+        background: #e2e8f0;
+        color: #475569;
+        border-color: #cbd5e1;
+    }
+
+    .rate-shell .rl-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.15rem 1.15rem;
+        border-top: 1px solid #e5edf7;
+        background: linear-gradient(180deg, #fcfdff 0%, #f6f9ff 100%);
+    }
+
+    .rate-shell .rl-pagination-meta {
+        color: var(--rl-muted);
+        font-size: .82rem;
+    }
+
+    .rate-shell .rl-pagination-controls {
+        display: flex;
+        align-items: center;
+        gap: .55rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .rate-shell .rl-page-btn {
+        min-width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        border: 1px solid #d7e1ef;
+        background: #fff;
+        color: #334155;
+        font-weight: 700;
+        transition: all .18s ease;
+    }
+
+    .rate-shell .rl-page-btn:hover:not(:disabled) {
+        border-color: #9fb9ff;
+        color: #2746b3;
+        background: #f8fbff;
+    }
+
+    .rate-shell .rl-page-btn.active {
+        border-color: #3147a8;
+        background: linear-gradient(135deg, #3147a8 0%, #22357f 100%);
+        color: #fff;
+        box-shadow: 0 10px 18px rgba(49, 71, 168, 0.18);
+    }
+
+    .rate-shell .rl-page-btn:disabled {
+        opacity: .55;
+        cursor: not-allowed;
+    }
+
+    .rate-shell .rl-action-btn {
+        height: 38px;
+        min-width: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 .8rem;
+        border-radius: 10px;
+        font-size: .82rem;
+        line-height: 1;
+    }
+
+    .rate-shell .rl-action-btn.icon-only {
+        padding: 0;
+        width: 38px;
+    }
+
+    .rate-shell .rl-action-btn i {
+        font-size: .9rem;
+        line-height: 1;
+    }
+
+    .rate-shell .rl-action-bar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: .4rem;
+        min-width: 202px;
+        margin-left: auto;
+    }
+
+    .rate-shell .rl-empty-filter {
+        display: none;
+    }
+
+    .rate-shell .rl-empty-state {
+        padding: 2.4rem 1rem;
+        text-align: center;
+        color: var(--rl-muted);
+    }
+
+    .rate-shell .rl-empty-state i {
+        font-size: 2rem;
+        color: #9db0c7;
+    }
+
+    @@media (max-width: 768px) {
+        .rate-shell .rl-filter-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .rate-shell .rl-filter-actions {
+            justify-content: stretch;
+        }
+
+        .rate-shell .rl-reset-btn {
+            width: 100%;
+        }
+
+        .rate-shell .rl-pagination {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .rate-shell .rl-pagination-controls {
+            justify-content: center;
+        }
+    }
+</style>
 
 <div class="rate-shell">
     <div class="hero-panel mb-4">
@@ -84,7 +479,47 @@
     </div>
 }
 
-<div class="soft-card">
+<div class="soft-card rl-table-shell">
+    @if (Model.Items.Any())
+    {
+        <div class="rl-filter-grid">
+            <div class="rl-filter-stat">
+                <div class="rl-filter-stat-icon">
+                    <i class="bi bi-layout-text-window-reverse"></i>
+                </div>
+                <div>
+                    <div class="rl-filter-stat-label">Visible Records</div>
+                    <div class="rl-filter-stat-value"><span id="rlVisibleCount">@Model.Items.Count</span> / @Model.Items.Count</div>
+                    <div class="rl-filter-stat-note">Client-side filter and paging for the current result set</div>
+                </div>
+            </div>
+            <div class="rl-filter-group">
+                <label class="rl-filter-label" for="rlPricingModelFilter">Pricing Model</label>
+                <select id="rlPricingModelFilter" class="form-select rl-filter-control">
+                    <option value="">All pricing models</option>
+                    @foreach (var option in pricingModelOptions)
+                    {
+                        <option value="@option">@option</option>
+                    }
+                </select>
+            </div>
+            <div class="rl-filter-group">
+                <label class="rl-filter-label" for="rlBillingFilter">Model / Frequency</label>
+                <select id="rlBillingFilter" class="form-select rl-filter-control">
+                    <option value="">All models / frequency</option>
+                    @foreach (var option in billingOptions)
+                    {
+                        <option value="@option">@option</option>
+                    }
+                </select>
+            </div>
+            <div class="rl-filter-actions">
+                <button type="button" class="btn rl-reset-btn" id="rlResetFilters">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filters
+                </button>
+            </div>
+        </div>
+    }
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table tbl-clean mb-0">
@@ -114,54 +549,90 @@
                         foreach (var item in Model.Items)
                         {
                             var pricingModelTheme = PricingModelBadgeThemeHelper.Resolve(item.PricingModel);
-                            <tr>
+                            var billingSummary = string.IsNullOrWhiteSpace(item.BillingFrequency)
+                                ? item.BillingModel
+                                : $"{item.BillingModel} / {item.BillingFrequency}";
+                            <tr class="rl-rate-row"
+                                data-pricing-model="@item.PricingModel"
+                                data-billing-summary="@billingSummary">
                                 <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@item.Id</td>
                                 <td style="min-width:180px;">
-                                    <div class="fw-semibold" style="font-size:.86rem;">@item.ProductName</div>
-                                    <div style="font-size:.75rem;color:#6366f1;">@item.ProductCode • @item.ProductType</div>
-                                </td>
-                                <td style="font-size:.82rem;min-width:150px;">
-                                    <span class="badge rounded-pill px-2 py-1"
-                                          style="background:@pricingModelTheme.BackgroundColor;color:@pricingModelTheme.TextColor;border:1px solid @pricingModelTheme.BorderColor;">
-                                        @item.PricingModel
-                                    </span>
-                                    <div class="mt-2">
-                                        <span class="info-chip" style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;">@item.DiscountOfferCount offer(s)</span>
+                                    <div class="rl-product-block">
+                                        <div class="rl-product-title">@item.ProductName</div>
+                                        <div class="rl-product-code">@item.ProductCode • @item.ProductType</div>
                                     </div>
                                 </td>
-                                <td style="font-size:.8rem;white-space:nowrap;min-width:150px;">
-                                    <div class="fw-semibold" style="color:#1e293b;">@item.BillingModel</div>
-                                    <div class="text-muted">@(string.IsNullOrWhiteSpace(item.BillingFrequency) ? "-" : item.BillingFrequency)</div>
+                                <td style="min-width:150px;">
+                                    <div class="rl-pricing-stack">
+                                        <span class="badge rounded-pill px-2 py-1 align-self-start"
+                                              style="background:@pricingModelTheme.BackgroundColor;color:@pricingModelTheme.TextColor;border:1px solid @pricingModelTheme.BorderColor;">
+                                            @item.PricingModel
+                                        </span>
+                                        <span class="info-chip align-self-start" style="background:#f8fafc;color:#475569;border:1px solid #e2e8f0;">@item.DiscountOfferCount offer(s)</span>
+                                    </div>
                                 </td>
-                                <td style="font-size:.8rem;max-width:220px;white-space:normal;word-break:break-word;">@(string.IsNullOrWhiteSpace(item.ProductSpecification) ? "-" : item.ProductSpecification)</td>
-                                <td style="font-size:.8rem;max-width:260px;white-space:normal;word-break:break-word;">@(string.IsNullOrWhiteSpace(item.Features) ? "-" : item.Features)</td>
-                                <td style="font-size:.82rem;font-weight:700;white-space:nowrap;color:#1d4ed8;">₹@item.Rate.ToString("0.00")</td>
-                                <td style="font-size:.8rem;white-space:nowrap;min-width:140px;">
+                                <td style="min-width:160px;">
+                                    <div class="rl-billing-stack">
+                                        <div class="fw-semibold" style="color:#1e293b;">@item.BillingModel</div>
+                                        <div class="rl-billing-note">@(string.IsNullOrWhiteSpace(item.BillingFrequency) ? "-" : item.BillingFrequency)</div>
+                                    </div>
+                                </td>
+                                <td style="max-width:220px;">
+                                    <div class="rl-card">
+                                        <div class="rl-card-main rl-detail-text" data-expanded="false">@(string.IsNullOrWhiteSpace(item.ProductSpecification) ? "Not provided" : item.ProductSpecification)</div>
+                                        @if (!string.IsNullOrWhiteSpace(item.ProductSpecification))
+                                        {
+                                            <button type="button" class="rl-expand-btn" data-expand-text="true">See more</button>
+                                        }
+                                        <div class="rl-card-note">Specification</div>
+                                    </div>
+                                </td>
+                                <td style="max-width:260px;">
+                                    <div class="rl-card">
+                                        <div class="rl-card-main rl-detail-text" data-expanded="false">@(string.IsNullOrWhiteSpace(item.Features) ? "Not provided" : item.Features)</div>
+                                        @if (!string.IsNullOrWhiteSpace(item.Features))
+                                        {
+                                            <button type="button" class="rl-expand-btn" data-expand-text="true">See more</button>
+                                        }
+                                        <div class="rl-card-note">Feature summary</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="rl-rate-stack">
+                                        <div class="rl-rate-main">₹@item.Rate.ToString("0.00")</div>
+                                        <div class="rl-rate-note">Configured price</div>
+                                    </div>
+                                </td>
+                                <td style="min-width:150px;">
                                     @if (string.IsNullOrWhiteSpace(item.AmcCalculationType))
                                     {
-                                        <div class="fw-semibold" style="color:#64748b;">-</div>
-                                        <div class="text-muted">No AMC</div>
+                                        <div class="rl-card">
+                                            <div class="rl-card-main">-</div>
+                                            <div class="rl-card-note">No AMC configured</div>
+                                        </div>
                                     }
                                     else
                                     {
-                                        <div class="fw-semibold" style="color:#0f766e;">₹@item.AmcAmount.ToString("0.00")</div>
-                                        <div class="text-muted">@item.AmcPercentage.ToString("0.####")% • @item.AmcCalculationType</div>
+                                        <div class="rl-card">
+                                            <div class="rl-card-main" style="color:#0f766e;">₹@item.AmcAmount.ToString("0.00")</div>
+                                            <div class="rl-card-note">@item.AmcPercentage.ToString("0.####")% • @item.AmcCalculationType</div>
+                                        </div>
                                     }
                                 </td>
                                 <td>
                                     @if (item.IsActive)
                                     {
-                                        <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;">Active</span>
+                                        <span class="rl-status-pill is-active"><i class="bi bi-check-circle-fill"></i>Active</span>
                                     }
                                     else
                                     {
-                                        <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:#e2e8f0;color:#475569;border:1px solid #cbd5e1;">Inactive</span>
+                                        <span class="rl-status-pill is-inactive"><i class="bi bi-pause-circle-fill"></i>Inactive</span>
                                     }
                                 </td>
                                 <td class="pe-3">
-                                    <div class="d-flex gap-1 flex-wrap justify-content-end">
-                                        <a asp-controller="ProductRateDiscount" asp-action="Index" asp-route-productRateId="@item.Id" class="btn btn-sm" style="border-radius:9px;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;"><i class="bi bi-percent me-1"></i>Discounts</a>
-                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm" style="border-radius:9px;background:#f8fafc;color:#475569;border:1px solid #dbe4f0;"><i class="bi bi-pencil"></i></a>
+                                    <div class="rl-action-bar">
+                                                                                <a asp-controller="ProductRateDiscount" asp-action="Index" asp-route-productRateId="@item.Id" class="btn btn-sm rl-action-btn" style="border-radius:10px;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;"><i class="bi bi-percent me-1"></i>Discounts</a>
+                                                                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm rl-action-btn icon-only" style="border-radius:10px;background:#f8fafc;color:#475569;border:1px solid #dbe4f0;"><i class="bi bi-pencil"></i></a>
                                         <form asp-action="Delete" method="post"
                                               data-swal-confirm="true"
                                               data-swal-title="Delete Product Rate?"
@@ -170,16 +641,166 @@
                                             @Html.AntiForgeryToken()
                                             <input type="hidden" name="id" value="@item.Id" />
                                             <input type="hidden" name="productId" value="@item.ProductId" />
-                                            <button type="submit" class="btn btn-sm" style="border-radius:9px;background:#fff1f2;color:#dc2626;border:1px solid #fecdd3;"><i class="bi bi-trash"></i></button>
+                                                                                        <button type="submit" class="btn btn-sm rl-action-btn icon-only" style="border-radius:10px;background:#fff1f2;color:#dc2626;border:1px solid #fecdd3;"><i class="bi bi-trash"></i></button>
                                         </form>
                                     </div>
                                 </td>
                             </tr>
                         }
+                        <tr id="rlNoFilterResultsRow" class="rl-empty-filter">
+                            <td colspan="10">
+                                <div class="rl-empty-state">
+                                    <i class="bi bi-funnel"></i>
+                                    <div class="fw-bold mt-2" style="color:#1e293b;">No matching product rates</div>
+                                    <div class="mt-1">Change the Pricing Model or Model / Frequency filters to see more records.</div>
+                                </div>
+                            </td>
+                        </tr>
                     }
                 </tbody>
             </table>
         </div>
     </div>
+    @if (Model.Items.Any())
+    {
+        <div class="rl-pagination">
+            <div class="rl-pagination-meta" id="rlPaginationMeta">Showing 1 to @Math.Min(Model.Items.Count, 10) of @Model.Items.Count records</div>
+            <div class="rl-pagination-controls">
+                <button type="button" class="rl-page-btn" id="rlPrevPage" aria-label="Previous page">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+                <div id="rlPageNumbers" class="d-flex gap-2 flex-wrap"></div>
+                <button type="button" class="rl-page-btn" id="rlNextPage" aria-label="Next page">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    }
 </div>
 </div>
+
+@if (Model.Items.Any())
+{
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const pricingFilter = document.getElementById('rlPricingModelFilter');
+            const billingFilter = document.getElementById('rlBillingFilter');
+            const resetButton = document.getElementById('rlResetFilters');
+            const rows = Array.from(document.querySelectorAll('.rl-rate-row'));
+            const visibleCount = document.getElementById('rlVisibleCount');
+            const emptyRow = document.getElementById('rlNoFilterResultsRow');
+            const pageNumbers = document.getElementById('rlPageNumbers');
+            const prevButton = document.getElementById('rlPrevPage');
+            const nextButton = document.getElementById('rlNextPage');
+            const paginationMeta = document.getElementById('rlPaginationMeta');
+
+            if (!rows.length) {
+                return;
+            }
+
+            const pageSize = 10;
+            let currentPage = 1;
+
+            function getFilteredRows() {
+                const pricingValue = (pricingFilter.value || '').trim().toLowerCase();
+                const billingValue = (billingFilter.value || '').trim().toLowerCase();
+
+                return rows.filter(function (row) {
+                    const rowPricing = (row.dataset.pricingModel || '').trim().toLowerCase();
+                    const rowBilling = (row.dataset.billingSummary || '').trim().toLowerCase();
+                    const matchesPricing = !pricingValue || rowPricing === pricingValue;
+                    const matchesBilling = !billingValue || rowBilling === billingValue;
+                    return matchesPricing && matchesBilling;
+                });
+            }
+
+            function renderPagination(filteredRows) {
+                const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+                currentPage = Math.min(currentPage, totalPages);
+                pageNumbers.innerHTML = '';
+
+                for (let page = 1; page <= totalPages; page++) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'rl-page-btn' + (page === currentPage ? ' active' : '');
+                    button.textContent = page;
+                    button.addEventListener('click', function () {
+                        currentPage = page;
+                        updateTable();
+                    });
+                    pageNumbers.appendChild(button);
+                }
+
+                prevButton.disabled = currentPage <= 1 || !filteredRows.length;
+                nextButton.disabled = currentPage >= totalPages || !filteredRows.length;
+            }
+
+            function updateTable() {
+                const filteredRows = getFilteredRows();
+                const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+                const startIndex = (currentPage - 1) * pageSize;
+                const endIndex = startIndex + pageSize;
+                const pagedRows = filteredRows.slice(startIndex, endIndex);
+
+                rows.forEach(function (row) {
+                    row.style.display = pagedRows.includes(row) ? '' : 'none';
+                });
+
+                visibleCount.textContent = filteredRows.length.toString();
+                emptyRow.style.display = filteredRows.length ? 'none' : '';
+
+                if (!filteredRows.length) {
+                    paginationMeta.textContent = 'Showing 0 of 0 records';
+                } else {
+                    paginationMeta.textContent = 'Showing ' + (startIndex + 1) + ' to ' + Math.min(endIndex, filteredRows.length) + ' of ' + filteredRows.length + ' records';
+                }
+
+                renderPagination(filteredRows);
+            }
+
+            pricingFilter.addEventListener('change', function () {
+                currentPage = 1;
+                updateTable();
+            });
+
+            billingFilter.addEventListener('change', function () {
+                currentPage = 1;
+                updateTable();
+            });
+
+            resetButton.addEventListener('click', function () {
+                pricingFilter.value = '';
+                billingFilter.value = '';
+                currentPage = 1;
+                updateTable();
+            });
+
+            prevButton.addEventListener('click', function () {
+                if (currentPage > 1) {
+                    currentPage -= 1;
+                    updateTable();
+                }
+            });
+
+            nextButton.addEventListener('click', function () {
+                const filteredRows = getFilteredRows();
+                const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+                if (currentPage < totalPages) {
+                    currentPage += 1;
+                    updateTable();
+                }
+            });
+
+            document.querySelectorAll('[data-expand-text="true"]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    const textBlock = button.parentElement.querySelector('.rl-detail-text');
+                    const isExpanded = textBlock.classList.toggle('is-expanded');
+                    textBlock.dataset.expanded = isExpanded ? 'true' : 'false';
+                    button.textContent = isExpanded ? 'See less' : 'See more';
+                });
+            });
+
+            updateTable();
+        });
+    </script>
+}
