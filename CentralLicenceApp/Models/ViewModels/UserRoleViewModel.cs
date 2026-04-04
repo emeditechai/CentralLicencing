@@ -83,6 +83,11 @@ namespace CentralLicenceApp.Models.ViewModels
 
         public string? ExistingProfileImagePath { get; set; }
 
+        [Display(Name = "Digital Signature")]
+        public IFormFile? SignatureImage { get; set; }
+
+        public string? ExistingSignaturePath { get; set; }
+
         public List<RoleMaster> Roles { get; set; } = new();
         public List<LocationMaster> Locations { get; set; } = new();
         public List<UserMaster> Managers { get; set; } = new();

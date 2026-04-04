@@ -171,10 +171,10 @@ namespace CentralLicenceApp.Repositories
             var sql = @"
                 INSERT INTO UserMaster
                     (Username, Email, PasswordHash, FullName, PhoneNumber, DateOfBirth, DateOfJoining, RoleId,
-                     LocationId, DepartmentId, DesignationId, EmployeeTypeId, IsEmployee, EmployeeCode, IsCoreMember, ManagerId, ProfileImagePath, IsActive, CreatedAt)
+                     LocationId, DepartmentId, DesignationId, EmployeeTypeId, IsEmployee, EmployeeCode, IsCoreMember, ManagerId, ProfileImagePath, DigitalSignaturePath, IsActive, CreatedAt)
                 VALUES
                     (@Username, @Email, @PasswordHash, @FullName, @PhoneNumber, @DateOfBirth, @DateOfJoining, @RoleId,
-                     @LocationId, @DepartmentId, @DesignationId, @EmployeeTypeId, @IsEmployee, @EmployeeCode, @IsCoreMember, @ManagerId, @ProfileImagePath, @IsActive, @CreatedAt);
+                     @LocationId, @DepartmentId, @DesignationId, @EmployeeTypeId, @IsEmployee, @EmployeeCode, @IsCoreMember, @ManagerId, @ProfileImagePath, @DigitalSignaturePath, @IsActive, @CreatedAt);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);";
             user.CreatedAt = DateTime.Now;
             conn.Open();
@@ -207,6 +207,7 @@ namespace CentralLicenceApp.Repositories
                     IsCoreMember = @IsCoreMember,
                     ManagerId    = @ManagerId,
                     ProfileImagePath = @ProfileImagePath,
+                    DigitalSignaturePath = @DigitalSignaturePath,
                     IsActive     = @IsActive
                 WHERE Id = @Id";
             conn.Open();
@@ -318,6 +319,17 @@ namespace CentralLicenceApp.Repositories
                 SELECT Id, Username, Email, FullName, EmployeeCode, IsEmployee, IsCoreMember, IsActive
                 FROM UserMaster
                 WHERE IsCoreMember = 1 AND IsActive = 1 AND ISNULL(Email, '') <> ''
+                ORDER BY ISNULL(FullName, Username)");
+        }
+
+        public async Task<IEnumerable<UserMaster>> GetSignatoryUsersAsync()
+        {
+            using var conn = CreateConnection();
+            return await conn.QueryAsync<UserMaster>(@"
+                SELECT Id, Username, FullName, DigitalSignaturePath
+                FROM UserMaster
+                WHERE IsCoreMember = 1 AND IsActive = 1
+                  AND DigitalSignaturePath IS NOT NULL AND DigitalSignaturePath <> ''
                 ORDER BY ISNULL(FullName, Username)");
         }
 

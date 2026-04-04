@@ -204,6 +204,25 @@
         </div>
     </div>
 
+    <!-- Section: Digital Signature -->
+    <div class="uf-section">
+        <div class="uf-section-title"><i class="bi bi-pen"></i> Digital Signature</div>
+        <div class="row g-3 align-items-start">
+            <div class="col-sm-6">
+                <label asp-for="SignatureImage" class="uf-label"></label>
+                <input asp-for="SignatureImage" type="file" class="form-control uf-input" accept=".jpg,.jpeg,.png" onchange="previewSignatureImage(this)" />
+                <div class="uf-hint">Accepted formats: JPG, JPEG, PNG. Recommended: white or transparent background.</div>
+                <span asp-validation-for="SignatureImage" class="uf-err"></span>
+            </div>
+            <div class="col-sm-6">
+                <div id="sigPreviewWrap" style="display:none;border:1px dashed #cbd5e1;border-radius:8px;padding:12px;background:#f8fafc;text-align:center;">
+                    <div class="uf-hint mb-1">Preview</div>
+                    <img id="sigPreview" src="" alt="Signature preview" style="max-height:80px;max-width:100%;object-fit:contain;" />
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Actions -->
     <div class="uf-actions">
         <button type="submit" class="btn uf-btn-primary">
@@ -405,6 +424,18 @@
             return;
         }
         preview.src = URL.createObjectURL(input.files[0]);
+    }
+
+    function previewSignatureImage(input) {
+        var wrap = document.getElementById('sigPreviewWrap');
+        var preview = document.getElementById('sigPreview');
+        if (!input.files || !input.files[0]) {
+            wrap.style.display = 'none';
+            preview.src = '';
+            return;
+        }
+        preview.src = URL.createObjectURL(input.files[0]);
+        wrap.style.display = 'block';
     }
 
     function togglePw(fId, eId) {

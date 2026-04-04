@@ -66,7 +66,8 @@ namespace CentralLicenceApp.Controllers
                     BasePrice = p.BasePrice,
                     AmcCalculationType = p.AmcCalculationType,
                     AmcPercentage = p.AmcPercentage,
-                    AmcAmount = p.AmcAmount
+                    AmcAmount = p.AmcAmount,
+                    InvoiceNo = p.InvoiceNo
                 }).ToList();
             }
 
@@ -135,6 +136,7 @@ namespace CentralLicenceApp.Controllers
                     AmcCalculationType = productRate.AmcCalculationType,
                     AmcPercentage = productRate.AmcPercentage,
                     AmcAmount = productRate.AmcAmount,
+                    InvoiceNo = string.IsNullOrWhiteSpace(row.InvoiceNo) ? null : row.InvoiceNo.Trim(),
                     IsActive = true
                 });
             }

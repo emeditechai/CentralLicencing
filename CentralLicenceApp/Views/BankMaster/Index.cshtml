@@ -1,0 +1,121 @@
+@model IEnumerable<CentralLicenceApp.Models.BankMaster>
+@{
+    ViewData["Title"] = "Bank Master";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Bank Master</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Manage bank accounts and UPI details</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary" style="border-radius:10px;">
+        <i class="bi bi-plus-lg me-1"></i> Add Bank
+    </a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show py-2 px-3 rounded-3" style="font-size:.85rem;">
+        @Html.Raw(TempData["Success"])
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show py-2 px-3 rounded-3" style="font-size:.85rem;">
+        @Html.Raw(TempData["Error"])
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-body p-0">
+        @if (!Model.Any())
+        {
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-bank2" style="font-size:2.5rem;opacity:.3;"></i>
+                <p class="mt-2 mb-0">No bank accounts added yet.</p>
+                <a asp-action="Create" class="btn btn-sm btn-outline-primary mt-3" style="border-radius:8px;">
+                    <i class="bi bi-plus-lg me-1"></i> Add First Bank
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3" style="width:40px;">#</th>
+                            <th>Bank Name</th>
+                            <th>Account Number</th>
+                            <th>Branch</th>
+                            <th>IFSC Code</th>
+                            <th>UPI ID</th>
+                            <th>UPI Holder</th>
+                            <th class="text-center" style="width:90px;">Primary</th>
+                            <th class="text-center" style="width:80px;">Status</th>
+                            <th class="text-end pe-3" style="width:100px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ int idx = 1; }
+                        @foreach (var bank in Model)
+                        {
+                            <tr>
+                                <td class="ps-3 text-muted" style="font-size:.8rem;">@idx</td>
+                                <td>
+                                    <span class="fw-semibold" style="font-size:.875rem;">@bank.BankName</span>
+                                    @if (bank.IsPrimary)
+                                    {
+                                        <span class="badge ms-1" style="background:#ede9fe;color:#7c3aed;font-size:.7rem;">Primary</span>
+                                    }
+                                </td>
+                                <td style="font-size:.875rem;font-family:monospace;">@bank.AccountNumber</td>
+                                <td style="font-size:.82rem;">@bank.BranchName</td>
+                                <td style="font-size:.82rem;font-family:monospace;">@bank.IFSCCode</td>
+                                <td style="font-size:.82rem;">
+                                    @if (!string.IsNullOrWhiteSpace(bank.UpiId))
+                                    {
+                                        <span>@bank.UpiId</span>
+                                    }
+                                    else { <span class="text-muted">—</span> }
+                                </td>
+                                <td style="font-size:.82rem;">@(bank.UpiHolderName ?? "—")</td>
+                                <td class="text-center">
+                                    @if (bank.IsPrimary)
+                                    {
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    }
+                                    else { <i class="bi bi-circle text-muted"></i> }
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge rounded-pill px-3" style="font-size:.72rem;@(bank.IsActive ? "background:#dcfce7;color:#166534;" : "background:#f1f5f9;color:#64748b;")">
+                                        @(bank.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <a asp-action="Edit" asp-route-id="@bank.Id"
+                                       class="btn btn-sm btn-outline-primary me-1" style="border-radius:7px;" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form asp-action="Delete" asp-route-id="@bank.Id" method="post" style="display:inline;"
+                                          data-swal-confirm="true"
+                                          data-swal-title="Delete Bank?"
+                                          data-swal-text="Delete '@bank.BankName'? This cannot be undone."
+                                          data-swal-confirm-button="Yes, delete">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius:7px;" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            idx++;
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

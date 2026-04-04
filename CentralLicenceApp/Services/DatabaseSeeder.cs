@@ -44,6 +44,15 @@ namespace CentralLicenceApp.Services
                 await EnsureClientDetailsTableAsync(conn);
                 await EnsureClientDetailsReportStoredProcedureAsync(conn);
                 await SeedDefaultEmailTemplatesAsync(conn);
+                await EnsurePartyMasterTableAsync(conn);
+                await EnsureQuotationTablesAsync(conn);
+                await EnsureQuotationGstColumnsAsync(conn);
+                await EnsureBankMasterTableAsync(conn);
+                await EnsureUserDigitalSignatureColumnAsync(conn);
+                await EnsureQuotationSignatoriesTableAsync(conn);
+                await EnsureInvoiceSignatoriesTableAsync(conn);
+                await EnsureQuotationCancelRemarksAsync(conn);
+                await EnsureInvoiceCancelRemarksAsync(conn);
             }
             catch (Exception ex)
             {
@@ -1703,6 +1712,266 @@ namespace CentralLicenceApp.Services
                         new { Key = key, Name = name, Subject = subject, Body = body });
                 }
             }
+        }
+
+        private static async Task EnsurePartyMasterTableAsync(SqlConnection conn)
+        {
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='PartyMaster')
+                BEGIN
+                    CREATE TABLE dbo.PartyMaster (
+                        Id            INT             IDENTITY(1,1) NOT NULL,
+                        PartyName     NVARCHAR(150)   NOT NULL,
+                        ContactPerson NVARCHAR(100)   NULL,
+                        Mobile        VARCHAR(20)     NULL,
+                        Email         NVARCHAR(100)   NULL,
+                        Address       NVARCHAR(300)   NULL,
+                        GSTINNo       VARCHAR(20)     NULL,
+                        PANNo         VARCHAR(10)     NULL,
+                        IsActive      BIT             NOT NULL DEFAULT(1),
+                        CreatedAt     DATETIME        NOT NULL DEFAULT(GETDATE()),
+                        CONSTRAINT PK_PartyMaster PRIMARY KEY (Id)
+                    );
+                END");
+        }
+
+        private static async Task EnsureUserDigitalSignatureColumnAsync(SqlConnection conn)
+        {
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (
+                    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME='UserMaster' AND COLUMN_NAME='DigitalSignaturePath'
+                )
+                BEGIN
+                    ALTER TABLE dbo.UserMaster ADD DigitalSignaturePath NVARCHAR(500) NULL;
+                END");
+        }
+
+        private static async Task EnsureQuotationSignatoriesTableAsync(SqlConnection conn)
+        {
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='QuotationSignatories')
+                BEGIN
+                    CREATE TABLE dbo.QuotationSignatories (
+                        Id          INT IDENTITY(1,1) NOT NULL,
+                        QuotationId INT NOT NULL,
+                        UserId      INT NOT NULL,
+                        SortOrder   INT NOT NULL DEFAULT(0),
+                        CONSTRAINT PK_QuotationSignatories PRIMARY KEY (Id),
+                        CONSTRAINT FK_QS_Quotation FOREIGN KEY (QuotationId)
+                            REFERENCES dbo.Quotation(Id) ON DELETE CASCADE,
+                        CONSTRAINT FK_QS_User FOREIGN KEY (UserId)
+                            REFERENCES dbo.UserMaster(Id)
+                    );
+                END");
+        }
+
+        private static async Task EnsureInvoiceSignatoriesTableAsync(SqlConnection conn)
+        {
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='InvoiceSignatories')
+                BEGIN
+                    CREATE TABLE dbo.InvoiceSignatories (
+                        Id        INT IDENTITY(1,1) NOT NULL,
+                        InvoiceId INT NOT NULL,
+                        UserId    INT NOT NULL,
+                        SortOrder INT NOT NULL DEFAULT(0),
+                        CONSTRAINT PK_InvoiceSignatories PRIMARY KEY (Id),
+                        CONSTRAINT FK_IS_Invoice FOREIGN KEY (InvoiceId)
+                            REFERENCES dbo.Invoice(Id) ON DELETE CASCADE,
+                        CONSTRAINT FK_IS_User FOREIGN KEY (UserId)
+                            REFERENCES dbo.UserMaster(Id)
+                    );
+                END");
+        }
+
+        private static async Task EnsureQuotationCancelRemarksAsync(SqlConnection conn)
+        {
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Quotation' AND COLUMN_NAME='CancelRemarks')
+                BEGIN
+                    ALTER TABLE dbo.Quotation ADD CancelRemarks NVARCHAR(1000) NULL;
+                END");
+        }
+
+        private static async Task EnsureInvoiceCancelRemarksAsync(SqlConnection conn)
+        {
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Invoice' AND COLUMN_NAME='CancelRemarks')
+                BEGIN
+                    ALTER TABLE dbo.Invoice ADD CancelRemarks NVARCHAR(1000) NULL;
+                END");
+        }
+
+        private static async Task EnsureBankMasterTableAsync(SqlConnection conn)
+        {
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='BankMaster')
+                BEGIN
+                    CREATE TABLE dbo.BankMaster (
+                        Id             INT            IDENTITY(1,1) NOT NULL,
+                        BankName       NVARCHAR(150)  NOT NULL,
+                        AccountNumber  NVARCHAR(30)   NOT NULL,
+                        BranchName     NVARCHAR(150)  NOT NULL,
+                        IFSCCode       NVARCHAR(11)   NOT NULL,
+                        UpiId          NVARCHAR(50)   NULL,
+                        UpiHolderName  NVARCHAR(150)  NULL,
+                        IsPrimary      BIT            NOT NULL DEFAULT(0),
+                        IsActive       BIT            NOT NULL DEFAULT(1),
+                        CreatedAt      DATETIME       NOT NULL DEFAULT(GETDATE()),
+                        CONSTRAINT PK_BankMaster PRIMARY KEY (Id)
+                    );
+                END");
+        }
+
+        private static async Task EnsureQuotationGstColumnsAsync(SqlConnection conn)
+        {
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.QuotationLine') AND name='GstPercent')
+                    ALTER TABLE dbo.QuotationLine ADD GstPercent  DECIMAL(5,2)  NOT NULL DEFAULT(0);
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.QuotationLine') AND name='CgstAmount')
+                    ALTER TABLE dbo.QuotationLine ADD CgstAmount  DECIMAL(18,2) NOT NULL DEFAULT(0);
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.QuotationLine') AND name='SgstAmount')
+                    ALTER TABLE dbo.QuotationLine ADD SgstAmount  DECIMAL(18,2) NOT NULL DEFAULT(0);
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.QuotationLine') AND name='IgstAmount')
+                    ALTER TABLE dbo.QuotationLine ADD IgstAmount  DECIMAL(18,2) NOT NULL DEFAULT(0);
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.Quotation') AND name='TotalCgst')
+                    ALTER TABLE dbo.Quotation ADD TotalCgst  DECIMAL(18,2) NOT NULL DEFAULT(0);
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.Quotation') AND name='TotalSgst')
+                    ALTER TABLE dbo.Quotation ADD TotalSgst  DECIMAL(18,2) NOT NULL DEFAULT(0);
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.Quotation') AND name='TotalIgst')
+                    ALTER TABLE dbo.Quotation ADD TotalIgst  DECIMAL(18,2) NOT NULL DEFAULT(0);
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.InvoiceLine') AND name='GstPercent')
+                    ALTER TABLE dbo.InvoiceLine ADD GstPercent  DECIMAL(5,2)  NOT NULL DEFAULT(0);
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.InvoiceLine') AND name='CgstAmount')
+                    ALTER TABLE dbo.InvoiceLine ADD CgstAmount  DECIMAL(18,2) NOT NULL DEFAULT(0);
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.InvoiceLine') AND name='SgstAmount')
+                    ALTER TABLE dbo.InvoiceLine ADD SgstAmount  DECIMAL(18,2) NOT NULL DEFAULT(0);
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.InvoiceLine') AND name='IgstAmount')
+                    ALTER TABLE dbo.InvoiceLine ADD IgstAmount  DECIMAL(18,2) NOT NULL DEFAULT(0);
+
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.Invoice') AND name='TotalCgst')
+                    ALTER TABLE dbo.Invoice ADD TotalCgst  DECIMAL(18,2) NOT NULL DEFAULT(0);
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.Invoice') AND name='TotalSgst')
+                    ALTER TABLE dbo.Invoice ADD TotalSgst  DECIMAL(18,2) NOT NULL DEFAULT(0);
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('dbo.Invoice') AND name='TotalIgst')
+                    ALTER TABLE dbo.Invoice ADD TotalIgst  DECIMAL(18,2) NOT NULL DEFAULT(0);
+            ");
+        }
+
+        private static async Task EnsureQuotationTablesAsync(SqlConnection conn)
+        {
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='Quotation')
+                BEGIN
+                    CREATE TABLE dbo.Quotation (
+                        Id                   INT             IDENTITY(1,1) NOT NULL,
+                        QuotationNo          VARCHAR(30)     NOT NULL,
+                        QuotationDate        DATE            NOT NULL,
+                        ValidUntilDate       DATE            NULL,
+                        PartyId              INT             NOT NULL,
+                        PartyName            NVARCHAR(150)   NOT NULL,
+                        PartyAddress         NVARCHAR(300)   NULL,
+                        PartyGSTINNo         VARCHAR(20)     NULL,
+                        PartyPANNo           VARCHAR(10)     NULL,
+                        PartyContactPerson   NVARCHAR(100)   NULL,
+                        PartyMobile          VARCHAR(20)     NULL,
+                        Notes                NVARCHAR(500)   NULL,
+                        TermsAndConditions   NVARCHAR(1000)  NULL,
+                        SubTotal             DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        TotalCgst            DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        TotalSgst            DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        TotalIgst            DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        TotalAmount          DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        Status               VARCHAR(20)     NOT NULL DEFAULT('Draft'),
+                        CreatedBy            NVARCHAR(100)   NULL,
+                        CreatedAt            DATETIME        NOT NULL DEFAULT(GETDATE()),
+                        CONSTRAINT PK_Quotation PRIMARY KEY (Id)
+                    );
+                END
+
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='QuotationLine')
+                BEGIN
+                    CREATE TABLE dbo.QuotationLine (
+                        Id               INT             IDENTITY(1,1) NOT NULL,
+                        QuotationId      INT             NOT NULL,
+                        SNo              INT             NOT NULL,
+                        ItemDescription  NVARCHAR(300)   NOT NULL,
+                        PlanName         NVARCHAR(100)   NULL,
+                        Type             NVARCHAR(50)    NULL,
+                        Qty              INT             NOT NULL DEFAULT(1),
+                        Rate             DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        DiscountPercent  DECIMAL(5,2)    NOT NULL DEFAULT(0),
+                        DiscountAmount   DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        Amount           DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        GstPercent       DECIMAL(5,2)    NOT NULL DEFAULT(0),
+                        CgstAmount       DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        SgstAmount       DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        IgstAmount       DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        CONSTRAINT PK_QuotationLine PRIMARY KEY (Id),
+                        CONSTRAINT FK_QuotationLine_Quotation FOREIGN KEY (QuotationId)
+                            REFERENCES dbo.Quotation(Id) ON DELETE CASCADE
+                    );
+                END
+
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='Invoice')
+                BEGIN
+                    CREATE TABLE dbo.Invoice (
+                        Id                   INT             IDENTITY(1,1) NOT NULL,
+                        InvoiceNo            VARCHAR(30)     NOT NULL,
+                        InvoiceDate          DATE            NOT NULL,
+                        DueDate              DATE            NULL,
+                        QuotationId          INT             NULL,
+                        QuotationNo          VARCHAR(30)     NULL,
+                        PartyId              INT             NOT NULL,
+                        PartyName            NVARCHAR(150)   NOT NULL,
+                        PartyAddress         NVARCHAR(300)   NULL,
+                        PartyGSTINNo         VARCHAR(20)     NULL,
+                        PartyPANNo           VARCHAR(10)     NULL,
+                        PartyContactPerson   NVARCHAR(100)   NULL,
+                        PartyMobile          VARCHAR(20)     NULL,
+                        Notes                NVARCHAR(500)   NULL,
+                        TermsAndConditions   NVARCHAR(1000)  NULL,
+                        SubTotal             DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        TotalCgst            DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        TotalSgst            DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        TotalIgst            DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        RoundOff             DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        TotalAmount          DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        ReceivedAmount       DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        PreviousBalance      DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        Status               VARCHAR(20)     NOT NULL DEFAULT('Draft'),
+                        CreatedBy            NVARCHAR(100)   NULL,
+                        CreatedAt            DATETIME        NOT NULL DEFAULT(GETDATE()),
+                        CONSTRAINT PK_Invoice PRIMARY KEY (Id)
+                    );
+                END
+
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='InvoiceLine')
+                BEGIN
+                    CREATE TABLE dbo.InvoiceLine (
+                        Id               INT             IDENTITY(1,1) NOT NULL,
+                        InvoiceId        INT             NOT NULL,
+                        SNo              INT             NOT NULL,
+                        ItemDescription  NVARCHAR(300)   NOT NULL,
+                        PlanName         NVARCHAR(100)   NULL,
+                        Type             NVARCHAR(50)    NULL,
+                        Qty              INT             NOT NULL DEFAULT(1),
+                        Rate             DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        DiscountPercent  DECIMAL(5,2)    NOT NULL DEFAULT(0),
+                        DiscountAmount   DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        Amount           DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        GstPercent       DECIMAL(5,2)    NOT NULL DEFAULT(0),
+                        CgstAmount       DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        SgstAmount       DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        IgstAmount       DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        CONSTRAINT PK_InvoiceLine PRIMARY KEY (Id),
+                        CONSTRAINT FK_InvoiceLine_Invoice FOREIGN KEY (InvoiceId)
+                            REFERENCES dbo.Invoice(Id) ON DELETE CASCADE
+                    );
+                END");
         }
     }
 }

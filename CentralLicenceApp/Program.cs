@@ -40,6 +40,10 @@ builder.Services.AddScoped<IEmailLogRepository>(_ => new EmailLogRepository(conn
 builder.Services.AddScoped<IReminderRepository>(_ => new ReminderRepository(connStr));
 builder.Services.AddScoped<IClientDetailsRepository>(_ => new ClientDetailsRepository(connStr));
 builder.Services.AddScoped<IReportRepository>(_ => new ReportRepository(connStr));
+builder.Services.AddScoped<IPartyMasterRepository>(_ => new PartyMasterRepository(connStr));
+builder.Services.AddScoped<IQuotationRepository>(_ => new QuotationRepository(connStr));
+builder.Services.AddScoped<IInvoiceRepository>(_ => new InvoiceRepository(connStr));
+builder.Services.AddScoped<IBankMasterRepository>(_ => new BankMasterRepository(connStr));
 builder.Services.AddScoped<IClientDetailsReportExportService, ClientDetailsReportExportService>();
 builder.Services.AddScoped<IUserPushSubscriptionRepository>(_ => new UserPushSubscriptionRepository(connStr));
 

@@ -1,0 +1,133 @@
+@model List<CentralLicenceApp.Models.PartyMaster>
+@{
+    ViewData["Title"] = "Party Master";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Party Master</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">@Model.Count part@(Model.Count == 1 ? "y" : "ies") configured</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
+        <i class="bi bi-plus-lg me-1"></i> New Party
+    </a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show py-2 px-3 rounded-3" style="font-size:.85rem;">
+        @Html.Raw(TempData["Success"])
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show py-2 px-3 rounded-3" style="font-size:.85rem;">
+        @Html.Raw(TempData["Error"])
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Party Name</th>
+                        <th>Contact</th>
+                        <th>GSTIN / PAN</th>
+                        <th>Status</th>
+                        <th class="pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="bi bi-people fs-1 d-block mb-2"></i>No parties found. Add your first party.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@item.Id</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div style="width:32px;height:32px;background:#ede9fe;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#6d28d9;font-size:.9rem;">
+                                            <i class="bi bi-building"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold" style="font-size:.875rem;">@item.PartyName</div>
+                                            @if (!string.IsNullOrWhiteSpace(item.ContactPerson))
+                                            {
+                                                <div class="text-muted" style="font-size:.75rem;">@item.ContactPerson</div>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="font-size:.85rem;">
+                                    @if (!string.IsNullOrWhiteSpace(item.Mobile))
+                                    {
+                                        <div><i class="bi bi-phone me-1 text-muted"></i>@item.Mobile</div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(item.Email))
+                                    {
+                                        <div class="text-muted" style="font-size:.78rem;">@item.Email</div>
+                                    }
+                                </td>
+                                <td style="font-size:.82rem;">
+                                    @if (!string.IsNullOrWhiteSpace(item.GSTINNo))
+                                    {
+                                        <div><span class="text-muted">GSTIN:</span> <code>@item.GSTINNo</code></div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(item.PANNo))
+                                    {
+                                        <div><span class="text-muted">PAN:</span> <code>@item.PANNo</code></div>
+                                    }
+                                    @if (string.IsNullOrWhiteSpace(item.GSTINNo) && string.IsNullOrWhiteSpace(item.PANNo))
+                                    {
+                                        <span class="text-muted">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.IsActive)
+                                    {
+                                        <span class="badge badge-ok rounded-pill px-2 py-1" style="font-size:.72rem;">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-neu rounded-pill px-2 py-1" style="font-size:.72rem;">Inactive</span>
+                                    }
+                                </td>
+                                <td class="pe-3">
+                                    <div class="d-flex gap-2">
+                                        <a asp-action="Edit" asp-route-id="@item.Id"
+                                           class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <form asp-action="Delete" asp-route-id="@item.Id" method="post"
+                                              data-swal-confirm="true"
+                                              data-swal-title="Delete Party?"
+                                              data-swal-text="This will permanently remove @item.PartyName."
+                                              data-swal-confirm-button="Yes, delete">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius:8px;font-size:.78rem;">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

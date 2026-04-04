@@ -1,0 +1,428 @@
+@model CentralLicenceApp.Models.ViewModels.QuotationFormViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = Model.IsNew ? "New Quotation" : "Edit Quotation";
+    var parties        = ViewBag.Parties as List<CentralLicenceApp.Models.PartyMaster> ?? new();
+    var companyGstin   = (ViewBag.CompanyGstin as string) ?? string.Empty;
+    var partiesJson    = JsonSerializer.Serialize(parties.Select(p => new {
+        id = p.Id, gstinNo = p.GSTINNo ?? string.Empty
+    }));
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">@(Model.IsNew ? "New Quotation" : "Edit Quotation")</h4>
+        @if (!Model.IsNew)
+        {
+            <p class="text-muted mb-0" style="font-size:.85rem;">@Model.QuotationNo</p>
+        }
+    </div>
+</div>
+
+<form asp-action="@(Model.IsNew ? "Create" : "Edit")" asp-route-id="@(Model.IsNew ? null : Model.Id.ToString())" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="QuotationNo" />
+
+    <div class="row g-3">
+        <!-- Header card -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header fw-semibold" style="font-size:.85rem;">
+                    <i class="bi bi-file-earmark-text me-2" style="color:#6366f1;"></i>Quotation Details
+                </div>
+                <div class="card-body">
+                    <div asp-validation-summary="ModelOnly"
+                         class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.83rem;"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" style="font-size:.82rem;">Quotation No</label>
+                            <input class="form-control" value="@Model.QuotationNo" readonly style="border-radius:10px;background:#f8fafc;" />
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="QuotationDate" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                            <input asp-for="QuotationDate" type="date" class="form-control" style="border-radius:10px;" />
+                            <span asp-validation-for="QuotationDate" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="ValidUntilDate" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                            <input asp-for="ValidUntilDate" type="date" class="form-control" style="border-radius:10px;" />
+                        </div>
+                        <div class="col-md-12">
+                            <label asp-for="PartyId" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                            <select asp-for="PartyId" class="form-select" style="border-radius:10px;">
+                                <option value="">— Select Party —</option>
+                                @foreach (var p in parties)
+                                {
+                                    <option value="@p.Id" selected="@(Model.PartyId == p.Id)">
+                                        @p.PartyName @(!string.IsNullOrWhiteSpace(p.ContactPerson) ? $"({p.ContactPerson})" : "")
+                                    </option>
+                                }
+                            </select>
+                            <span asp-validation-for="PartyId" class="text-danger small"></span>
+                            <div class="mt-1">
+                                <a asp-controller="PartyMaster" asp-action="Create" target="_blank"
+                                   style="font-size:.76rem;">
+                                    <i class="bi bi-plus-circle me-1"></i>Add new party
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Line Items -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span class="fw-semibold" style="font-size:.85rem;"><i class="bi bi-list-ul me-2" style="color:#6366f1;"></i>Line Items</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary" style="border-radius:8px;" onclick="addLineRow()">
+                        <i class="bi bi-plus-lg me-1"></i> Add Row
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0" id="lineTable" style="min-width:1000px;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3" style="width:36px;">#</th>
+                                    <th style="min-width:220px;">Item / Description</th>
+                                    <th style="width:120px;">Plan</th>
+                                    <th style="width:85px;">Type</th>
+                                    <th style="width:65px;">Qty</th>
+                                    <th style="width:100px;">Rate (₹)</th>
+                                    <th style="width:75px;">Disc %</th>
+                                    <th style="width:100px;">Taxable (₹)</th>
+                                    <th style="width:72px;">GST %</th>
+                                    <th style="width:100px;">GST Amt (₹)</th>
+                                    <th style="width:44px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="lineBody">
+                                @for (var i = 0; i < Model.Lines.Count; i++)
+                                {
+                                    var line = Model.Lines[i];
+                                    <tr class="line-row">
+                                        <td class="ps-3 sno-cell align-middle" style="color:#94a3b8;font-size:.8rem;">@(i + 1)</td>
+                                        <td>
+                                            <select class="form-select form-select-sm prod-picker mb-1" style="font-size:.75rem;">
+                                                <option value="">↓ From rate list…</option>
+                                            </select>
+                                            <input type="text" name="Lines[@i].ItemDescription" value="@line.ItemDescription" class="form-control form-control-sm item-desc" placeholder="Item description…" required />
+                                        </td>
+                                        <td><input type="text" name="Lines[@i].PlanName" value="@line.PlanName" class="form-control form-control-sm item-plan" /></td>
+                                        <td><input type="text" name="Lines[@i].Type" value="@line.Type" class="form-control form-control-sm item-type" /></td>
+                                        <td><input type="number" name="Lines[@i].Qty" value="@line.Qty" class="form-control form-control-sm line-qty" min="1" /></td>
+                                        <td><input type="number" name="Lines[@i].Rate" value="@line.Rate" class="form-control form-control-sm line-rate" min="0" step="0.01" /></td>
+                                        <td><input type="number" name="Lines[@i].DiscountPercent" value="@line.DiscountPercent" class="form-control form-control-sm line-disc" min="0" max="100" step="0.01" /></td>
+                                        <td><input type="text" readonly class="form-control form-control-sm line-taxable bg-light" value="@line.Amount.ToString("0.00")" /></td>
+                                        <td>
+                                            <select name="Lines[@i].GstPercent" class="form-select form-select-sm line-gst">
+                                                @foreach (var pct in new[] { 0, 5, 12, 18, 28 })
+                                                {
+                                                    <option value="@pct" selected="@(line.GstPercent == pct)">@pct%</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td><input type="text" readonly class="form-control form-control-sm line-gst-amt bg-light" value="@((line.CgstAmount + line.SgstAmount + line.IgstAmount).ToString("0.00"))" /></td>
+                                        <td>
+                                            <input type="hidden" name="Lines[@i].CgstAmount" class="hid-cgst" value="@line.CgstAmount" />
+                                            <input type="hidden" name="Lines[@i].SgstAmount" class="hid-sgst" value="@line.SgstAmount" />
+                                            <input type="hidden" name="Lines[@i].IgstAmount" class="hid-igst" value="@line.IgstAmount" />
+                                            <button type="button" class="btn btn-sm btn-outline-danger px-2" onclick="removeRow(this)"><i class="bi bi-x-lg"></i></button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Totals panel -->
+                    <div class="d-flex justify-content-end p-3">
+                        <table style="font-size:.875rem;min-width:260px;">
+                            <tr><td class="text-muted pe-4 py-1">Sub Total</td><td class="fw-semibold text-end" id="subTotalDisplay">₹0.00</td></tr>
+                            <tr id="row-cgst" style="display:none;"><td class="text-muted pe-4 py-1">CGST</td><td class="text-end" id="cgstDisplay">₹0.00</td></tr>
+                            <tr id="row-sgst" style="display:none;"><td class="text-muted pe-4 py-1">SGST</td><td class="text-end" id="sgstDisplay">₹0.00</td></tr>
+                            <tr id="row-igst" style="display:none;"><td class="text-muted pe-4 py-1">IGST</td><td class="text-end" id="igstDisplay">₹0.00</td></tr>
+                            <tr style="border-top:2px solid #e2e8f0;">
+                                <td class="fw-bold pe-4 py-1">Grand Total</td>
+                                <td class="fw-bold text-end" id="grandTotalDisplay" style="color:#6366f1;font-size:1rem;">₹0.00</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes & T&C -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <label asp-for="Notes" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <textarea asp-for="Notes" class="form-control" rows="3" style="border-radius:10px;"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <label asp-for="TermsAndConditions" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <textarea asp-for="TermsAndConditions" class="form-control" rows="3" style="border-radius:10px;"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Authorised Signatory -->
+        @{
+            var signatoryUsers = ViewBag.SignatoryUsers as List<CentralLicenceApp.Models.UserMaster> ?? new();
+        }
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <label class="form-label fw-semibold" style="font-size:.82rem;">Authorised Signatory <span style="color:#9ca3af;font-size:.75rem;">(max 3 — core members with digital signature)</span></label>
+                    @if (!signatoryUsers.Any())
+                    {
+                        <div class="text-muted" style="font-size:.82rem;"><i class="bi bi-info-circle me-1"></i>No core members with a digital signature found. Upload signatures via User Master.</div>
+                    }
+                    else
+                    {
+                        <div id="signatoryDropdown" class="dropdown">
+                            <button type="button" class="form-control text-start d-flex justify-content-between align-items-center" style="border-radius:10px;background:#fff;" id="signatoryBtn" onclick="toggleSignatoryDropdown()">
+                                <span id="signatoryLabel">-- Select Signatories --</span>
+                                <i class="bi bi-chevron-down" style="font-size:.75rem;"></i>
+                            </button>
+                            <div id="signatoryMenu" class="dropdown-menu w-100 p-2" style="display:none;max-height:220px;overflow-y:auto;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);">
+                                @foreach (var u in signatoryUsers)
+                                {
+                                    var displayName = string.IsNullOrWhiteSpace(u.FullName) ? u.Username : u.FullName;
+                                    <label class="dropdown-item d-flex align-items-center gap-2 py-2" style="cursor:pointer;border-radius:6px;">
+                                        <input type="checkbox" name="SignatoryUserIds" value="@u.Id"
+                                               class="sig-check form-check-input" style="margin:0;"
+                                               @(Model.SignatoryUserIds.Contains(u.Id) ? "checked" : "") />
+                                        <span style="font-size:.88rem;">@displayName</span>
+                                    </label>
+                                }
+                            </div>
+                        </div>
+                        <div id="signatoryChips" class="d-flex flex-wrap gap-1 mt-2"></div>
+                        <div class="text-muted mt-1" style="font-size:.78rem;">Select up to 3. Order of selection determines Left → Middle → Right position on print.</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn text-white px-4" style="background:#6366f1;border:none;border-radius:10px;">
+                    <i class="bi bi-check-lg me-1"></i> @(Model.IsNew ? "Save Quotation" : "Update Quotation")
+                </button>
+                <a asp-action="@(Model.IsNew ? "Index" : "Details")" asp-route-id="@(Model.IsNew ? null : Model.Id.ToString())"
+                   class="btn btn-outline-secondary" style="border-radius:10px;">Cancel</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+    const COMPANY_GSTIN = '@Html.Raw(companyGstin)';
+    const PARTIES_DATA  = @Html.Raw(partiesJson);
+    let productRates = [];
+
+    function getPartyGstin() {
+        const id = document.getElementById('PartyId').value;
+        const p  = PARTIES_DATA.find(x => x.id == id);
+        return p ? p.gstinNo : '';
+    }
+
+    function isInterState() {
+        const pg = getPartyGstin(), cg = COMPANY_GSTIN;
+        if (!pg || !cg || pg.length < 2 || cg.length < 2) return false;
+        return pg.substring(0, 2).toLowerCase() !== cg.substring(0, 2).toLowerCase();
+    }
+
+    function computeRow(row) {
+        const qty    = parseFloat(row.querySelector('.line-qty').value)  || 0;
+        const rate   = parseFloat(row.querySelector('.line-rate').value) || 0;
+        const disc   = parseFloat(row.querySelector('.line-disc').value) || 0;
+        const gstPct = parseFloat(row.querySelector('.line-gst').value)  || 0;
+        const gross  = qty * rate;
+        const discAmt  = Math.round(gross * disc / 100 * 100) / 100;
+        const taxable  = Math.round((gross - discAmt) * 100) / 100;
+        const gstAmt   = Math.round(taxable * gstPct / 100 * 100) / 100;
+        const inter    = isInterState();
+        const cgst     = inter ? 0 : Math.round(gstAmt / 2 * 100) / 100;
+        const sgst     = inter ? 0 : Math.round(gstAmt / 2 * 100) / 100;
+        const igst     = inter ? gstAmt : 0;
+        row.querySelector('.line-taxable').value  = taxable.toFixed(2);
+        row.querySelector('.line-gst-amt').value  = gstAmt.toFixed(2);
+        row.querySelector('.hid-cgst').value = cgst;
+        row.querySelector('.hid-sgst').value = sgst;
+        row.querySelector('.hid-igst').value = igst;
+        return { taxable, cgst, sgst, igst };
+    }
+
+    function recompute() {
+        let subTotal = 0, totalCgst = 0, totalSgst = 0, totalIgst = 0;
+        document.querySelectorAll('#lineBody .line-row').forEach(r => {
+            const vals = computeRow(r);
+            subTotal  += vals.taxable;
+            totalCgst += vals.cgst;
+            totalSgst += vals.sgst;
+            totalIgst += vals.igst;
+        });
+        const totalGst  = totalCgst + totalSgst + totalIgst;
+        const grandTotal = subTotal + totalGst;
+        document.getElementById('subTotalDisplay').textContent   = '₹' + subTotal.toFixed(2);
+        document.getElementById('cgstDisplay').textContent       = '₹' + totalCgst.toFixed(2);
+        document.getElementById('sgstDisplay').textContent       = '₹' + totalSgst.toFixed(2);
+        document.getElementById('igstDisplay').textContent       = '₹' + totalIgst.toFixed(2);
+        document.getElementById('grandTotalDisplay').textContent = '₹' + grandTotal.toFixed(2);
+        const inter = isInterState();
+        document.getElementById('row-cgst').style.display = (!inter && totalCgst > 0) ? '' : 'none';
+        document.getElementById('row-sgst').style.display = (!inter && totalSgst > 0) ? '' : 'none';
+        document.getElementById('row-igst').style.display = (inter  && totalIgst > 0) ? '' : 'none';
+    }
+
+    function populatePicker(sel) {
+        productRates.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.id;
+            const freq = r.billingFrequency ? ` / ${r.billingFrequency}` : '';
+            opt.textContent = `${r.productName} – ${r.billingModel}${freq} — ₹${r.rate}`;
+            sel.appendChild(opt);
+        });
+    }
+
+    function wireRow(row) {
+        const picker = row.querySelector('.prod-picker');
+        populatePicker(picker);
+        picker.addEventListener('change', e => {
+            const r = productRates.find(x => x.id == e.target.value);
+            if (!r) return;
+            row.querySelector('.item-desc').value  = r.productName;
+            row.querySelector('.item-plan').value  = r.pricingModel;
+            const isSubscription = (r.billingModel || '').toLowerCase() === 'subscription';
+            row.querySelector('.item-type').value  = isSubscription ? 'Subscription' : 'Onetime';
+            row.querySelector('.line-rate').value  = r.rate;
+            recompute();
+        });
+        row.querySelectorAll('.line-qty,.line-rate,.line-disc,.line-gst')
+           .forEach(el => el.addEventListener('input', recompute));
+    }
+
+    function reindex() {
+        document.querySelectorAll('#lineBody .line-row').forEach((row, i) => {
+            row.querySelector('.sno-cell').textContent = i + 1;
+            row.querySelectorAll('input,select').forEach(el => {
+                if (el.name) el.name = el.name.replace(/Lines\[\d+\]/g, `Lines[${i}]`);
+            });
+        });
+    }
+
+    function addLineRow() {
+        const body  = document.getElementById('lineBody');
+        const index = body.querySelectorAll('.line-row').length;
+        const tr    = document.createElement('tr');
+        tr.className = 'line-row';
+        tr.innerHTML = `
+            <td class="ps-3 sno-cell align-middle" style="color:#94a3b8;font-size:.8rem;">${index+1}</td>
+            <td>
+                <select class="form-select form-select-sm prod-picker mb-1" style="font-size:.75rem;">
+                    <option value="">↓ From rate list…</option>
+                </select>
+                <input type="text" name="Lines[${index}].ItemDescription" class="form-control form-control-sm item-desc" placeholder="Item description…" required />
+            </td>
+            <td><input type="text" name="Lines[${index}].PlanName" class="form-control form-control-sm item-plan" /></td>
+            <td><input type="text" name="Lines[${index}].Type" class="form-control form-control-sm item-type" /></td>
+            <td><input type="number" name="Lines[${index}].Qty" value="1" class="form-control form-control-sm line-qty" min="1" /></td>
+            <td><input type="number" name="Lines[${index}].Rate" value="0" class="form-control form-control-sm line-rate" min="0" step="0.01" /></td>
+            <td><input type="number" name="Lines[${index}].DiscountPercent" value="0" class="form-control form-control-sm line-disc" min="0" max="100" step="0.01" /></td>
+            <td><input type="text" readonly class="form-control form-control-sm line-taxable bg-light" value="0.00" /></td>
+            <td>
+                <select name="Lines[${index}].GstPercent" class="form-select form-select-sm line-gst">
+                    <option value="0">0%</option><option value="5">5%</option>
+                    <option value="12">12%</option><option value="18">18%</option><option value="28">28%</option>
+                </select>
+            </td>
+            <td><input type="text" readonly class="form-control form-control-sm line-gst-amt bg-light" value="0.00" /></td>
+            <td>
+                <input type="hidden" name="Lines[${index}].CgstAmount" class="hid-cgst" value="0" />
+                <input type="hidden" name="Lines[${index}].SgstAmount" class="hid-sgst" value="0" />
+                <input type="hidden" name="Lines[${index}].IgstAmount" class="hid-igst" value="0" />
+                <button type="button" class="btn btn-sm btn-outline-danger px-2" onclick="removeRow(this)"><i class="bi bi-x-lg"></i></button>
+            </td>`;
+        body.appendChild(tr);
+        wireRow(tr);
+        recompute();
+    }
+
+    function removeRow(btn) {
+        const body = document.getElementById('lineBody');
+        if (body.querySelectorAll('.line-row').length <= 1) return;
+        btn.closest('.line-row').remove();
+        reindex();
+        recompute();
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await fetch('/Quotation/ProductRatesJson');
+            productRates = await res.json();
+        } catch (e) { console.warn('Could not load product rates', e); }
+
+        document.querySelectorAll('#lineBody .line-row').forEach(wireRow);
+        document.getElementById('PartyId').addEventListener('change', recompute);
+        recompute();
+    });
+
+    // ── Authorised Signatory dropdown ─────────────────────────
+    function toggleSignatoryDropdown() {
+        var m = document.getElementById('signatoryMenu');
+        if (!m) return;
+        m.style.display = m.style.display === 'none' ? 'block' : 'none';
+    }
+    document.addEventListener('click', function(e) {
+        var menu = document.getElementById('signatoryMenu');
+        var btn  = document.getElementById('signatoryBtn');
+        if (menu && btn && !btn.contains(e.target) && !menu.contains(e.target))
+            menu.style.display = 'none';
+    });
+    document.querySelectorAll('.sig-check').forEach(function(cb) {
+        cb.addEventListener('change', updateSignatorySelection);
+    });
+    function updateSignatorySelection() {
+        var checked = Array.from(document.querySelectorAll('.sig-check:checked'));
+        if (checked.length > 3) {
+            this.checked = false;
+            checked = Array.from(document.querySelectorAll('.sig-check:checked'));
+        }
+        // Disable unchecked if already 3 selected
+        document.querySelectorAll('.sig-check').forEach(function(cb) {
+            cb.disabled = (!cb.checked && checked.length >= 3);
+            cb.closest('label').style.opacity = cb.disabled ? '0.45' : '1';
+        });
+        // Update button label
+        var label = document.getElementById('signatoryLabel');
+        label.textContent = checked.length === 0 ? '-- Select Signatories --'
+            : checked.map(function(cb) { return cb.closest('label').querySelector('span').textContent.trim(); }).join(', ');
+        // Chips
+        var chips = document.getElementById('signatoryChips');
+        chips.innerHTML = '';
+        checked.forEach(function(cb, i) {
+            var name = cb.closest('label').querySelector('span').textContent.trim();
+            var pos  = ['Left','Middle','Right'][i] || '';
+            var chip = document.createElement('span');
+            chip.className = 'badge rounded-pill';
+            chip.style.cssText = 'background:#ede9fe;color:#6d28d9;font-size:.78rem;padding:4px 10px;';
+            chip.textContent = pos + ': ' + name;
+            chips.appendChild(chip);
+        });
+    }
+    // Init chips on page load (for Edit)
+    updateSignatorySelection();
+</script>
+}

@@ -93,10 +93,10 @@ namespace CentralLicenceApp.Repositories
                 const string insertPurchasedProductSql = @"
                     INSERT INTO ClientPurchasedProduct
                         (ClientDetailsId, ClientCode, ProductId, ProductRateId, ProductCode, ProductName, PricingModel, BillingModel, BillingFrequency, BasePrice,
-                         AmcCalculationType, AmcPercentage, AmcAmount, IsActive, CreatedAt)
+                         AmcCalculationType, AmcPercentage, AmcAmount, InvoiceNo, IsActive, CreatedAt)
                     VALUES
                         (@ClientDetailsId, @ClientCode, @ProductId, @ProductRateId, @ProductCode, @ProductName, @PricingModel, @BillingModel, @BillingFrequency, @BasePrice,
-                         @AmcCalculationType, @AmcPercentage, @AmcAmount, @IsActive, GETDATE());";
+                         @AmcCalculationType, @AmcPercentage, @AmcAmount, @InvoiceNo, @IsActive, GETDATE());";
 
                 foreach (var item in details.PurchasedProducts)
                 {
@@ -135,6 +135,7 @@ namespace CentralLicenceApp.Repositories
                     AmcCalculationType,
                     AmcPercentage,
                     AmcAmount,
+                    InvoiceNo,
                     IsActive,
                     CreatedAt
                 FROM ClientPurchasedProduct

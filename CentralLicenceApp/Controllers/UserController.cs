@@ -157,6 +157,7 @@ namespace CentralLicenceApp.Controllers
                 IsCoreMember  = vm.IsEmployee && vm.IsCoreMember,
                 ManagerId     = vm.IsEmployee ? vm.ManagerId : null,
                 ProfileImagePath = await SaveProfileImageAsync(vm.ProfileImage),
+                DigitalSignaturePath = await SaveSignatureImageAsync(vm.SignatureImage),
                 IsActive      = vm.IsActive,
                 PasswordHash  = BCrypt.Net.BCrypt.HashPassword(vm.Password!)
             };
@@ -197,6 +198,7 @@ namespace CentralLicenceApp.Controllers
                 IsCoreMember = user.IsCoreMember,
                 ManagerId    = user.ManagerId,
                 ExistingProfileImagePath = user.ProfileImagePath,
+                ExistingSignaturePath = user.DigitalSignaturePath,
                 IsActive     = user.IsActive,
                 DisableActiveToggle = isSelfEdit,
                 Roles        = (await _roleRepo.GetAllAsync()).ToList(),
@@ -279,6 +281,8 @@ namespace CentralLicenceApp.Controllers
             existing.ManagerId    = vm.IsEmployee ? vm.ManagerId : null;
             if (vm.ProfileImage != null)
                 existing.ProfileImagePath = await SaveProfileImageAsync(vm.ProfileImage, existing.ProfileImagePath);
+            if (vm.SignatureImage != null)
+                existing.DigitalSignaturePath = await SaveSignatureImageAsync(vm.SignatureImage, existing.DigitalSignaturePath);
             existing.IsActive     = vm.IsActive;
 
             await _userRepo.UpdateAsync(existing);
@@ -375,6 +379,34 @@ namespace CentralLicenceApp.Controllers
             await file.CopyToAsync(stream);
 
             return $"/uploads/profile-pictures/{fileName}";
+        }
+
+        private async Task<string?> SaveSignatureImageAsync(Microsoft.AspNetCore.Http.IFormFile? file, string? existingPath = null)
+        {
+            if (file == null || file.Length == 0)
+                return existingPath;
+
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var allowedExtensions = new HashSet<string> { ".jpg", ".jpeg", ".png" };
+            if (!allowedExtensions.Contains(extension))
+                return existingPath;
+
+            var uploadsRoot = Path.Combine(_environment.WebRootPath, "uploads", "signatures");
+            Directory.CreateDirectory(uploadsRoot);
+
+            if (!string.IsNullOrWhiteSpace(existingPath))
+            {
+                var existingFullPath = Path.Combine(_environment.WebRootPath, existingPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                if (System.IO.File.Exists(existingFullPath))
+                    System.IO.File.Delete(existingFullPath);
+            }
+
+            var fileName = $"sig_{Guid.NewGuid():N}{extension}";
+            var physicalPath = Path.Combine(uploadsRoot, fileName);
+            await using var stream = System.IO.File.Create(physicalPath);
+            await file.CopyToAsync(stream);
+
+            return $"/uploads/signatures/{fileName}";
         }
 
         private async Task RefreshCurrentUserClaimsAsync(UserMaster user)

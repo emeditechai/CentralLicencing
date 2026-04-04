@@ -18,6 +18,7 @@ namespace CentralLicenceApp.Models
         public string AmcCalculationType { get; set; } = string.Empty;
         public decimal AmcPercentage { get; set; }
         public decimal AmcAmount { get; set; }
+        public string? InvoiceNo { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; }
 

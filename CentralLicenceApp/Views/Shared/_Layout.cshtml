@@ -63,9 +63,10 @@
             @{
                 var licencesOpen = ctrl == "ClientLicense" || ctrl == "LicenseHistory";
                 var masterOpen   = ctrl == "EmployeeDepartment" || ctrl == "EmployeeDesignation";
-                var businessUnitMasterOpen = ctrl == "ExpenseCategory" || ctrl == "ProductMaster" || ctrl == "ProductRate";
+                var businessUnitMasterOpen = ctrl == "ExpenseCategory" || ctrl == "ProductMaster" || ctrl == "ProductRate" || ctrl == "PartyMaster" || ctrl == "BankMaster";
                 var businessUnitTransactionOpen = ctrl == "ExpenseRequest";
-                var businessUnitOpen = businessUnitMasterOpen || businessUnitTransactionOpen;
+                var quotationInvoiceOpen = ctrl == "Quotation" || ctrl == "Invoice";
+                var businessUnitOpen = businessUnitMasterOpen || businessUnitTransactionOpen || quotationInvoiceOpen;
                 var reportsOpen = ctrl == "Reports";
                 var adminOpen    = ctrl == "User" || ctrl == "Role" || ctrl == "EmailConfig" || ctrl == "EmailTemplate" || ctrl == "EmailLog" || ctrl == "CompanySettings" || masterOpen;
             }
@@ -131,6 +132,16 @@
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="ExpenseRequest" asp-action="FinanceDesk" class="@(ctrl == "ExpenseRequest" && (ViewContext.RouteData.Values["action"]?.ToString() == "FinanceDesk") ? "active" : "")"><i class="bi bi-cash-stack"></i> Reimbursement Desk</a></div>
                     }
                 </div>
+                <div class="nav-item nav-item-nested">
+                    <a href="#section-quotation-invoice" data-bs-toggle="collapse" class="@(quotationInvoiceOpen ? "active" : "")" aria-expanded="@(quotationInvoiceOpen ? "true" : "false")">
+                        <i class="bi bi-file-earmark-text"></i> Quotation &amp; Invoices
+                        <i class="bi bi-chevron-down submenu-arrow"></i>
+                    </a>
+                </div>
+                <div class="collapse @(quotationInvoiceOpen ? "show" : "")" id="section-quotation-invoice">
+                    <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="Quotation" asp-action="Index" class="@Act("Quotation")"><i class="bi bi-file-earmark-check"></i> Quotations</a></div>
+                    <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="Invoice" asp-action="Index" class="@Act("Invoice")"><i class="bi bi-receipt-cutoff"></i> Invoices</a></div>
+                </div>
                 @if (isAdmin)
                 {
                     <div class="nav-item nav-item-nested">
@@ -143,6 +154,8 @@
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="ExpenseCategory" asp-action="Index" class="@Act("ExpenseCategory")"><i class="bi bi-receipt"></i> Expense Category</a></div>
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="ProductMaster" asp-action="Index" class="@Act("ProductMaster")"><i class="bi bi-box-seam"></i> eProduct Master</a></div>
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="ProductRate" asp-action="Index" class="@Act("ProductRate")"><i class="bi bi-tags"></i> Product Rate List</a></div>
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="PartyMaster" asp-action="Index" class="@Act("PartyMaster")"><i class="bi bi-people"></i> Party Master</a></div>
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="BankMaster" asp-action="Index" class="@Act("BankMaster")"><i class="bi bi-bank2"></i> Bank Master</a></div>
                     </div>
                 }
             </div>

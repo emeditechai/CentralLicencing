@@ -1,0 +1,405 @@
+@model CentralLicenceApp.Models.Invoice
+@using CentralLicenceApp.Models
+@using CentralLicenceApp.Repositories
+@inject ICompanySettingsRepository CompanySettingsRepo
+@inject IBankMasterRepository BankRepo
+@{
+    Layout = null;
+    var company        = await CompanySettingsRepo.GetParentCompanyAsync();
+    var brandName      = string.IsNullOrWhiteSpace(company?.CompanyName)     ? "EMEDITECH PLUS LLP" : company.CompanyName.Trim().ToUpperInvariant();
+    var brandLogoPath  = string.IsNullOrWhiteSpace(company?.CompanyLogoPath) ? null : Url.Content(company.CompanyLogoPath!);
+    var companyAddress = company?.Address   ?? string.Empty;
+    var companyMobile  = company?.ContactNo ?? string.Empty;
+    var companyGstin   = company?.GSTCode   ?? string.Empty;
+
+    var primaryBank = await BankRepo.GetPrimaryAsync();
+
+    var totalQty   = Model.Lines.Sum(l => l.Qty);
+    var subTotal   = Model.Lines.Sum(l => l.Amount);
+    var totalCgst  = Model.TotalCgst;
+    var totalSgst  = Model.TotalSgst;
+    var totalIgst  = Model.TotalIgst;
+    var totalGst   = totalCgst + totalSgst + totalIgst;
+    var isInter    = totalIgst > 0;
+
+    static string NumberToWords(long n)
+    {
+        if (n == 0) return "Zero";
+        string[] ones = { "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+                          "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+                          "Seventeen", "Eighteen", "Nineteen" };
+        string[] tens = { "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety" };
+        if (n < 0)        return "Minus " + NumberToWords(-n);
+        if (n < 20)       return ones[n];
+        if (n < 100)      return tens[n / 10] + (n % 10 != 0 ? " " + ones[n % 10] : "");
+        if (n < 1000)     return ones[n / 100] + " Hundred" + (n % 100 != 0 ? " " + NumberToWords(n % 100) : "");
+        if (n < 100000)   return NumberToWords(n / 1000) + " Thousand" + (n % 1000 != 0 ? " " + NumberToWords(n % 1000) : "");
+        if (n < 10000000) return NumberToWords(n / 100000) + " Lakh" + (n % 100000 != 0 ? " " + NumberToWords(n % 100000) : "");
+        return NumberToWords(n / 10000000) + " Crore" + (n % 10000000 != 0 ? " " + NumberToWords(n % 10000000) : "");
+    }
+    var totalWords = NumberToWords((long)Model.TotalAmount) + " Rupees";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>@Model.InvoiceNo</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Segoe UI',Arial,sans-serif;font-size:10px;color:#1a1a2e;background:#fff;}
+        .page{width:210mm;min-height:297mm;margin:0 auto;padding:10mm 12mm;background:#fff;}
+        table{width:100%;border-collapse:collapse;}
+        /* Header */
+        .header-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:2px solid #1a1a2e;padding-bottom:8px;margin-bottom:8px;}
+        .brand{font-size:15px;font-weight:700;color:#6366f1;letter-spacing:.04em;}
+        .brand-sub{font-size:9px;color:#555;margin-top:3px;line-height:1.6;}
+        .doc-title{text-align:right;}
+        .doc-title h1{font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#1a1a2e;margin-bottom:3px;}
+        .doc-stamp{display:inline-block;border:2px solid #1a1a2e;font-size:7.5px;font-weight:700;padding:2px 6px;letter-spacing:.1em;margin-bottom:5px;}
+        .doc-meta td{padding:1px 5px;font-size:9.5px;}
+        .doc-meta td:first-child{color:#555;white-space:nowrap;}
+        /* Bill To */
+        .bill-to{border:1px solid #ccc;padding:7px 12px;margin-bottom:8px;background:#f4f4ff;border-radius:4px;}
+        .bill-to .lbl{font-size:8px;font-weight:700;letter-spacing:.1em;color:#6366f1;margin-bottom:3px;text-transform:uppercase;}
+        .bill-to .name{font-size:12px;font-weight:700;margin-bottom:2px;}
+        .bill-to .detail{font-size:9px;color:#333;line-height:1.6;}
+        /* Items */
+        .items-wrap{border-radius:6px;overflow:hidden;border:1px solid #e2e4f0;margin-bottom:0;}
+        .items-table{border-collapse:collapse;}
+        .items-table thead tr{background:#1e293b;}
+        .items-table th{padding:6px 8px;font-weight:600;font-size:8px;text-align:left;color:#e2e8f0;letter-spacing:.07em;text-transform:uppercase;border:none;}
+        .items-table tbody tr{border-bottom:1px solid #eeeff6;}
+        .items-table tbody tr:last-child{border-bottom:none;}
+        .items-table tbody tr:nth-child(even){background:#f9f9fd;}
+        .items-table td{padding:5px 8px;vertical-align:top;font-size:9.5px;border:none;color:#2d2d3a;}
+        .items-table td.sno{color:#9498b4;font-size:9px;}
+        .items-table .num{text-align:right;}
+        .subtotal-row{border-top:2px solid #1e293b;background:#f0f1fb!important;}
+        .subtotal-row td{font-weight:700;padding:6px 8px;font-size:9.5px;color:#1e293b;border:none;}
+        /* Bottom */
+        .bottom-grid{display:grid;grid-template-columns:1fr 210px;gap:0 16px;margin-top:8px;align-items:start;}
+        .words-box{border:1px solid #ccc;padding:7px 10px;font-size:9px;font-style:italic;line-height:1.5;background:#fafafa;border-radius:4px;height:100%;}
+        .words-box strong{font-style:normal;font-size:8px;letter-spacing:.05em;text-transform:uppercase;color:#6366f1;display:block;margin-bottom:3px;}
+        .totals-table{border-radius:6px;overflow:hidden;border:1px solid #e2e4f0;}
+        .totals-table td{padding:4px 10px;font-size:9.5px;border-bottom:1px solid #eeeff6;}
+        .totals-table tr:last-child td{border-bottom:none;}
+        .totals-table td:last-child{text-align:right;white-space:nowrap;font-weight:500;}
+        .totals-table .total-row td{font-weight:700;font-size:11px;background:#1e293b;color:#fff;padding:6px 10px;border-bottom:none;}
+        .totals-table .balance-row td{font-weight:700;font-size:10px;background:#fef3c7;color:#92400e;padding:5px 10px;}
+        /* Signature footer */
+        .sig-footer{
+            width:100%;
+            background:#fff;
+            border-top:1.5px solid #1e293b;
+            padding:6px 0 8px;
+            display:flex;
+            justify-content:space-between;
+            align-items:flex-end;
+            font-size:9.5px;
+            color:#555;
+            box-sizing:border-box;
+            margin-top:16px;
+            gap:8px;
+        }
+        .sig-block{flex:1;text-align:center;}
+        .sig-block.left{text-align:left;}
+        .sig-block.right{text-align:right;}
+        .sig-img{max-height:48px;max-width:120px;object-fit:contain;display:block;margin:0 auto 3px;}
+        .sig-block.left .sig-img{margin:0 0 3px 0;}
+        .sig-block.right .sig-img{margin:0 0 3px auto;}
+        .sig-line{height:28px;border-bottom:1px dashed #aaa;margin-bottom:3px;}
+        .sig-label{font-size:8px;color:#888;}
+        .sig-name{font-weight:700;font-size:9.5px;color:#1e293b;}
+        @@media print{
+            body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+            .no-print{display:none!important;}
+            .page{padding:8mm 10mm 22mm;border:none;box-shadow:none;}
+            .sig-footer{
+                position:fixed;
+                bottom:0;
+                left:10mm;
+                right:10mm;
+                width:auto;
+                margin-top:0;
+            }
+        }
+        @@media screen{
+            body{background:#d0d0d0;}
+            .page{margin:20px auto;box-shadow:0 4px 24px rgba(0,0,0,.18);border:1px solid #bbb;}
+        }
+        /* Cancelled watermark */
+        .page{position:relative;}
+        .watermark-cancelled{
+            position:absolute;
+            top:50%;left:50%;
+            transform:translate(-50%,-50%) rotate(-45deg);
+            font-size:72px;
+            font-weight:900;
+            letter-spacing:.12em;
+            text-transform:uppercase;
+            color:rgba(220,38,38,.18);
+            border:6px solid rgba(220,38,38,.18);
+            padding:10px 30px;
+            border-radius:8px;
+            pointer-events:none;
+            user-select:none;
+            white-space:nowrap;
+            z-index:9999;
+        }
+        @@media print{
+            .watermark-cancelled{color:rgba(220,38,38,.15);border-color:rgba(220,38,38,.15);}
+        }
+    </style>
+</head>
+<body>
+
+<!-- Toolbar (screen only) -->
+<div class="no-print" style="padding:10px 20px;background:#1e293b;display:flex;gap:10px;align-items:center;">
+    <button onclick="window.print()" style="background:#6366f1;color:#fff;border:none;padding:7px 22px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">
+        🖨&nbsp; Print / Save PDF
+    </button>
+    <a href="javascript:history.back()" style="background:#334155;color:#e2e8f0;padding:7px 18px;border-radius:8px;font-size:12px;text-decoration:none;">← Back</a>
+    <span style="color:#94a3b8;font-size:11px;margin-left:auto;">@Model.InvoiceNo</span>
+</div>
+
+<div class="page">
+@if (Model.IsCancelled)
+{
+    <div class="watermark-cancelled">Cancelled</div>
+}
+
+    <!-- ── HEADER ─────────────────────────────────────────── -->
+    <div class="header-grid">
+        <div>
+            @if (brandLogoPath != null)
+            {
+                <img src="@brandLogoPath" alt="@brandName" style="max-height:52px;max-width:160px;object-fit:contain;margin-bottom:8px;display:block;" />
+            }
+            <div class="brand">@brandName</div>
+            <div class="brand-sub">
+                @if (!string.IsNullOrWhiteSpace(companyAddress)) { <text>@companyAddress<br /></text> }
+                @if (!string.IsNullOrWhiteSpace(companyMobile))  { <text>Mobile : @companyMobile<br /></text> }
+                @if (!string.IsNullOrWhiteSpace(companyGstin))   { <text>GSTIN : @companyGstin</text> }
+            </div>
+        </div>
+        <div class="doc-title">
+            <div class="doc-stamp">ORIGINAL FOR RECIPIENT</div>
+            <h1>Bill of Supply</h1>
+            <table class="doc-meta" style="margin-left:auto;width:auto;">
+                <tr><td>Invoice No.</td><td style="font-weight:700;">@Model.InvoiceNo</td></tr>
+                <tr><td>Invoice Date</td><td style="font-weight:700;">@Model.InvoiceDate.ToString("dd/MM/yyyy")</td></tr>
+                @if (Model.DueDate.HasValue)
+                {
+                    <tr><td>Due Date</td><td style="font-weight:700;">@Model.DueDate.Value.ToString("dd/MM/yyyy")</td></tr>
+                }
+                @if (!string.IsNullOrWhiteSpace(Model.QuotationNo))
+                {
+                    <tr><td>Ref. Quotation</td><td style="font-weight:700;">@Model.QuotationNo</td></tr>
+                }
+            </table>
+        </div>
+    </div>
+
+    <!-- ── BILL TO ────────────────────────────────────────── -->
+    <div class="bill-to">
+        <div class="lbl">Bill To</div>
+        <div class="name">@Model.PartyName</div>
+        @if (!string.IsNullOrWhiteSpace(Model.PartyAddress))
+        {
+            <div class="detail">@Model.PartyAddress</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.PartyGSTINNo))
+        {
+            <div class="detail">GSTIN :&nbsp;&nbsp;@Model.PartyGSTINNo</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.PartyPANNo))
+        {
+            <div class="detail">PAN Number :&nbsp;&nbsp;@Model.PartyPANNo</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.PartyContactPerson))
+        {
+            <div class="detail">Contact :&nbsp;&nbsp;@Model.PartyContactPerson
+                @if (!string.IsNullOrWhiteSpace(Model.PartyMobile)) { <text>&nbsp;|&nbsp; @Model.PartyMobile</text> }
+            </div>
+        }
+    </div>
+
+    <!-- ── LINE ITEMS ─────────────────────────────────────── -->
+    <div class="items-wrap">
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width:32px;">#</th>
+                <th>Items</th>
+                <th style="width:95px;">Plan</th>
+                <th style="width:75px;">Type</th>
+                <th class="num" style="width:45px;">Qty</th>
+                <th class="num" style="width:72px;">Rate</th>
+                <th class="num" style="width:80px;">Discount</th>
+                <th class="num" style="width:72px;">Taxable</th>
+                <th class="num" style="width:40px;">GST%</th>
+                <th class="num" style="width:72px;">GST Amt</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var line in Model.Lines)
+            {
+                var lineGst = line.CgstAmount + line.SgstAmount + line.IgstAmount;
+                <tr>
+                    <td class="sno">@line.SNo</td>
+                    <td style="font-weight:600;color:#1a1a2e;">@line.ItemDescription</td>
+                    <td style="color:#4b5563;">@(line.PlanName ?? string.Empty)</td>
+                    <td>
+                        @if (!string.IsNullOrWhiteSpace(line.Type))
+                        {
+                            var badgeBg  = (line.Type ?? "").ToLowerInvariant() == "subscription" ? "#ede9fe" : "#e0f2fe";
+                            var badgeClr = (line.Type ?? "").ToLowerInvariant() == "subscription" ? "#6d28d9" : "#0369a1";
+                            <span style="background:@badgeBg;color:@badgeClr;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:600;">@line.Type</span>
+                        }
+                    </td>
+                    <td class="num">@line.Qty</td>
+                    <td class="num">@line.Rate.ToString("0,0.##")</td>
+                    <td class="num">
+                        @if (line.DiscountAmount > 0)
+                        {
+                            <text>@line.DiscountAmount.ToString("0,0.##")<br/><span style="color:#9ca3af;font-size:9px;">(@line.DiscountPercent.ToString("0.##")%)</span></text>
+                        }
+                        else { <span style="color:#cbd5e1">—</span> }
+                    </td>
+                    <td class="num">@line.Amount.ToString("0,0.##")</td>
+                    <td class="num" style="color:#6366f1;font-weight:600;">@(line.GstPercent > 0 ? line.GstPercent.ToString("0") + "%" : "—")</td>
+                    <td class="num">@(lineGst > 0 ? lineGst.ToString("0,0.##") : "—")</td>
+                </tr>
+            }
+            @{ var minRows = Math.Max(0, 5 - Model.Lines.Count); }
+            @for (var i = 0; i < minRows; i++)
+            {
+                <tr><td style="padding:8px;">&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            }
+        </tbody>
+        <tr class="subtotal-row">
+            <td colspan="4" style="padding-left:10px;letter-spacing:.05em;font-size:9.5px;">SUBTOTAL</td>
+            <td class="num">@totalQty</td>
+            <td></td>
+            <td></td>
+            <td class="num">₹&nbsp;@subTotal.ToString("0,0.##")</td>
+            <td></td>
+            <td class="num">₹&nbsp;@totalGst.ToString("0,0.##")</td>
+        </tr>
+    </table>
+    </div>
+
+    <!-- ── BOTTOM GRID ────────────────────────────────────── -->
+    <div class="bottom-grid">
+        <div class="words-box">
+            <strong>Total Amount (in words)</strong>
+            @totalWords Only
+        </div>
+        <table class="totals-table">
+            <tr><td>Sub Total</td><td>₹&nbsp;@subTotal.ToString("0,0.##")</td></tr>
+            @if (!isInter && totalCgst > 0)
+            {
+                <tr><td>CGST</td><td>₹&nbsp;@totalCgst.ToString("0,0.##")</td></tr>
+                <tr><td>SGST</td><td>₹&nbsp;@totalSgst.ToString("0,0.##")</td></tr>
+            }
+            @if (isInter && totalIgst > 0)
+            {
+                <tr><td>IGST</td><td>₹&nbsp;@totalIgst.ToString("0,0.##")</td></tr>
+            }
+            @if (Model.RoundOff != 0)
+            {
+                <tr><td>Round Off</td><td>₹&nbsp;@Model.RoundOff.ToString("0.##")</td></tr>
+            }
+            <tr class="total-row"><td>Total Amount</td><td>₹&nbsp;@Model.TotalAmount.ToString("0,0")</td></tr>
+            <tr><td>Received Amount</td><td>₹&nbsp;@Model.ReceivedAmount.ToString("0,0")</td></tr>
+            <tr><td>Previous Balance</td><td>₹&nbsp;@Model.PreviousBalance.ToString("0,0")</td></tr>
+            <tr class="balance-row"><td>Current Balance</td><td>₹&nbsp;@Model.CurrentBalance.ToString("0,0")</td></tr>
+        </table>
+    </div>
+
+    <!-- ── NOTES / TERMS ──────────────────────────────────── -->
+    @if (!string.IsNullOrWhiteSpace(Model.Notes))
+    {
+        <div style="margin-top:8px;font-size:9px;color:#444;"><strong>Notes:</strong>&nbsp; @Model.Notes</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.TermsAndConditions))
+    {
+        <div style="margin-top:4px;font-size:9px;color:#444;"><strong>Terms &amp; Conditions:</strong>&nbsp; @Model.TermsAndConditions</div>
+    }
+
+    <!-- ── BANK DETAILS ───────────────────────────────────── -->
+    @if (primaryBank != null)
+    {
+        var upiData = !string.IsNullOrWhiteSpace(primaryBank.UpiId)
+            ? $"upi://pay?pa={Uri.EscapeDataString(primaryBank.UpiId)}&pn={Uri.EscapeDataString(primaryBank.UpiHolderName ?? "")}&cu=INR"
+            : null;
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;border:1px solid #ccc;padding:8px 12px;background:#f4f4ff;border-radius:4px;">
+            <div>
+                <div style="font-size:8px;font-weight:700;letter-spacing:.1em;color:#6366f1;text-transform:uppercase;margin-bottom:5px;">Payment / Bank Details</div>
+                <div style="display:flex;flex-direction:column;gap:3px;font-size:9.5px;">
+                    <div style="display:flex;gap:0;"><span style="color:#9ca3af;min-width:90px;">Bank Name</span><span style="font-weight:600;color:#1e293b;">@primaryBank.BankName</span></div>
+                    <div style="display:flex;gap:0;"><span style="color:#9ca3af;min-width:90px;">Account No.</span><span style="font-weight:700;font-family:monospace;letter-spacing:.03em;color:#1e293b;">@primaryBank.AccountNumber</span></div>
+                    <div style="display:flex;gap:0;"><span style="color:#9ca3af;min-width:90px;">Branch</span><span style="color:#374151;">@primaryBank.BranchName</span></div>
+                    <div style="display:flex;gap:0;"><span style="color:#9ca3af;min-width:90px;">IFSC Code</span><span style="font-family:monospace;font-weight:600;color:#374151;">@primaryBank.IFSCCode</span></div>
+                    @if (!string.IsNullOrWhiteSpace(primaryBank.UpiId))
+                    {
+                        <div style="display:flex;gap:0;"><span style="color:#9ca3af;min-width:90px;">UPI ID</span><span style="font-family:monospace;color:#374151;">@primaryBank.UpiId</span></div>
+                        @if (!string.IsNullOrWhiteSpace(primaryBank.UpiHolderName))
+                        {
+                            <div style="display:flex;gap:0;"><span style="color:#9ca3af;min-width:90px;">UPI Name</span><span style="color:#374151;">@primaryBank.UpiHolderName</span></div>
+                        }
+                    }
+                </div>
+            </div>
+            @if (upiData != null)
+            {
+                var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=90x90&margin=4&data={Uri.EscapeDataString(upiData)}";
+                <div style="text-align:center;">
+                    <img src="@qrUrl" alt="UPI QR" style="width:90px;height:90px;display:block;border:1px solid #ddd;border-radius:4px;" />
+                    <div style="font-size:8px;color:#555;margin-top:3px;">Scan to Pay</div>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- ── SIGNATURE ──────────────────────────────────────── -->
+    <div class="sig-footer">
+    @{
+        var sigs     = Model.Signatories;
+        var sigCount = sigs.Count;
+        string[] posClasses = sigCount == 1 ? new[]{"right"}
+                            : sigCount == 2 ? new[]{"left", "right"}
+                            : new[]{"left", "", "right"};
+    }
+    @if (sigCount == 0)
+    {
+        <div class="sig-block"></div>
+        <div class="sig-block right">
+            <div class="sig-line"></div>
+            <div class="sig-name">For @brandName</div>
+            <div class="sig-label">Authorised Signatory</div>
+        </div>
+    }
+    else
+    {
+        @for (int si = 0; si < sigCount; si++)
+        {
+            var sig      = sigs[si];
+            var posClass = posClasses[si];
+            var sigName  = string.IsNullOrWhiteSpace(sig.FullName) ? sig.Username : sig.FullName;
+            <div class="sig-block @posClass">
+                @if (!string.IsNullOrWhiteSpace(sig.DigitalSignaturePath))
+                {
+                    <img class="sig-img" src="@Url.Content(sig.DigitalSignaturePath)" alt="@sigName" />
+                }
+                <div class="sig-line"></div>
+                <div class="sig-name">@sigName</div>
+                <div class="sig-label">Authorised Signatory</div>
+            </div>
+        }
+    }
+    </div>
+
+</div>
+</body>
+</html>

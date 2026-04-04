@@ -19,6 +19,7 @@ namespace CentralLicenceApp.Repositories
         Task<bool> CheckEmployeeCodeUniqueAsync(string employeeCode, int? excludeUserId = null);
         Task<IEnumerable<UserMaster>> GetEmployeesAsync();
         Task<IEnumerable<UserMaster>> GetCoreMembersAsync();
+        Task<IEnumerable<UserMaster>> GetSignatoryUsersAsync();
         Task<IReadOnlyCollection<int>> GetSelfAndSubordinateIdsAsync(int userId);
     }
 

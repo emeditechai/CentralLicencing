@@ -1,0 +1,127 @@
+@model CentralLicenceApp.Models.BankMaster
+@{
+    var isNew = Model.Id == 0;
+    ViewData["Title"] = isNew ? "Add Bank" : "Edit Bank";
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">@(isNew ? "Add New Bank" : "Edit Bank")</h4>
+        @if (!isNew) { <p class="text-muted mb-0" style="font-size:.85rem;">@Model.BankName</p> }
+    </div>
+</div>
+
+<form asp-action="@(isNew ? "Create" : "Edit")" asp-route-id="@(isNew ? null : Model.Id.ToString())" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+
+    <div class="row g-3">
+        <!-- Bank Details Card -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header fw-semibold" style="font-size:.85rem;">
+                    <i class="bi bi-bank2 me-2" style="color:#6366f1;"></i>Bank Details
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="BankName" class="form-label fw-medium" style="font-size:.85rem;">Bank Name <span class="text-danger">*</span></label>
+                            <input asp-for="BankName" class="form-control" placeholder="e.g. State Bank of India" />
+                            <span asp-validation-for="BankName" class="text-danger" style="font-size:.8rem;"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="AccountNumber" class="form-label fw-medium" style="font-size:.85rem;">Account Number <span class="text-danger">*</span></label>
+                            <input asp-for="AccountNumber" class="form-control font-monospace" placeholder="e.g. 00000011223344" />
+                            <span asp-validation-for="AccountNumber" class="text-danger" style="font-size:.8rem;"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BranchName" class="form-label fw-medium" style="font-size:.85rem;">Branch Name <span class="text-danger">*</span></label>
+                            <input asp-for="BranchName" class="form-control" placeholder="e.g. Kolkata Main Branch" />
+                            <span asp-validation-for="BranchName" class="text-danger" style="font-size:.8rem;"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="IFSCCode" class="form-label fw-medium" style="font-size:.85rem;">IFSC Code <span class="text-danger">*</span></label>
+                            <input asp-for="IFSCCode" class="form-control font-monospace text-uppercase" placeholder="e.g. SBIN0001234" maxlength="11"
+                                   oninput="this.value=this.value.toUpperCase()" />
+                            <span asp-validation-for="IFSCCode" class="text-danger" style="font-size:.8rem;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- UPI Details Card -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header fw-semibold" style="font-size:.85rem;">
+                    <i class="bi bi-qr-code me-2" style="color:#6366f1;"></i>UPI / Payment Details
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="UpiId" class="form-label fw-medium" style="font-size:.85rem;">UPI ID <span class="text-muted" style="font-weight:400;">(used to generate payment QR)</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-qr-code-scan"></i></span>
+                                <input asp-for="UpiId" class="form-control" placeholder="e.g. business@upi" />
+                            </div>
+                            <span asp-validation-for="UpiId" class="text-danger" style="font-size:.8rem;"></span>
+                            @if (!string.IsNullOrWhiteSpace(Model.UpiId))
+                            {
+                                <div class="mt-2 d-flex align-items-center gap-2">
+                                    <img id="qrPreview"
+                                         src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=upi://pay?pa=@Uri.EscapeDataString(Model.UpiId)&pn=@Uri.EscapeDataString(Model.UpiHolderName ?? "")"
+                                         alt="UPI QR" style="width:80px;height:80px;border:1px solid #ddd;border-radius:6px;" />
+                                    <span class="text-muted" style="font-size:.8rem;">Live QR preview</span>
+                                </div>
+                            }
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="UpiHolderName" class="form-label fw-medium" style="font-size:.85rem;">UPI Holder Name</label>
+                            <input asp-for="UpiHolderName" class="form-control" placeholder="e.g. Emeditech Plus LLP" />
+                            <span asp-validation-for="UpiHolderName" class="text-danger" style="font-size:.8rem;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flags Card -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-auto">
+                            <div class="form-check form-switch">
+                                <input asp-for="IsPrimary" class="form-check-input" role="switch" id="isPrimaryCheck" />
+                                <label class="form-check-label fw-medium" for="isPrimaryCheck" style="font-size:.875rem;">
+                                    Mark as Primary Bank
+                                    <span class="text-muted d-block" style="font-weight:400;font-size:.78rem;">Only one bank can be primary at a time.</span>
+                                </label>
+                                <span asp-validation-for="IsPrimary" class="text-danger d-block" style="font-size:.8rem;"></span>
+                            </div>
+                        </div>
+                        <div class="col-auto ms-4">
+                            <div class="form-check form-switch">
+                                <input asp-for="IsActive" class="form-check-input" role="switch" id="isActiveCheck" />
+                                <label class="form-check-label fw-medium" for="isActiveCheck" style="font-size:.875rem;">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="col-12 d-flex gap-2 justify-content-end pb-2">
+            <a asp-action="Index" class="btn btn-outline-secondary" style="border-radius:10px;">Cancel</a>
+            <button type="submit" class="btn btn-primary" style="border-radius:10px;">
+                <i class="bi bi-check-lg me-1"></i> @(isNew ? "Save Bank" : "Update Bank")
+            </button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -186,6 +186,7 @@
                                                 <th>Pricing Model</th>
                                                 <th>Base Price</th>
                                                 <th>AMC</th>
+                                                <th>Invoice No</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -213,6 +214,7 @@
                                                             <div class="text-muted" style="font-size:.74rem;">@item.AmcCalculationType • @item.AmcPercentage.ToString("0.####")%</div>
                                                         }
                                                     </td>
+                                                    <td>@(string.IsNullOrWhiteSpace(item.InvoiceNo) ? "—" : item.InvoiceNo)</td>
                                                 </tr>
                                             }
                                         </tbody>

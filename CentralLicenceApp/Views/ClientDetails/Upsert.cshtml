@@ -152,6 +152,10 @@
                                                 <div class="purchase-amc-amount fw-bold mt-1" style="font-size:1rem;color:#1e293b;">@(row.AmcAmount > 0 ? "₹" + row.AmcAmount.ToString("0.00") : "-")</div>
                                             </div>
                                         </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-semibold" style="font-size:.8rem;">Invoice No</label>
+                                            <input type="text" name="PurchasedProducts[@i].InvoiceNo" value="@row.InvoiceNo" class="form-control" placeholder="e.g. INV-2024-001" style="border-radius:10px;" />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -324,6 +328,10 @@
                                 <div class="text-muted" style="font-size:.72rem;font-weight:700;letter-spacing:.04em;">AMC AMOUNT</div>
                                 <div class="purchase-amc-amount fw-bold mt-1" style="font-size:1rem;color:#1e293b;">-</div>
                             </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold" style="font-size:.8rem;">Invoice No</label>
+                            <input type="text" name="PurchasedProducts[${index}].InvoiceNo" class="form-control" placeholder="e.g. INV-2024-001" style="border-radius:10px;" />
                         </div>
                     </div>
                 </div>
