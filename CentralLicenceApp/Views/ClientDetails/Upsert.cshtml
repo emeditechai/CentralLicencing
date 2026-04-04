@@ -154,7 +154,46 @@
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label fw-semibold" style="font-size:.8rem;">Invoice No</label>
-                                            <input type="text" name="PurchasedProducts[@i].InvoiceNo" value="@row.InvoiceNo" class="form-control" placeholder="e.g. INV-2024-001" style="border-radius:10px;" />
+                                            <input type="text" name="PurchasedProducts[@i].InvoiceNo" value="@row.InvoiceNo"
+                                                   class="form-control invoice-no-input" placeholder="e.g. EL/SL/26-27/0001"
+                                                   style="border-radius:10px;"
+                                                   data-initial="@row.InvoiceNo"
+                                                   oninput="scheduleInvoiceFetch(this)" />
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="invoice-detail-panel d-none mt-1 p-3 rounded-3" style="background:#f0f7ff;border:1px solid #c7ddf9;font-size:.82rem;">
+                                                <div class="d-flex flex-wrap gap-3 align-items-center">
+                                                    <span class="inv-detail-item"><span class="text-muted">Invoice:</span> <strong class="inv-no"></strong></span>
+                                                    <span class="inv-detail-item"><span class="text-muted">Date:</span> <strong class="inv-date"></strong></span>
+                                                    <span class="inv-detail-item"><span class="text-muted">Party:</span> <strong class="inv-party"></strong></span>
+                                                    <span class="ms-auto badge inv-status"></span>
+                                                </div>
+                                                <hr class="my-2" style="border-color:#c7ddf9;" />
+                                                <div class="d-flex flex-wrap gap-3">
+                                                    <div class="inv-stat-box">
+                                                        <div class="inv-stat-lbl">Sub Total</div>
+                                                        <div class="inv-stat-val inv-subtotal"></div>
+                                                    </div>
+                                                    <div class="inv-stat-box">
+                                                        <div class="inv-stat-lbl">GST</div>
+                                                        <div class="inv-stat-val inv-gst"></div>
+                                                    </div>
+                                                    <div class="inv-stat-box" style="border-color:#6366f1;">
+                                                        <div class="inv-stat-lbl">Total Amount</div>
+                                                        <div class="inv-stat-val inv-total" style="color:#6366f1;"></div>
+                                                    </div>
+                                                    <div class="inv-stat-box" style="border-color:#10b981;">
+                                                        <div class="inv-stat-lbl">Paid Amount</div>
+                                                        <div class="inv-stat-val inv-paid" style="color:#10b981;"></div>
+                                                    </div>
+                                                    <div class="inv-stat-box inv-balance-box">
+                                                        <div class="inv-stat-lbl">Balance Due</div>
+                                                        <div class="inv-stat-val inv-balance"></div>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-2 inv-lines-wrap" style="font-size:.78rem;color:#475569;"></div>
+                                            </div>
+                                            <div class="invoice-not-found-msg d-none text-danger mt-1" style="font-size:.78rem;">Invoice not found or cancelled.</div>
                                         </div>
                                     </div>
                                 </div>
@@ -198,6 +237,17 @@
 
 @section Scripts {
 <partial name="_ValidationScriptsPartial" />
+<style>
+    .inv-stat-box {
+        background: #fff;
+        border: 1px solid #dde8f9;
+        border-radius: 8px;
+        padding: 5px 10px;
+        min-width: 100px;
+    }
+    .inv-stat-lbl { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
+    .inv-stat-val { font-size: .92rem; font-weight: 700; color: #1e293b; margin-top: 1px; }
+</style>
 <script>
     const productCatalog = @Html.Raw(productCatalogJson);
     const productRateCatalog = @Html.Raw(productRateCatalogJson);
@@ -331,7 +381,42 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold" style="font-size:.8rem;">Invoice No</label>
-                            <input type="text" name="PurchasedProducts[${index}].InvoiceNo" class="form-control" placeholder="e.g. INV-2024-001" style="border-radius:10px;" />
+                            <input type="text" name="PurchasedProducts[${index}].InvoiceNo" class="form-control invoice-no-input" placeholder="e.g. EL/SL/26-27/0001" style="border-radius:10px;" oninput="scheduleInvoiceFetch(this)" />
+                        </div>
+                        <div class="col-12">
+                            <div class="invoice-detail-panel d-none mt-1 p-3 rounded-3" style="background:#f0f7ff;border:1px solid #c7ddf9;font-size:.82rem;">
+                                <div class="d-flex flex-wrap gap-3 align-items-center">
+                                    <span class="inv-detail-item"><span class="text-muted">Invoice:</span> <strong class="inv-no"></strong></span>
+                                    <span class="inv-detail-item"><span class="text-muted">Date:</span> <strong class="inv-date"></strong></span>
+                                    <span class="inv-detail-item"><span class="text-muted">Party:</span> <strong class="inv-party"></strong></span>
+                                    <span class="ms-auto badge inv-status"></span>
+                                </div>
+                                <hr class="my-2" style="border-color:#c7ddf9;" />
+                                <div class="d-flex flex-wrap gap-3">
+                                    <div class="inv-stat-box">
+                                        <div class="inv-stat-lbl">Sub Total</div>
+                                        <div class="inv-stat-val inv-subtotal"></div>
+                                    </div>
+                                    <div class="inv-stat-box">
+                                        <div class="inv-stat-lbl">GST</div>
+                                        <div class="inv-stat-val inv-gst"></div>
+                                    </div>
+                                    <div class="inv-stat-box" style="border-color:#6366f1;">
+                                        <div class="inv-stat-lbl">Total Amount</div>
+                                        <div class="inv-stat-val inv-total" style="color:#6366f1;"></div>
+                                    </div>
+                                    <div class="inv-stat-box" style="border-color:#10b981;">
+                                        <div class="inv-stat-lbl">Paid Amount</div>
+                                        <div class="inv-stat-val inv-paid" style="color:#10b981;"></div>
+                                    </div>
+                                    <div class="inv-stat-box inv-balance-box">
+                                        <div class="inv-stat-lbl">Balance Due</div>
+                                        <div class="inv-stat-val inv-balance"></div>
+                                    </div>
+                                </div>
+                                <div class="mt-2 inv-lines-wrap" style="font-size:.78rem;color:#475569;"></div>
+                            </div>
+                            <div class="invoice-not-found-msg d-none text-danger mt-1" style="font-size:.78rem;">Invoice not found or cancelled.</div>
                         </div>
                     </div>
                 </div>
@@ -341,11 +426,6 @@
     }
 
     function removePurchasedProductRow(button) {
-        const container = document.getElementById('purchasedProductsContainer');
-        if (container.querySelectorAll('.purchase-row').length === 1) {
-            return;
-        }
-
         button.closest('.purchase-row').remove();
         reindexPurchasedProductRows();
     }
@@ -378,6 +458,109 @@
         });
 
         toggleInternalUseSection();
+
+        // Auto-fetch for pre-filled Invoice No fields on page load
+        document.querySelectorAll('.invoice-no-input').forEach(function(inp) {
+            if (inp.dataset.initial && inp.dataset.initial.trim() !== '') {
+                fetchInvoiceDetails(inp);
+            }
+        });
     });
+
+    // ── Invoice No lookup ──────────────────────────────────────────
+    var _invoiceFetchTimers = new WeakMap();
+
+    function scheduleInvoiceFetch(input) {
+        clearTimeout(_invoiceFetchTimers.get(input));
+        var timer = setTimeout(function() { fetchInvoiceDetails(input); }, 600);
+        _invoiceFetchTimers.set(input, timer);
+    }
+
+    function fetchInvoiceDetails(input) {
+        var row = input.closest('.purchase-row');
+        var panel = row.querySelector('.invoice-detail-panel');
+        var notFound = row.querySelector('.invoice-not-found-msg');
+        var val = input.value.trim();
+
+        // Hide both if empty
+        if (!val) {
+            panel.classList.add('d-none');
+            notFound.classList.add('d-none');
+            return;
+        }
+
+        fetch('/ClientDetails/GetInvoiceDetails?invoiceNo=' + encodeURIComponent(val))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.found) {
+                    panel.classList.add('d-none');
+                    notFound.classList.remove('d-none');
+                    return;
+                }
+                notFound.classList.add('d-none');
+
+                // Header
+                row.querySelector('.inv-no').textContent    = data.invoiceNo;
+                row.querySelector('.inv-date').textContent  = data.invoiceDate;
+                row.querySelector('.inv-party').textContent = data.partyName;
+
+                var statusBadge = row.querySelector('.inv-status');
+                statusBadge.textContent = data.status;
+                var sc = { Paid: 'bg-success', Partial: 'bg-warning text-dark', Cancelled: 'bg-danger', Draft: 'bg-secondary', Sent: 'bg-info text-dark' };
+                statusBadge.className = 'ms-auto badge ' + (sc[data.status] || 'bg-secondary');
+
+                // Amounts
+                var fmt = function(n) { return '\u20b9' + Number(n).toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2}); };
+                row.querySelector('.inv-subtotal').textContent = fmt(data.subTotal);
+                row.querySelector('.inv-gst').textContent      = fmt(data.totalGst);
+                row.querySelector('.inv-total').textContent    = fmt(data.totalAmount);
+                row.querySelector('.inv-paid').textContent     = fmt(data.receivedAmount);
+
+                var balBox = row.querySelector('.inv-balance-box');
+                var balVal = row.querySelector('.inv-balance');
+                balVal.textContent = fmt(data.balanceDue);
+                balBox.style.borderColor = data.balanceDue > 0 ? '#ef4444' : '#10b981';
+                balVal.style.color       = data.balanceDue > 0 ? '#ef4444' : '#10b981';
+
+                // Line items
+                var linesWrap = row.querySelector('.inv-lines-wrap');
+                if (data.lines && data.lines.length) {
+                    linesWrap.innerHTML = '<strong>Items:</strong> ' +
+                        data.lines.map(function(l) {
+                            return (l.itemDescription || '') +
+                                (l.planName ? ' \u2022 ' + l.planName : '') +
+                                (l.type ? ' (' + l.type + ')' : '') +
+                                ' \u00d7' + l.qty + ' \u0040 \u20b9' + Number(l.rate).toLocaleString('en-IN') +
+                                ' = \u20b9' + Number(l.amount).toLocaleString('en-IN');
+                        }).join(' &nbsp;|&nbsp; ');
+                } else {
+                    linesWrap.innerHTML = '';
+                }
+
+                // Auto-select Product Name and Pricing Model from first invoice line
+                if (data.lines && data.lines.length > 0) {
+                    var firstLine = data.lines[0];
+                    var productSelect = row.querySelector('.product-select');
+                    var matchedProduct = productCatalog.find(function(p) {
+                        return p.productName.toLowerCase() === (firstLine.itemDescription || '').toLowerCase();
+                    });
+                    if (matchedProduct) {
+                        productSelect.value = matchedProduct.id;
+                        var rates = getRatesForProduct(matchedProduct.id);
+                        var matchedRate = rates.find(function(r) {
+                            return r.pricingModel.toLowerCase() === (firstLine.planName || '').toLowerCase();
+                        });
+                        populatePricingModelSelect(row, matchedRate ? matchedRate.id : null);
+                        updatePurchaseSnapshot(row);
+                    }
+                }
+
+                panel.classList.remove('d-none');
+            })
+            .catch(function() {
+                panel.classList.add('d-none');
+                notFound.classList.remove('d-none');
+            });
+    }
 </script>
 }

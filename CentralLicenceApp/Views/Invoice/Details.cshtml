@@ -259,7 +259,7 @@
                    class="btn btn-outline-secondary w-100" style="border-radius:10px;" target="_blank">
                     <i class="bi bi-printer me-1"></i> Print / Download
                 </a>
-                @if (!Model.IsCancelled && Model.Status != "Paid")
+                @if (!Model.IsCancelled && Model.Status != "Paid" && Model.CurrentBalance > 0)
                 {
                     <a asp-controller="InvoicePayment" asp-action="Create" asp-route-invoiceId="@Model.Id"
                        class="btn w-100 text-white" style="background:#10b981;border:none;border-radius:10px;">
@@ -282,11 +282,24 @@
                     }
                     else
                     {
-                        <a asp-action="Edit" asp-route-id="@Model.Id"
-                           class="btn btn-outline-primary w-100" style="border-radius:10px;">
-                            <i class="bi bi-pencil me-1"></i> Edit Invoice
-                        </a>
-                        @foreach (var s in new[] { "Draft", "Sent", "Partial", "Paid" }.Where(x => x != Model.Status))
+                        @if (Model.ReceivedAmount == 0)
+                        {
+                            <a asp-action="Edit" asp-route-id="@Model.Id"
+                               class="btn btn-outline-primary w-100" style="border-radius:10px;">
+                                <i class="bi bi-pencil me-1"></i> Edit Invoice
+                            </a>
+                        }
+                        @if (Model.Status != "Draft")
+                        {
+                            <form asp-action="ResendMail" asp-route-id="@Model.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn w-100 text-white" style="background:#6366f1;border:none;border-radius:10px;">
+                                    <i class="bi bi-envelope-arrow-up me-1"></i> Resend Mail
+                                </button>
+                            </form>
+                        }
+                        @foreach (var s in new[] { "Draft", "Sent" }
+                            .Where(x => x != Model.Status && !(x == "Draft" && Model.ReceivedAmount > 0)))
                         {
                             <form asp-action="UpdateStatus" method="post">
                                 @Html.AntiForgeryToken()

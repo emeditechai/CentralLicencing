@@ -39,7 +39,7 @@
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label fw-semibold" style="font-size:.82rem;">Quotation No</label>
-                            <input class="form-control" value="@Model.QuotationNo" readonly style="border-radius:10px;background:#f8fafc;" />
+                            <input class="form-control" value="@(Model.IsNew ? "Auto-generated on save" : Model.QuotationNo)" readonly style="border-radius:10px;background:#f8fafc;color:@(Model.IsNew ? "#94a3b8" : "inherit");font-style:@(Model.IsNew ? "italic" : "normal");" />
                         </div>
                         <div class="col-md-4">
                             <label asp-for="QuotationDate" class="form-label fw-semibold" style="font-size:.82rem;"></label>

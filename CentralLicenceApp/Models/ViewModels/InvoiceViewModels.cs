@@ -84,5 +84,11 @@ namespace CentralLicenceApp.Models.ViewModels
         public List<int> SignatoryUserIds { get; set; } = new();
 
         public bool IsNew => Id == 0;
+
+        /// <summary>
+        /// Advance payment lines captured via the payment modal on invoice creation.
+        /// Only populated when ReceivedAmount > 0 during Create/Convert flow.
+        /// </summary>
+        public List<PaymentLineViewModel> AdvancePaymentLines { get; set; } = new();
     }
 }

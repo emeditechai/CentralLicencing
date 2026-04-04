@@ -16,17 +16,20 @@ namespace CentralLicenceApp.Controllers
         private readonly IClientLicenseRepository _licenseRepo;
         private readonly IProductMasterRepository _productRepo;
         private readonly IProductRateRepository _productRateRepo;
+        private readonly IInvoiceRepository _invoiceRepo;
 
         public ClientDetailsController(
             IClientDetailsRepository detailsRepo,
             IClientLicenseRepository licenseRepo,
             IProductMasterRepository productRepo,
-            IProductRateRepository productRateRepo)
+            IProductRateRepository productRateRepo,
+            IInvoiceRepository invoiceRepo)
         {
             _detailsRepo = detailsRepo;
             _licenseRepo = licenseRepo;
             _productRepo = productRepo;
             _productRateRepo = productRateRepo;
+            _invoiceRepo = invoiceRepo;
         }
 
         // GET: /ClientDetails/Upsert?clientCode=xxx&productType=xxx
@@ -218,6 +221,40 @@ namespace CentralLicenceApp.Controllers
                     ModelState.AddModelError($"PurchasedProducts[{index}].ProductRateId", "Selected pricing model does not belong to the selected product.");
                 }
             }
+        }
+
+        // GET /ClientDetails/GetInvoiceDetails?invoiceNo=EL/SL/26-27/0001
+        [HttpGet]
+        public async Task<IActionResult> GetInvoiceDetails(string invoiceNo)
+        {
+            if (string.IsNullOrWhiteSpace(invoiceNo))
+                return Json(new { found = false });
+
+            var inv = await _invoiceRepo.GetByInvoiceNoAsync(invoiceNo.Trim());
+            if (inv == null || inv.IsCancelled)
+                return Json(new { found = false });
+
+            return Json(new
+            {
+                found          = true,
+                invoiceNo      = inv.InvoiceNo,
+                invoiceDate    = inv.InvoiceDate.ToString("dd MMM yyyy"),
+                partyName      = inv.PartyName,
+                subTotal       = inv.SubTotal,
+                totalGst       = inv.TotalGst,
+                totalAmount    = inv.TotalAmount,
+                receivedAmount = inv.ReceivedAmount,
+                balanceDue     = inv.CurrentBalance,
+                status         = inv.Status,
+                lines          = inv.Lines.Select(l => new {
+                    l.ItemDescription,
+                    l.PlanName,
+                    l.Type,
+                    l.Qty,
+                    l.Rate,
+                    l.Amount
+                })
+            });
         }
 
         private async Task ValidateReferenceClientCodeAsync(ClientDetailsViewModel vm)

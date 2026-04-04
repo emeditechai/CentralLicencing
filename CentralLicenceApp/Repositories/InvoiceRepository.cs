@@ -40,6 +40,14 @@ namespace CentralLicenceApp.Repositories
             return invoices;
         }
 
+        public async Task<Invoice?> GetByInvoiceNoAsync(string invoiceNo)
+        {
+            using var conn = CreateConnection();
+            return await conn.QuerySingleOrDefaultAsync<Invoice>(
+                "SELECT * FROM Invoice WHERE InvoiceNo = @InvoiceNo",
+                new { InvoiceNo = invoiceNo.Trim() });
+        }
+
         public async Task<Invoice?> GetByIdAsync(int id)
         {
             using var conn = CreateConnection();

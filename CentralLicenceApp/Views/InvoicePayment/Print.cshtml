@@ -10,6 +10,35 @@
     var companyAddr   = company?.Address   ?? string.Empty;
     var companyMobile = company?.ContactNo ?? string.Empty;
     var companyGstin  = company?.GSTCode   ?? string.Empty;
+
+    static string NumberToWords(long n)
+    {
+        if (n == 0) return "Zero";
+        string[] ones = {"","One","Two","Three","Four","Five","Six","Seven","Eight","Nine",
+                         "Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen",
+                         "Seventeen","Eighteen","Nineteen","Twenty","Twenty One","Twenty Two",
+                         "Twenty Three","Twenty Four","Twenty Five","Twenty Six","Twenty Seven",
+                         "Twenty Eight","Twenty Nine","Thirty","Thirty One","Thirty Two","Thirty Three",
+                         "Thirty Four","Thirty Five","Thirty Six","Thirty Seven","Thirty Eight",
+                         "Thirty Nine","Forty","Forty One","Forty Two","Forty Three","Forty Four",
+                         "Forty Five","Forty Six","Forty Seven","Forty Eight","Forty Nine","Fifty",
+                         "Fifty One","Fifty Two","Fifty Three","Fifty Four","Fifty Five","Fifty Six",
+                         "Fifty Seven","Fifty Eight","Fifty Nine","Sixty","Sixty One","Sixty Two",
+                         "Sixty Three","Sixty Four","Sixty Five","Sixty Six","Sixty Seven","Sixty Eight",
+                         "Sixty Nine","Seventy","Seventy One","Seventy Two","Seventy Three","Seventy Four",
+                         "Seventy Five","Seventy Six","Seventy Seven","Seventy Eight","Seventy Nine","Eighty",
+                         "Eighty One","Eighty Two","Eighty Three","Eighty Four","Eighty Five","Eighty Six",
+                         "Eighty Seven","Eighty Eight","Eighty Nine","Ninety","Ninety One","Ninety Two",
+                         "Ninety Three","Ninety Four","Ninety Five","Ninety Six","Ninety Seven",
+                         "Ninety Eight","Ninety Nine"};
+        if (n < 0)        return "Minus " + NumberToWords(-n);
+        if (n < 100)      return ones[n];
+        if (n < 1000)     return ones[n / 100] + " Hundred" + (n % 100 != 0 ? " " + NumberToWords(n % 100) : "");
+        if (n < 100000)   return NumberToWords(n / 1000) + " Thousand" + (n % 1000 != 0 ? " " + NumberToWords(n % 1000) : "");
+        if (n < 10000000) return NumberToWords(n / 100000) + " Lakh" + (n % 100000 != 0 ? " " + NumberToWords(n % 100000) : "");
+        return NumberToWords(n / 10000000) + " Crore" + (n % 10000000 != 0 ? " " + NumberToWords(n % 10000000) : "");
+    }
+    var amountWords = NumberToWords((long)Model.TotalAmountPaid) + " Rupees Only";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -17,167 +46,357 @@
     <meta charset="utf-8" />
     <title>Receipt @Model.ReceiptNo</title>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{font-family:'Segoe UI',Arial,sans-serif;font-size:9px;color:#1a1a2e;background:#fff;}
-        .page{width:148mm;min-height:210mm;margin:0 auto;padding:8mm 10mm 20mm;background:#fff;}
-        table{width:100%;border-collapse:collapse;}
-        /* Header */
-        .header-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:2px solid #1a1a2e;padding-bottom:6px;margin-bottom:8px;}
-        .brand{font-size:13px;font-weight:700;color:#6366f1;letter-spacing:.04em;}
-        .brand-sub{font-size:8px;color:#555;margin-top:2px;line-height:1.6;}
-        .doc-title{text-align:right;}
-        .doc-title h1{font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#1a1a2e;margin-bottom:2px;}
-        .doc-stamp{display:inline-block;border:1.5px solid #1a1a2e;font-size:7px;font-weight:700;padding:2px 5px;letter-spacing:.1em;margin-bottom:4px;}
-        .doc-meta td{padding:1px 4px;font-size:8.5px;}
-        .doc-meta td:first-child{color:#555;white-space:nowrap;}
-        /* Party */
-        .party-box{border:1px solid #ccc;padding:6px 10px;margin-bottom:8px;background:#f4f4ff;border-radius:4px;}
-        .party-box .lbl{font-size:7px;font-weight:700;letter-spacing:.1em;color:#6366f1;margin-bottom:2px;text-transform:uppercase;}
-        .party-box .name{font-size:11px;font-weight:700;margin-bottom:2px;}
-        /* Table */
-        .items-wrap{border-radius:4px;overflow:hidden;border:1px solid #e2e4f0;margin-bottom:8px;}
-        .items-table{border-collapse:collapse;}
-        .items-table thead tr{background:#1e293b;}
-        .items-table th{padding:5px 7px;font-weight:600;font-size:7px;text-align:left;color:#e2e8f0;letter-spacing:.07em;text-transform:uppercase;border:none;}
-        .items-table tbody tr{border-bottom:1px solid #eeeff6;}
-        .items-table tbody tr:last-child{border-bottom:none;}
-        .items-table tbody tr:nth-child(even){background:#f9f9fd;}
-        .items-table td{padding:4px 7px;font-size:8.5px;border:none;color:#2d2d3a;}
-        .items-table .num{text-align:right;}
-        .total-row td{background:#1e293b;color:#fff;font-weight:700;padding:5px 7px;font-size:9.5px;border:none;}
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+        @@page {
+            size: A5 portrait;
+            margin: 10mm 12mm 12mm;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 9.5px;
+            color: #1a1a2e;
+            background: #fff;
+        }
+
+        /* ── Screen wrapper ── */
+        @@media screen {
+            body { background: #b0b8c8; }
+            .page { width: 148mm; margin: 0 auto; box-shadow: 0 6px 32px rgba(0,0,0,.22); }
+            .print-toolbar { display: flex; }
+        }
+        @@media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .print-toolbar { display: none !important; }
+            .page { width: 100%; box-shadow: none; }
+        }
+
+        /* ── Toolbar ── */
+        .print-toolbar {
+            align-items: center; gap: 10px;
+            padding: 8px 16px;
+            background: #1e293b;
+            position: sticky; top: 0; z-index: 10;
+        }
+        .print-toolbar button {
+            background: #6366f1; color: #fff; border: none;
+            padding: 6px 20px; border-radius: 7px; cursor: pointer;
+            font-size: 12px; font-weight: 600;
+        }
+        .print-toolbar a {
+            background: #334155; color: #e2e8f0;
+            padding: 6px 16px; border-radius: 7px;
+            font-size: 12px; text-decoration: none;
+        }
+        .print-toolbar .rct-no { color: #94a3b8; font-size: 11px; margin-left: auto; }
+
+        /* ── Page ── */
+        .page {
+            background: #fff;
+            padding: 0;
+        }
+
+        /* ── Top colour band ── */
+        .top-band {
+            background: #180a3c;
+            padding: 10px 14px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .top-band .brand-logo img {
+            max-height: 36px; max-width: 120px;
+            object-fit: contain; display: block;
+        }
+        .top-band .brand-name {
+            font-size: 13px; font-weight: 700;
+            color: #fff; letter-spacing: .04em;
+        }
+        .top-band .brand-sub {
+            font-size: 7.5px; color: #c4b5fd;
+            margin-top: 2px; line-height: 1.55;
+        }
+        .top-band .doc-badge {
+            text-align: right;
+        }
+        .top-band .doc-badge .receipt-label {
+            display: inline-block;
+            background: #6366f1;
+            color: #fff;
+            font-size: 7px; font-weight: 700;
+            letter-spacing: .12em; text-transform: uppercase;
+            padding: 2px 8px; border-radius: 3px;
+            margin-bottom: 3px;
+        }
+        .top-band .doc-badge h1 {
+            font-size: 20px; font-weight: 800;
+            color: #fff; letter-spacing: .06em;
+            text-transform: uppercase; line-height: 1;
+        }
+
+        /* ── Meta row ── */
+        .meta-row {
+            background: #f0f2ff;
+            border-bottom: 2px solid #6366f1;
+            display: flex;
+            justify-content: flex-end;
+            padding: 5px 14px;
+            gap: 18px;
+        }
+        .meta-item { text-align: right; }
+        .meta-item .lbl { font-size: 7px; color: #6366f1; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+        .meta-item .val { font-size: 9px; font-weight: 700; color: #180a3c; }
+
+        /* ── Body section ── */
+        .body-section { padding: 8px 14px; }
+
+        /* Received from */
+        .party-strip {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9ff;
+            border: 1px solid #dde0f7;
+            border-left: 3px solid #6366f1;
+            border-radius: 4px;
+            padding: 6px 10px;
+            margin-bottom: 10px;
+        }
+        .party-strip .recv-lbl { font-size: 7px; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: .08em; }
+        .party-strip .recv-name { font-size: 12px; font-weight: 700; color: #180a3c; margin-top: 1px; }
+        .party-strip .invoice-ref { text-align: right; }
+        .party-strip .invoice-ref .lbl { font-size: 7px; color: #888; text-transform: uppercase; letter-spacing: .06em; }
+        .party-strip .invoice-ref .val { font-size: 9px; font-weight: 700; color: #180a3c; }
+
+        /* Payment lines table */
+        .lines-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+        .lines-table thead tr { background: #180a3c; }
+        .lines-table th {
+            padding: 5px 8px; font-size: 7px; font-weight: 700;
+            color: #e2e8f0; text-transform: uppercase; letter-spacing: .07em;
+            border: none; text-align: left;
+        }
+        .lines-table th.r { text-align: right; }
+        .lines-table tbody tr { border-bottom: 1px solid #eef0fb; }
+        .lines-table tbody tr:nth-child(even) { background: #fafbff; }
+        .lines-table tbody tr:last-child { border-bottom: none; }
+        .lines-table td { padding: 5px 8px; font-size: 8.5px; color: #2d2d3a; border: none; }
+        .lines-table td.r { text-align: right; }
+        .lines-table td .mode-name { font-weight: 600; }
+        .lines-table td .mode-sub { font-size: 7px; color: #888; margin-top: 1px; }
+
+        .table-wrap {
+            border: 1px solid #dde0f7;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        /* Total band */
+        .total-band {
+            background: #180a3c;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 10px;
+        }
+        .total-band .total-lbl { font-size: 8px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+        .total-band .total-amt { font-size: 14px; font-weight: 800; letter-spacing: .02em; }
+
+        /* Amount in words */
+        .words-box {
+            border: 1px dashed #c7caed;
+            border-radius: 4px;
+            padding: 5px 10px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+        .words-box .wlbl { font-size: 7px; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: .07em; white-space: nowrap; }
+        .words-box .wval { font-size: 8.5px; font-style: italic; color: #334155; }
+
         /* Notes */
-        .notes-box{border:1px solid #e2e4f0;padding:6px 10px;border-radius:4px;font-size:8px;color:#555;margin-bottom:8px;}
-        .notes-box strong{font-size:7px;letter-spacing:.06em;text-transform:uppercase;color:#6366f1;display:block;margin-bottom:2px;}
+        .notes-box {
+            border: 1px solid #e8eaf6;
+            border-radius: 4px;
+            padding: 5px 10px;
+            margin-bottom: 10px;
+            font-size: 8px;
+            color: #555;
+        }
+        .notes-box .nlbl { font-size: 7px; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: .06em; display: block; margin-bottom: 2px; }
+
         /* Sig footer */
-        .sig-footer{
-            position:fixed;bottom:0;left:10mm;right:10mm;
-            border-top:1.5px solid #1e293b;
-            padding:5px 0 6px;
-            display:flex;
-            justify-content:space-between;
-            align-items:flex-end;
-            font-size:8.5px;
-            color:#555;
+        .sig-footer {
+            border-top: 1.5px solid #1e293b;
+            padding: 6px 14px 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
         }
-        .sig-block{flex:1;text-align:center;}
-        .sig-block.left{text-align:left;}
-        .sig-block.right{text-align:right;}
-        .sig-line{height:24px;border-bottom:1px dashed #aaa;margin-bottom:3px;}
-        .sig-label{font-size:7.5px;color:#888;}
-        .sig-name{font-weight:700;font-size:8.5px;color:#1e293b;}
-        @@media print{
-            body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-            .no-print{display:none!important;}
-            .page{padding:8mm 10mm 22mm;border:none;box-shadow:none;}
-        }
-        @@media screen{
-            body{background:#d0d0d0;}
-            .page{margin:20px auto;box-shadow:0 4px 24px rgba(0,0,0,.18);border:1px solid #bbb;}
+        .sig-block { }
+        .sig-line { height: 28px; width: 90px; border-bottom: 1px dashed #aaa; margin-bottom: 3px; }
+        .sig-line.right-align { margin-left: auto; }
+        .sig-label { font-size: 7.5px; color: #888; }
+        .sig-name { font-size: 8px; font-weight: 700; color: #1e293b; margin-top: 1px; }
+
+        /* Footer brand strip */
+        .footer-strip {
+            background: #f0f2ff;
+            border-top: 1px solid #dde0f7;
+            text-align: center;
+            padding: 4px 14px;
+            font-size: 7px;
+            color: #6366f1;
+            letter-spacing: .04em;
         }
     </style>
 </head>
 <body>
 
-<!-- Toolbar screen-only -->
-<div class="no-print" style="padding:10px 20px;background:#1e293b;display:flex;gap:10px;align-items:center;">
-    <button onclick="window.print()" style="background:#6366f1;color:#fff;border:none;padding:7px 22px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">
-        🖨&nbsp; Print / Save PDF
-    </button>
-    <a href="javascript:history.back()" style="background:#334155;color:#e2e8f0;padding:7px 18px;border-radius:8px;font-size:12px;text-decoration:none;">← Back</a>
-    <span style="color:#94a3b8;font-size:11px;margin-left:auto;">@Model.ReceiptNo</span>
+<!-- Toolbar (screen only) -->
+<div class="print-toolbar">
+    <button onclick="window.print()">🖨&nbsp; Print / Save PDF</button>
+    <a href="javascript:history.back()">← Back</a>
+    <span class="rct-no">@Model.ReceiptNo</span>
 </div>
 
 <div class="page">
 
-    <!-- Header -->
-    <div class="header-grid">
-        <div>
+    <!-- ── Top colour band ── -->
+    <div class="top-band">
+        <div class="brand-logo">
             @if (brandLogoPath != null)
             {
-                <img src="@brandLogoPath" alt="@brandName" style="max-height:42px;max-width:130px;object-fit:contain;margin-bottom:6px;display:block;" />
+                <img src="@brandLogoPath" alt="@brandName" />
             }
-            <div class="brand">@brandName</div>
+            <div class="brand-name">@brandName</div>
             <div class="brand-sub">
                 @if (!string.IsNullOrWhiteSpace(companyAddr))   { <text>@companyAddr<br /></text> }
-                @if (!string.IsNullOrWhiteSpace(companyMobile)) { <text>Mobile : @companyMobile<br /></text> }
-                @if (!string.IsNullOrWhiteSpace(companyGstin))  { <text>GSTIN : @companyGstin</text> }
+                @if (!string.IsNullOrWhiteSpace(companyMobile)) { <text>Mobile: @companyMobile<br /></text> }
+                @if (!string.IsNullOrWhiteSpace(companyGstin))  { <text>GSTIN: @companyGstin</text> }
             </div>
         </div>
-        <div class="doc-title">
-            <div class="doc-stamp">PAYMENT RECEIPT</div>
+        <div class="doc-badge">
+            <div class="receipt-label">Payment Receipt</div>
             <h1>Receipt</h1>
-            <table class="doc-meta" style="margin-left:auto;width:auto;">
-                <tr><td>Receipt No.</td><td style="font-weight:700;">@Model.ReceiptNo</td></tr>
-                <tr><td>Date</td><td style="font-weight:700;">@Model.PaymentDate.ToString("dd/MM/yyyy")</td></tr>
-                <tr><td>Ref. Invoice</td><td style="font-weight:700;">@Model.InvoiceNo</td></tr>
-            </table>
         </div>
     </div>
 
-    <!-- Received from -->
-    <div class="party-box">
-        <div class="lbl">Received From</div>
-        <div class="name">@Model.PartyName</div>
+    <!-- ── Meta row ── -->
+    <div class="meta-row">
+        <div class="meta-item">
+            <div class="lbl">Receipt No.</div>
+            <div class="val">@Model.ReceiptNo</div>
+        </div>
+        <div class="meta-item">
+            <div class="lbl">Date</div>
+            <div class="val">@Model.PaymentDate.ToString("dd MMM yyyy")</div>
+        </div>
+        <div class="meta-item">
+            <div class="lbl">Ref. Invoice</div>
+            <div class="val">@Model.InvoiceNo</div>
+        </div>
     </div>
 
-    <!-- Payment lines table -->
-    <div class="items-wrap">
-        <table class="items-table">
-            <thead>
-                <tr>
-                    <th style="width:28px;">#</th>
-                    <th>Payment Mode</th>
-                    <th>Reference No</th>
-                    <th class="num" style="width:90px;">Amount (₹)</th>
-                </tr>
-            </thead>
-            <tbody>
-                @{ int sno = 1; }
-                @foreach (var line in Model.Lines)
-                {
+    <!-- ── Body ── -->
+    <div class="body-section">
+
+        <!-- Received from -->
+        <div class="party-strip">
+            <div>
+                <div class="recv-lbl">Received From</div>
+                <div class="recv-name">@Model.PartyName</div>
+            </div>
+            <div class="invoice-ref">
+                <div class="lbl">Against Invoice</div>
+                <div class="val">@Model.InvoiceNo</div>
+            </div>
+        </div>
+
+        <!-- Payment lines -->
+        <div class="table-wrap">
+            <table class="lines-table">
+                <thead>
                     <tr>
-                        <td style="color:#9498b4;">@sno</td>
-                        <td style="font-weight:600;">@line.PaymentModeName</td>
-                        <td style="color:#555;">@(string.IsNullOrWhiteSpace(line.ReferenceNo) ? "—" : line.ReferenceNo)</td>
-                        <td class="num" style="font-weight:600;">@line.Amount.ToString("0,0.##")</td>
+                        <th style="width:22px;">#</th>
+                        <th>Payment Mode</th>
+                        <th>Reference No.</th>
+                        <th class="r" style="width:80px;">Amount (₹)</th>
                     </tr>
-                    sno++;
-                }
-                @{ var minRows = Math.Max(0, 3 - Model.Lines.Count); }
-                @for (var i = 0; i < minRows; i++)
-                {
-                    <tr><td style="padding:8px;">&nbsp;</td><td></td><td></td><td></td></tr>
-                }
-            </tbody>
-            <tr class="total-row">
-                <td colspan="3" style="letter-spacing:.05em;">TOTAL RECEIVED</td>
-                <td class="num">₹ @Model.TotalAmountPaid.ToString("0,0.##")</td>
-            </tr>
-        </table>
-    </div>
-
-    @if (!string.IsNullOrWhiteSpace(Model.Notes))
-    {
-        <div class="notes-box">
-            <strong>Notes</strong>
-            @Model.Notes
+                </thead>
+                <tbody>
+                    @{ int sno = 1; }
+                    @foreach (var line in Model.Lines)
+                    {
+                        <tr>
+                            <td style="color:#9498b4;">@sno</td>
+                            <td>
+                                <div class="mode-name">@line.PaymentModeName</div>
+                                @{
+                                    var sub = new System.Collections.Generic.List<string>();
+                                    if (!string.IsNullOrWhiteSpace(line.CardType))     sub.Add(line.CardType);
+                                    if (!string.IsNullOrWhiteSpace(line.CardLastFour)) sub.Add("···· " + line.CardLastFour);
+                                    if (!string.IsNullOrWhiteSpace(line.BankName))     sub.Add(line.BankName);
+                                }
+                                @if (sub.Any()) { <div class="mode-sub">@string.Join(" · ", sub)</div> }
+                            </td>
+                            <td style="color:#555;">@(string.IsNullOrWhiteSpace(line.ReferenceNo) ? "—" : line.ReferenceNo)</td>
+                            <td class="r" style="font-weight:600;">@line.Amount.ToString("N2")</td>
+                        </tr>
+                        sno++;
+                    }
+                    @{ var pad = Math.Max(0, 3 - Model.Lines.Count); }
+                    @for (var i = 0; i < pad; i++)
+                    {
+                        <tr><td style="padding:7px;">&nbsp;</td><td></td><td></td><td></td></tr>
+                    }
+                </tbody>
+            </table>
+            <!-- Total band inside table-wrap -->
+            <div class="total-band">
+                <span class="total-lbl">Total Received</span>
+                <span class="total-amt">₹ @Model.TotalAmountPaid.ToString("N2")</span>
+            </div>
         </div>
-    }
 
-    <!-- Signature footer -->
+        <!-- Amount in words -->
+        <div class="words-box">
+            <span class="wlbl">Rupees&nbsp;(in words):</span>
+            <span class="wval">@amountWords</span>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+        {
+            <div class="notes-box">
+                <span class="nlbl">Notes</span>
+                @Model.Notes
+            </div>
+        }
+
+    </div><!-- /body-section -->
+
+    <!-- ── Signature row ── -->
     <div class="sig-footer">
-        <div class="sig-block left">
-            <div class="sig-line" style="width:100px;"></div>
+        <div class="sig-block">
+            <div class="sig-line"></div>
             <div class="sig-label">Customer Signature</div>
         </div>
-        <div class="sig-block right">
-            <div class="sig-line" style="width:100px;margin-left:auto;"></div>
+        <div class="sig-block" style="text-align:right;">
+            <div class="sig-line right-align"></div>
             <div class="sig-label">Authorised Signatory</div>
             <div class="sig-name">For @brandName</div>
         </div>
     </div>
 
-</div>
+    <!-- ── Footer strip ── -->
+    <div class="footer-strip">
+        This is a computer-generated receipt and does not require a physical signature.
+    </div>
 
+</div><!-- /page -->
 </body>
 </html>

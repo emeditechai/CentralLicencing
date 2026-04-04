@@ -331,8 +331,8 @@
         <div style="margin-top:4px;font-size:9px;color:#444;"><strong>Terms &amp; Conditions:</strong>&nbsp; @Model.TermsAndConditions</div>
     }
 
-    <!-- ── BANK DETAILS ───────────────────────────────────── -->
-    @if (primaryBank != null)
+    <!-- ── BANK DETAILS (only shown when balance is due) ─────── -->
+    @if (primaryBank != null && Model.CurrentBalance > 0)
     {
         var upiData = !string.IsNullOrWhiteSpace(primaryBank.UpiId)
             ? $"upi://pay?pa={Uri.EscapeDataString(primaryBank.UpiId)}&pn={Uri.EscapeDataString(primaryBank.UpiHolderName ?? "")}&cu=INR"

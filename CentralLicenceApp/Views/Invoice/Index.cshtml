@@ -91,10 +91,19 @@
                                         </a>
                                         @if (User.IsInRole("Administrator"))
                                         {
-                                            <a asp-action="Edit" asp-route-id="@item.Id"
-                                               class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;" title="Edit">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
+                                            @if (item.ReceivedAmount == 0)
+                                            {
+                                                <a asp-action="Edit" asp-route-id="@item.Id"
+                                                   class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;" title="Edit">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn btn-sm btn-outline-secondary disabled" style="border-radius:8px;font-size:.78rem;" title="Cannot edit — payment recorded" disabled>
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                            }
                                         }
                                     </div>
                                 </td>

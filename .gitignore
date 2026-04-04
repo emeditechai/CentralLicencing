@@ -16,3 +16,10 @@ appsettings.Development.json
 
 ## Runtime uploads
 CentralLicenceApp/wwwroot/uploads/
+
+# Generated PDF files
+CentralLicenceApp/PdfStore/
+
+# macOS
+.DS_Store
+**/.DS_Store

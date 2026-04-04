@@ -4,32 +4,52 @@ using System.Threading.Tasks;
 using CentralLicenceApp.Models;
 using CentralLicenceApp.Models.ViewModels;
 using CentralLicenceApp.Repositories;
+using CentralLicenceApp.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CentralLicenceApp.Controllers
 {
     [Authorize]
     public class InvoiceController : Controller
     {
-        private readonly IInvoiceRepository _invoiceRepo;
-        private readonly IQuotationRepository _quotationRepo;
-        private readonly IPartyMasterRepository _partyRepo;
-        private readonly IProductRateRepository _productRateRepo;
-        private readonly IUserRepository _userRepo;
+        private readonly IInvoiceRepository        _invoiceRepo;
+        private readonly IQuotationRepository      _quotationRepo;
+        private readonly IPartyMasterRepository    _partyRepo;
+        private readonly IProductRateRepository    _productRateRepo;
+        private readonly IUserRepository           _userRepo;
+        private readonly IInvoicePaymentRepository _paymentRepo;
+        private readonly IPaymentModeRepository    _modeRepo;
+        private readonly IBankMasterRepository     _bankRepo;
+        private readonly IEmailService             _emailService;
+        private readonly IDocumentPdfService       _pdfService;
+        private readonly IServiceScopeFactory      _scopeFactory;
 
         public InvoiceController(
-            IInvoiceRepository invoiceRepo,
-            IQuotationRepository quotationRepo,
-            IPartyMasterRepository partyRepo,
-            IProductRateRepository productRateRepo,
-            IUserRepository userRepo)
+            IInvoiceRepository        invoiceRepo,
+            IQuotationRepository      quotationRepo,
+            IPartyMasterRepository    partyRepo,
+            IProductRateRepository    productRateRepo,
+            IUserRepository           userRepo,
+            IInvoicePaymentRepository paymentRepo,
+            IPaymentModeRepository    modeRepo,
+            IBankMasterRepository     bankRepo,
+            IEmailService             emailService,
+            IDocumentPdfService       pdfService,
+            IServiceScopeFactory      scopeFactory)
         {
             _invoiceRepo     = invoiceRepo;
             _quotationRepo   = quotationRepo;
             _partyRepo       = partyRepo;
             _productRateRepo = productRateRepo;
             _userRepo        = userRepo;
+            _paymentRepo     = paymentRepo;
+            _modeRepo        = modeRepo;
+            _bankRepo        = bankRepo;
+            _emailService    = emailService;
+            _pdfService      = pdfService;
+            _scopeFactory    = scopeFactory;
         }
 
         // GET /Invoice
@@ -53,6 +73,8 @@ namespace CentralLicenceApp.Controllers
             ViewBag.Parties         = (await _partyRepo.GetAllActiveAsync()).ToList();
             ViewBag.CompanyGstin    = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
             ViewBag.SignatoryUsers  = (await _userRepo.GetSignatoryUsersAsync()).ToList();
+            ViewBag.PaymentModes    = (await _modeRepo.GetAllActiveAsync()).ToList();
+            ViewBag.Banks           = (await _bankRepo.GetAllAsync()).ToList();
             return View(vm);
         }
 
@@ -115,6 +137,8 @@ namespace CentralLicenceApp.Controllers
             ViewBag.Parties        = (await _partyRepo.GetAllActiveAsync()).ToList();
             ViewBag.CompanyGstin   = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
             ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
+            ViewBag.PaymentModes   = (await _modeRepo.GetAllActiveAsync()).ToList();
+            ViewBag.Banks          = (await _bankRepo.GetAllAsync()).ToList();
             return View("Create", vm);
         }
 
@@ -138,6 +162,8 @@ namespace CentralLicenceApp.Controllers
                 ViewBag.Parties        = (await _partyRepo.GetAllActiveAsync()).ToList();
                 ViewBag.CompanyGstin   = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
                 ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
+                ViewBag.PaymentModes   = (await _modeRepo.GetAllActiveAsync()).ToList();
+                ViewBag.Banks          = (await _bankRepo.GetAllAsync()).ToList();
                 return View(vm);
             }
 
@@ -148,13 +174,67 @@ namespace CentralLicenceApp.Controllers
                 ViewBag.Parties        = (await _partyRepo.GetAllActiveAsync()).ToList();
                 ViewBag.CompanyGstin   = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
                 ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
+                ViewBag.PaymentModes   = (await _modeRepo.GetAllActiveAsync()).ToList();
+                ViewBag.Banks          = (await _bankRepo.GetAllAsync()).ToList();
                 return View(vm);
             }
 
             var companyGstin = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
             var invoice = BuildInvoice(vm, party, companyGstin);
             invoice.SignatoryUserIds = vm.SignatoryUserIds.Distinct().Take(3).ToList();
+
+            // If advance payment lines are provided, the payment repo's UPDATE will set
+            // ReceivedAmount via "ReceivedAmount + @Paid". Start at 0 to avoid double-counting.
+            if (vm.AdvancePaymentLines?.Any(l => l.Amount > 0) == true)
+                invoice.ReceivedAmount = 0;
+
             var newId = await _invoiceRepo.CreateAsync(invoice);
+
+            // ── Advance payment ───────────────────────────────────────────────
+            // If ReceivedAmount > 0 and payment lines were collected in the modal,
+            // save an InvoicePayment record immediately.
+            var advanceLines = vm.AdvancePaymentLines?.Where(l => l.Amount > 0).ToList();
+            if (advanceLines != null && advanceLines.Any())
+            {
+                var modes = (await _modeRepo.GetAllActiveAsync()).ToList();
+                var banks = (await _bankRepo.GetAllAsync()).ToList();
+                foreach (var l in advanceLines)
+                {
+                    var mode = modes.FirstOrDefault(m => m.Id == l.PaymentModeId);
+                    l.PaymentModeName = mode?.Name ?? string.Empty;
+                }
+                var totalPaid = advanceLines.Sum(l => l.Amount);
+                var receiptNo = await _paymentRepo.GetNextReceiptNoAsync();
+                var savedInvoice = await _invoiceRepo.GetByIdAsync(newId);
+                var payment = new InvoicePayment
+                {
+                    ReceiptNo       = receiptNo,
+                    InvoiceId       = newId,
+                    InvoiceNo       = vm.InvoiceNo,
+                    PartyId         = party.Id,
+                    PartyName       = party.PartyName,
+                    PaymentDate     = DateTime.Today,
+                    TotalAmountPaid = totalPaid,
+                    Notes           = "Advance payment recorded at invoice creation.",
+                    CreatedBy       = User.Identity?.Name,
+                    Lines           = advanceLines.Select(l => new InvoicePaymentLine
+                    {
+                        PaymentModeId   = l.PaymentModeId,
+                        PaymentModeName = l.PaymentModeName,
+                        Amount          = l.Amount,
+                        ReferenceNo     = l.ReferenceNo?.Trim(),
+                        CardType        = l.CardType?.Trim(),
+                        CardLastFour    = l.CardLastFour?.Trim(),
+                        BankId          = l.BankId,
+                        BankName        = l.BankId.HasValue
+                                            ? banks.FirstOrDefault(b => b.Id == l.BankId)?.BankName
+                                            : null
+                    }).ToList()
+                };
+                await _paymentRepo.CreateAsync(payment);
+                TempData["AdvanceReceipt"] = receiptNo;
+            }
+            // ─────────────────────────────────────────────────────────────────
 
             if (vm.QuotationId.HasValue && vm.QuotationId.Value > 0)
             {
@@ -217,6 +297,8 @@ namespace CentralLicenceApp.Controllers
             ViewBag.Parties        = (await _partyRepo.GetAllActiveAsync()).ToList();
             ViewBag.CompanyGstin   = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
             ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
+            ViewBag.PaymentModes   = (await _modeRepo.GetAllActiveAsync()).ToList();
+            ViewBag.Banks          = (await _bankRepo.GetAllAsync()).ToList();
             return View(vm);
         }
 
@@ -236,6 +318,8 @@ namespace CentralLicenceApp.Controllers
                 ViewBag.Parties        = (await _partyRepo.GetAllActiveAsync()).ToList();
                 ViewBag.CompanyGstin   = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
                 ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
+                ViewBag.PaymentModes   = (await _modeRepo.GetAllActiveAsync()).ToList();
+                ViewBag.Banks          = (await _bankRepo.GetAllAsync()).ToList();
                 return View(vm);
             }
 
@@ -246,6 +330,8 @@ namespace CentralLicenceApp.Controllers
                 ViewBag.Parties        = (await _partyRepo.GetAllActiveAsync()).ToList();
                 ViewBag.CompanyGstin   = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
                 ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
+                ViewBag.PaymentModes   = (await _modeRepo.GetAllActiveAsync()).ToList();
+                ViewBag.Banks          = (await _bankRepo.GetAllAsync()).ToList();
                 return View(vm);
             }
 
@@ -270,9 +356,163 @@ namespace CentralLicenceApp.Controllers
         [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> UpdateStatus(int id, string status)
         {
+            var allowed = new[] { "Draft", "Sent", "Partial" };
+            if (!allowed.Contains(status))
+                return BadRequest();
+
             await _invoiceRepo.UpdateStatusAsync(id, status);
-            TempData["Success"] = $"Invoice status updated to <strong>{status}</strong>.";
+
+            // When marking as Sent: fire-and-forget PDF generation + email
+            if (status == "Sent")
+            {
+                var inv = await _invoiceRepo.GetByIdAsync(id);
+                if (inv != null)
+                {
+                    var party      = await _partyRepo.GetByIdAsync(inv.PartyId);
+                    var partyEmail = party?.Email;
+                    if (!string.IsNullOrWhiteSpace(partyEmail))
+                    {
+                        var partyName  = party!.PartyName;
+                        var capturedId = id;
+                        _ = Task.Run(async () =>
+                        {
+                            await using var scope = _scopeFactory.CreateAsyncScope();
+                            var pdf   = scope.ServiceProvider.GetRequiredService<IDocumentPdfService>();
+                            var email = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                            try
+                            {
+                                var (pdfBytes, _) = await pdf.GenerateInvoicePdfAsync(inv);
+                                var fileName = $"Invoice_{inv.InvoiceNo.Replace("/", "-")}.pdf";
+                                var subject  = $"Invoice {inv.InvoiceNo} from {inv.PartyName}";
+                                var body     = BuildInvoiceEmailBody(inv);
+                                await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, fileName, "Invoice");
+                            }
+                            catch { /* background failure — logged by email service */ }
+                        });
+                        TempData["Success"] = $"Invoice marked as <strong>Sent</strong>. Email is being delivered to <strong>{partyEmail}</strong> in background.";
+                    }
+                    else
+                    {
+                        TempData["Success"] = "Invoice status updated to <strong>Sent</strong>. No email address on file for this party.";
+                    }
+                }
+                else
+                {
+                    TempData["Success"] = "Invoice status updated to <strong>Sent</strong>.";
+                }
+            }
+            else
+            {
+                TempData["Success"] = $"Invoice status updated to <strong>{status}</strong>.";
+            }
+
             return RedirectToAction(nameof(Details), new { id });
+        }
+
+        // POST /Invoice/ResendMail/5
+        [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator")]
+        public async Task<IActionResult> ResendMail(int id)
+        {
+            var inv = await _invoiceRepo.GetByIdAsync(id);
+            if (inv == null) return NotFound();
+
+            var party = await _partyRepo.GetByIdAsync(inv.PartyId);
+            var partyEmail = party?.Email;
+            if (string.IsNullOrWhiteSpace(partyEmail))
+            {
+                TempData["Warning"] = "No email address on file for this party. Mail not sent.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            var partyName  = party!.PartyName;
+            var capturedInv = inv;
+            _ = Task.Run(async () =>
+            {
+                await using var scope = _scopeFactory.CreateAsyncScope();
+                var pdf   = scope.ServiceProvider.GetRequiredService<IDocumentPdfService>();
+                var email = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                try
+                {
+                    var (pdfBytes, _) = await pdf.GenerateInvoicePdfAsync(capturedInv);
+                    var fileName = $"Invoice_{capturedInv.InvoiceNo.Replace("/", "-")}.pdf";
+                    var subject  = $"Invoice {capturedInv.InvoiceNo} from {capturedInv.PartyName}";
+                    var body     = BuildInvoiceEmailBody(capturedInv);
+                    await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, fileName, "Invoice");
+                }
+                catch { /* background failure */ }
+            });
+            TempData["Success"] = $"Email is being delivered to <strong>{partyEmail}</strong> in background.";
+
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        private static string BuildInvoiceEmailBody(Invoice inv)
+        {
+            var dueInfo = inv.DueDate.HasValue
+                ? $"<p style='margin:0 0 6px;'>Please ensure payment of <strong>₹{inv.CurrentBalance:0.00}</strong> is made by <strong>{inv.DueDate.Value:dd MMM yyyy}</strong>.</p>"
+                : string.Empty;
+            var linesHtml = string.Join("", inv.Lines.Select((l, i) =>
+                $"<tr style='background:{((i % 2 == 0) ? "#f9f9fd" : "#ffffff")};'>" +
+                $"<td style='padding:7px 10px;border-bottom:1px solid #eeeff6;'>{l.ItemDescription}{(!string.IsNullOrWhiteSpace(l.PlanName) ? " <span style=\"color:#6366f1;font-size:12px;\">• " + l.PlanName + "</span>" : "")}</td>" +
+                $"<td style='padding:7px 10px;border-bottom:1px solid #eeeff6;text-align:center;'>{l.Qty}</td>" +
+                $"<td style='padding:7px 10px;border-bottom:1px solid #eeeff6;text-align:right;'>₹{l.Rate:0.00}</td>" +
+                $"<td style='padding:7px 10px;border-bottom:1px solid #eeeff6;text-align:right;font-weight:600;'>₹{l.Amount:0.00}</td>" +
+                "</tr>"));
+
+            return $@"<!DOCTYPE html><html><body style='margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;'>
+<table width='100%' cellpadding='0' cellspacing='0' style='background:#f1f5f9;padding:30px 0;'>
+  <tr><td align='center'>
+    <table width='600' cellpadding='0' cellspacing='0' style='background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);'>
+      <!-- Header -->
+      <tr><td style='background:#1e293b;padding:28px 32px;'>
+        <h1 style='margin:0;color:#ffffff;font-size:22px;letter-spacing:.04em;'>Invoice {inv.InvoiceNo}</h1>
+        <p style='margin:6px 0 0;color:#94a3b8;font-size:13px;'>Dated {inv.InvoiceDate:dd MMM yyyy}</p>
+      </td></tr>
+      <!-- Body -->
+      <tr><td style='padding:28px 32px;'>
+        <p style='margin:0 0 10px;font-size:15px;color:#1e293b;'>Dear <strong>{inv.PartyName}</strong>,</p>
+        <p style='margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;'>
+          Please find your invoice attached. A summary is provided below for your reference.
+        </p>
+        <!-- Summary table -->
+        <table width='100%' cellpadding='0' cellspacing='0' style='border-radius:8px;overflow:hidden;border:1px solid #e2e4f0;margin-bottom:20px;'>
+          <thead>
+            <tr style='background:#1e293b;'>
+              <th style='padding:9px 10px;text-align:left;color:#e2e8f0;font-size:12px;'>Item</th>
+              <th style='padding:9px 10px;text-align:center;color:#e2e8f0;font-size:12px;'>Qty</th>
+              <th style='padding:9px 10px;text-align:right;color:#e2e8f0;font-size:12px;'>Rate</th>
+              <th style='padding:9px 10px;text-align:right;color:#e2e8f0;font-size:12px;'>Amount</th>
+            </tr>
+          </thead>
+          <tbody>{linesHtml}</tbody>
+        </table>
+        <!-- Totals -->
+        <table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:20px;'>
+          <tr>
+            <td width='60%'></td>
+            <td width='40%'>
+              <table width='100%' cellpadding='0' cellspacing='0' style='border-radius:8px;overflow:hidden;border:1px solid #e2e4f0;'>
+                <tr><td style='padding:7px 12px;color:#475569;font-size:13px;'>Sub Total</td><td style='padding:7px 12px;text-align:right;font-size:13px;'>₹{inv.SubTotal:0.00}</td></tr>
+                {(inv.TotalGst > 0 ? $"<tr><td style='padding:7px 12px;color:#475569;font-size:13px;'>GST</td><td style='padding:7px 12px;text-align:right;font-size:13px;'>₹{inv.TotalGst:0.00}</td></tr>" : "")}
+                <tr style='background:#1e293b;'><td style='padding:9px 12px;color:#ffffff;font-size:14px;font-weight:700;'>Total</td><td style='padding:9px 12px;text-align:right;color:#ffffff;font-size:14px;font-weight:700;'>₹{inv.TotalAmount:0.00}</td></tr>
+                {(inv.ReceivedAmount > 0 ? $"<tr><td style='padding:7px 12px;color:#10b981;font-size:13px;'>Paid</td><td style='padding:7px 12px;text-align:right;color:#10b981;font-size:13px;'>₹{inv.ReceivedAmount:0.00}</td></tr>" : "")}
+                {(inv.CurrentBalance > 0 ? $"<tr style='background:#fef3c7;'><td style='padding:8px 12px;color:#92400e;font-size:13px;font-weight:700;'>Balance Due</td><td style='padding:8px 12px;text-align:right;color:#92400e;font-size:13px;font-weight:700;'>₹{inv.CurrentBalance:0.00}</td></tr>" : "")}
+              </table>
+            </td>
+          </tr>
+        </table>
+        {dueInfo}
+        <p style='margin:20px 0 0;font-size:13px;color:#64748b;'>The original invoice PDF is attached to this email. Please contact us if you have any questions.</p>
+      </td></tr>
+      <!-- Footer -->
+      <tr><td style='background:#f8fafc;padding:18px 32px;border-top:1px solid #e2e8f0;text-align:center;'>
+        <p style='margin:0;font-size:12px;color:#94a3b8;'>This is an auto-generated email. Please do not reply directly.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>";
         }
 
         // POST /Invoice/Cancel/5

@@ -116,15 +116,6 @@
             <div class="card">
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <span><i class="bi bi-person-lines-fill me-2" style="color:#6366f1;"></i>Client Details</span>
-                    @if (User.IsInRole("Administrator"))
-                    {
-                        <a asp-controller="ClientDetails" asp-action="Upsert"
-                           asp-route-clientCode="@Model.ClientCode"
-                           asp-route-productType="@Model.ProductType"
-                           class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;">
-                            <i class="bi bi-pencil me-1"></i>Edit
-                        </a>
-                    }
                 </div>
                 <div class="card-body">
                     <div class="row g-3" style="font-size:.875rem;">
@@ -179,7 +170,7 @@
                             <div class="col-12">
                                 <div class="text-muted mb-1" style="font-size:.75rem;">Products Purchased</div>
                                 <div class="table-responsive">
-                                    <table class="table table-sm align-middle mb-0">
+                                    <table class="table table-sm align-middle mb-0" id="productsPurchasedTable">
                                         <thead>
                                             <tr>
                                                 <th>Product</th>
@@ -187,12 +178,17 @@
                                                 <th>Base Price</th>
                                                 <th>AMC</th>
                                                 <th>Invoice No</th>
+                                                <th>Sub Total</th>
+                                                <th>GST</th>
+                                                <th>Total Amount</th>
+                                                <th>Paid Amount</th>
+                                                <th>Balance Due</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @foreach (var item in cd.PurchasedProducts)
                                             {
-                                                <tr>
+                                                <tr data-invoice-no="@item.InvoiceNo">
                                                     <td>
                                                         <div class="fw-semibold">@item.ProductName</div>
                                                         <div class="text-muted" style="font-size:.74rem;">@item.ProductCode</div>
@@ -214,7 +210,22 @@
                                                             <div class="text-muted" style="font-size:.74rem;">@item.AmcCalculationType • @item.AmcPercentage.ToString("0.####")%</div>
                                                         }
                                                     </td>
-                                                    <td>@(string.IsNullOrWhiteSpace(item.InvoiceNo) ? "—" : item.InvoiceNo)</td>
+                                                    <td>
+                                                        @if (string.IsNullOrWhiteSpace(item.InvoiceNo))
+                                                        {
+                                                            <span class="text-muted">—</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="fw-semibold" style="color:#6366f1;">@item.InvoiceNo</div>
+                                                            <div class="text-muted inv-inv-date" style="font-size:.72rem;"></div>
+                                                        }
+                                                    </td>
+                                                    <td class="inv-subtotal-cell" style="font-size:.82rem;">@(string.IsNullOrWhiteSpace(item.InvoiceNo) ? "—" : "…")</td>
+                                                    <td class="inv-gst-cell" style="font-size:.82rem;">@(string.IsNullOrWhiteSpace(item.InvoiceNo) ? "—" : "…")</td>
+                                                    <td class="inv-total-cell fw-semibold" style="font-size:.82rem;color:#6366f1;">@(string.IsNullOrWhiteSpace(item.InvoiceNo) ? "—" : "…")</td>
+                                                    <td class="inv-paid-cell fw-semibold" style="font-size:.82rem;color:#10b981;">@(string.IsNullOrWhiteSpace(item.InvoiceNo) ? "—" : "…")</td>
+                                                    <td class="inv-balance-cell fw-semibold" style="font-size:.82rem;">@(string.IsNullOrWhiteSpace(item.InvoiceNo) ? "—" : "…")</td>
                                                 </tr>
                                             }
                                         </tbody>
@@ -241,14 +252,71 @@
     </div>
 }
 
-@if (User.IsInRole("Administrator"))
-{
-    <div class="d-flex gap-2 mt-4">
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn text-white px-4" style="background:#6366f1;border:none;border-radius:10px;">
-            <i class="bi bi-pencil me-1"></i> Edit
-        </a>
-        <a asp-action="Index" asp-route-productType="@Model.ProductType" class="btn btn-outline-secondary" style="border-radius:10px;">
-            <i class="bi bi-arrow-left me-1"></i> Back
-        </a>
-    </div>
+<div class="d-flex gap-2 mt-4">
+    <a asp-action="Index" asp-route-productType="@Model.ProductType" class="btn btn-outline-secondary" style="border-radius:10px;">
+        <i class="bi bi-arrow-left me-1"></i> Back
+    </a>
+</div>
+
+@section Scripts {
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var fmt = function (n) {
+            return '\u20b9' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+        var statusColors = { Paid: 'bg-success', Partial: 'bg-warning text-dark', Cancelled: 'bg-danger', Draft: 'bg-secondary', Sent: 'bg-info text-dark' };
+
+        document.querySelectorAll('#productsPurchasedTable tbody tr[data-invoice-no]').forEach(function (tr) {
+            var invNo = tr.getAttribute('data-invoice-no');
+            if (!invNo || invNo.trim() === '') return;
+
+            fetch('/ClientDetails/GetInvoiceDetails?invoiceNo=' + encodeURIComponent(invNo.trim()))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data.found) {
+                        tr.querySelector('.inv-subtotal-cell').textContent = '—';
+                        tr.querySelector('.inv-gst-cell').textContent = '—';
+                        tr.querySelector('.inv-total-cell').textContent = '—';
+                        tr.querySelector('.inv-paid-cell').textContent = '—';
+                        tr.querySelector('.inv-balance-cell').textContent = '—';
+                        var dateEl = tr.querySelector('.inv-inv-date');
+                        if (dateEl) dateEl.textContent = 'Not found';
+                        return;
+                    }
+
+                    // Date under invoice number
+                    var dateEl = tr.querySelector('.inv-inv-date');
+                    if (dateEl) dateEl.textContent = data.invoiceDate;
+
+                    // Status badge alongside invoice no
+                    var noCell = tr.querySelector('td:nth-child(5)');
+                    var existing = noCell.querySelector('.inv-status-badge');
+                    if (!existing) {
+                        var badge = document.createElement('span');
+                        badge.className = 'badge rounded-pill px-2 py-1 mt-1 d-block inv-status-badge';
+                        badge.style.fontSize = '.68rem';
+                        badge.textContent = data.status;
+                        badge.className += ' ' + (statusColors[data.status] || 'bg-secondary');
+                        noCell.appendChild(badge);
+                    }
+
+                    // Amounts
+                    tr.querySelector('.inv-subtotal-cell').textContent = fmt(data.subTotal);
+                    tr.querySelector('.inv-gst-cell').textContent      = fmt(data.totalGst);
+                    tr.querySelector('.inv-total-cell').textContent    = fmt(data.totalAmount);
+                    tr.querySelector('.inv-paid-cell').textContent     = fmt(data.receivedAmount);
+
+                    var balCell = tr.querySelector('.inv-balance-cell');
+                    balCell.textContent = fmt(data.balanceDue);
+                    balCell.style.color = data.balanceDue > 0 ? '#ef4444' : '#10b981';
+                })
+                .catch(function () {
+                    ['inv-subtotal-cell', 'inv-gst-cell', 'inv-total-cell', 'inv-paid-cell', 'inv-balance-cell'].forEach(function (c) {
+                        var el = tr.querySelector('.' + c);
+                        if (el) el.textContent = '—';
+                    });
+                });
+        });
+    });
+</script>
 }

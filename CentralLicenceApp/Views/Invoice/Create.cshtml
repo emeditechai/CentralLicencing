@@ -2,7 +2,9 @@
 @using System.Text.Json
 @{
     ViewData["Title"] = Model.IsNew ? "New Invoice" : "Edit Invoice";
-    var parties      = ViewBag.Parties as List<CentralLicenceApp.Models.PartyMaster> ?? new();
+    var parties      = ViewBag.Parties      as List<CentralLicenceApp.Models.PartyMaster> ?? new();
+    var paymentModes = ViewBag.PaymentModes as List<CentralLicenceApp.Models.PaymentMode>  ?? new();
+    var banks        = ViewBag.Banks        as List<CentralLicenceApp.Models.BankMaster>   ?? new();
     var companyGstin = (ViewBag.CompanyGstin as string) ?? string.Empty;
     var partiesJson  = JsonSerializer.Serialize(parties.Select(p => new {
         id = p.Id, gstinNo = p.GSTINNo ?? string.Empty
@@ -27,7 +29,7 @@
     </div>
 }
 
-<form asp-action="@(Model.IsNew ? "Create" : "Edit")" asp-route-id="@(Model.IsNew ? null : Model.Id.ToString())" method="post">
+<form id="invoiceForm" asp-action="@(Model.IsNew ? "Create" : "Edit")" asp-route-id="@(Model.IsNew ? null : Model.Id.ToString())" method="post">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="Id" />
     <input type="hidden" asp-for="InvoiceNo" />
@@ -256,7 +258,8 @@
 
         <div class="col-12">
             <div class="d-flex gap-2">
-                <button type="submit" class="btn text-white px-4" style="background:#6366f1;border:none;border-radius:10px;">
+                <button type="button" id="mainSubmitBtn" class="btn text-white px-4" style="background:#6366f1;border:none;border-radius:10px;"
+                        onclick="handleSubmit()">
                     <i class="bi @(Model.IsNew && Model.QuotationId.HasValue ? "bi-arrow-right-circle" : "bi-check-lg") me-1"></i>
                     @(Model.IsNew && Model.QuotationId.HasValue ? "Convert to Invoice" : (Model.IsNew ? "Save Invoice" : "Update Invoice"))
                 </button>
@@ -265,6 +268,60 @@
             </div>
         </div>
     </div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     Advance Payment Modal (inside form so inputs are submitted)
+     ════════════════════════════════════════════════════════════════ -->
+@if (Model.IsNew)
+{
+<div class="modal fade" id="advPaymentModal" tabindex="-1" aria-labelledby="advPaymentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;">
+            <div class="modal-header" style="background:#f0f4ff;border-radius:14px 14px 0 0;">
+                <h5 class="modal-title fw-bold" id="advPaymentModalLabel">
+                    <i class="bi bi-wallet2 me-2 text-primary"></i>Record Advance Payment
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Invoice amount summary bar -->
+                <div class="d-flex flex-wrap gap-3 mb-3 p-2 rounded" style="background:#f8fafc;font-size:.85rem;">
+                    <span><span class="text-muted">Invoice Amount:</span> <strong id="adv-invoiceTotal">₹0.00</strong></span>
+                    <span><span class="text-muted">Received Amount:</span> <strong class="text-success" id="adv-receivedAmt">₹0.00</strong></span>
+                    <span><span class="text-muted">Balance Due:</span> <strong style="color:#854d0e;" id="adv-balance">₹0.00</strong></span>
+                </div>
+
+                <!-- Payment lines -->
+                <div id="advPaymentLinesContainer"></div>
+
+                <button type="button" class="btn btn-sm btn-outline-primary mt-1" onclick="advAddRow()">
+                    <i class="bi bi-plus-lg me-1"></i> Add Row
+                </button>
+
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                    <span class="fw-semibold">Total Paying</span>
+                    <span class="fw-bold" style="font-size:1.1rem;color:#180a3c;" id="advTotalDisplay">₹0.00</span>
+                </div>
+                <div id="advOverWarning" class="alert alert-warning py-1 px-2 mt-2 d-none" style="font-size:.8rem;">
+                    <i class="bi bi-exclamation-triangle me-1"></i> Total exceeds received amount.
+                </div>
+                <div id="advUnderWarning" class="alert alert-info py-1 px-2 mt-2 d-none" style="font-size:.8rem;">
+                    <i class="bi bi-info-circle me-1"></i> Partial advance — remaining balance will stay as due on the invoice.
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn text-white fw-semibold px-4" style="background:#180a3c;border:none;border-radius:8px;"
+                        onclick="advConfirm()">
+                    <i class="bi bi-check-circle me-1"></i> Confirm &amp; Save Invoice
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+}
 </form>
 
 @section Scripts {
@@ -517,5 +574,157 @@
         });
     }
     updateSignatorySelection();
+
+    // ── Edit mode: simple passthrough ──────────────────────────
+    @if (!Model.IsNew)
+    {
+        <text>
+    function handleSubmit() { document.getElementById('invoiceForm').submit(); }
+        </text>
+    }
+</script>
+}
+
+@if (Model.IsNew)
+{
+<script>
+    // ══════════════════════════════════════════════════════════
+    // Advance Payment Modal logic (new invoice / convert flow)
+    // ══════════════════════════════════════════════════════════
+    var advLineIndex   = 0;
+    var advReceivedAmt = 0;
+
+    var ADV_MODES = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        paymentModes.Select(m => new { id = m.Id, name = m.Name })));
+
+    var ADV_BANKS = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        banks.Select(b => new { id = b.Id, name = b.BankName })));
+
+    var ADV_BANK_MODES = ['cheque','neft','rtgs','imps','bank transfer','cards'];
+    var ADV_CARD_MODES = ['cards'];
+
+    function advBankLabelFor(modeName) {
+        if (modeName === 'cards') return 'Card Bank';
+        if (['bank transfer','neft','rtgs'].includes(modeName)) return 'Received Bank';
+        return 'Bank';
+    }
+    function advModeNameOf(sel) {
+        var opt = sel.options[sel.selectedIndex];
+        return opt ? (opt.dataset.name || opt.text || '').toLowerCase().trim() : '';
+    }
+    function advOnModeChange(sel) {
+        var row      = sel.closest('.adv-line-row');
+        var modeName = advModeNameOf(sel);
+        var extra    = row.querySelector('.adv-extra');
+        var cardDiv  = row.querySelector('.adv-card-fields');
+        var bankDiv  = row.querySelector('.adv-bank-field');
+        var bankLbl  = row.querySelector('.adv-bank-label');
+        var cardType = row.querySelector('.adv-card-type');
+        var last4    = row.querySelector('.adv-last4');
+        var bankSel  = row.querySelector('.adv-bank-sel');
+        var showCard = ADV_CARD_MODES.includes(modeName);
+        var showBank = ADV_BANK_MODES.includes(modeName);
+        extra.style.display  = (showCard || showBank) ? '' : 'none';
+        cardDiv.style.display = showCard ? '' : 'none';
+        bankDiv.style.display = showBank ? '' : 'none';
+        if (bankLbl) bankLbl.innerHTML = advBankLabelFor(modeName) + ' <span class="text-danger">*</span>';
+        if (cardType) cardType.required = showCard;
+        if (last4)    last4.required    = showCard;
+        if (bankSel)  bankSel.required  = showBank;
+        if (!showCard) { if (cardType) cardType.value = ''; if (last4) last4.value = ''; }
+        if (!showBank) { if (bankSel)  bankSel.value  = ''; }
+        advUpdateTotal();
+    }
+    function advBuildModeOpts() {
+        return '<option value="" data-name="">\u2014 Select Mode \u2014</option>' +
+            ADV_MODES.map(function(m) {
+                return '<option value="' + m.id + '" data-name="' + m.name + '">' + m.name + '</option>';
+            }).join('');
+    }
+    function advBuildBankOpts() {
+        return '<option value="">\u2014 Select Bank \u2014</option>' +
+            ADV_BANKS.map(function(b) {
+                return '<option value="' + b.id + '">' + b.name + '</option>';
+            }).join('');
+    }
+    function sanitizeDigits(inp) { inp.value = inp.value.replace(/\D/g, ''); }
+    function advBuildRow(i) {
+        var html =
+            '<div class="adv-line-row border rounded p-2 mb-2 position-relative" data-index="' + i + '">' +
+            '<button type="button" class="btn-close position-absolute" style="top:6px;right:6px;font-size:.6rem;" onclick="advRemoveRow(this)"></button>' +
+            '<div class="mb-2"><label class="form-label form-label-sm fw-semibold mb-1">Payment Mode</label>' +
+            '<select class="form-select form-select-sm adv-mode-sel" name="AdvancePaymentLines[' + i + '].PaymentModeId" onchange="advOnModeChange(this)" required>' + advBuildModeOpts() + '</select></div>' +
+            '<div class="row g-2">' +
+            '<div class="col-6"><label class="form-label form-label-sm fw-semibold mb-1">Amount</label>' +
+            '<input type="number" class="form-control form-control-sm adv-amount" name="AdvancePaymentLines[' + i + '].Amount"' +
+            ' placeholder="0.00" step="0.01" min="0.01" required oninput="advUpdateTotal()" /></div>' +
+            '<div class="col-6"><label class="form-label form-label-sm fw-semibold mb-1">Reference No</label>' +
+            '<input type="text" class="form-control form-control-sm" name="AdvancePaymentLines[' + i + '].ReferenceNo" placeholder="Cheque/UTR/etc." /></div></div>' +
+            '<div class="adv-extra mt-2" style="display:none;">' +
+            '<div class="adv-card-fields row g-2 mb-2" style="display:none;">' +
+            '<div class="col-6"><label class="form-label form-label-sm fw-semibold mb-1">Card Type <span class="text-danger">*</span></label>' +
+            '<select class="form-select form-select-sm adv-card-type" name="AdvancePaymentLines[' + i + '].CardType">' +
+            '<option value="">\u2014 Select \u2014</option><option value="Debit">Debit</option><option value="Credit">Credit</option></select></div>' +
+            '<div class="col-6"><label class="form-label form-label-sm fw-semibold mb-1">Last 4 Digits <span class="text-danger">*</span></label>' +
+            '<input type="text" class="form-control form-control-sm adv-last4" name="AdvancePaymentLines[' + i + '].CardLastFour"' +
+            ' maxlength="4" placeholder="e.g. 1234" oninput="sanitizeDigits(this)" /></div></div>' +
+            '<div class="adv-bank-field mb-2" style="display:none;">' +
+            '<label class="form-label form-label-sm fw-semibold mb-1 adv-bank-label">Bank <span class="text-danger">*</span></label>' +
+            '<select class="form-select form-select-sm adv-bank-sel" name="AdvancePaymentLines[' + i + '].BankId">' + advBuildBankOpts() + '</select></div>' +
+            '</div></div>';
+        return html;
+    }
+    function advAddRow() {
+        advLineIndex++;
+        var i = advLineIndex - 1;
+        document.getElementById('advPaymentLinesContainer').insertAdjacentHTML('beforeend', advBuildRow(i));
+        advUpdateTotal();
+    }
+    function advRemoveRow(btn) {
+        if (document.querySelectorAll('.adv-line-row').length <= 1) return;
+        btn.closest('.adv-line-row').remove();
+        advUpdateTotal();
+    }
+    function advUpdateTotal() {
+        var total = 0;
+        document.querySelectorAll('.adv-amount').forEach(function(inp) { total += parseFloat(inp.value) || 0; });
+        document.getElementById('advTotalDisplay').textContent = '\u20b9' + total.toFixed(2);
+        document.getElementById('advOverWarning').classList.toggle('d-none',  total <= advReceivedAmt + 0.005);
+        document.getElementById('advUnderWarning').classList.toggle('d-none', total >= advReceivedAmt - 0.005 || total === 0);
+    }
+
+    // ── Main submit button ─────────────────────────────────────
+    function handleSubmit() {
+        var received = parseFloat(document.getElementById('ReceivedAmount') && document.getElementById('ReceivedAmount').value) || 0;
+        if (received <= 0) { document.getElementById('invoiceForm').submit(); return; }
+
+        var grandTotalText = document.getElementById('grandTotalDisplay') ? document.getElementById('grandTotalDisplay').textContent : '0';
+        var grandTotal = parseFloat(grandTotalText.replace(/[^\d.]/g, '')) || 0;
+        advReceivedAmt = received;
+        document.getElementById('adv-invoiceTotal').textContent = '\u20b9' + grandTotal.toFixed(2);
+        document.getElementById('adv-receivedAmt').textContent  = '\u20b9' + received.toFixed(2);
+        document.getElementById('adv-balance').textContent      = '\u20b9' + Math.max(0, grandTotal - received).toFixed(2);
+
+        advLineIndex = 0;
+        document.getElementById('advPaymentLinesContainer').innerHTML = '';
+        advAddRow();
+        var firstAmt = document.querySelector('.adv-amount');
+        if (firstAmt) { firstAmt.value = received.toFixed(2); advUpdateTotal(); }
+
+        new bootstrap.Modal(document.getElementById('advPaymentModal')).show();
+    }
+
+    function advConfirm() {
+        var total = 0;
+        document.querySelectorAll('.adv-amount').forEach(function(inp) { total += parseFloat(inp.value) || 0; });
+        if (total > advReceivedAmt + 0.005) {
+            document.getElementById('advOverWarning').classList.remove('d-none');
+            return;
+        }
+        if (total <= 0) { alert('Please enter at least one payment amount.'); return; }
+        var inst = bootstrap.Modal.getInstance(document.getElementById('advPaymentModal'));
+        if (inst) inst.hide();
+        document.getElementById('invoiceForm').submit();
+    }
 </script>
 }

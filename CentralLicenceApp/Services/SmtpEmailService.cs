@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Mail;
 using System.Threading.Tasks;
@@ -37,11 +38,17 @@ namespace CentralLicenceApp.Services
 
         public async Task SendAsync(string toEmail, string toName, string subject, string htmlBody, string? emailType = null)
         {
-            await SendCoreAsync(string.IsNullOrWhiteSpace(emailType) ? "Direct Email" : emailType, null, toEmail, toName, subject, htmlBody);
+            await SendCoreAsync(string.IsNullOrWhiteSpace(emailType) ? "Direct Email" : emailType, null, toEmail, toName, subject, htmlBody, null, null);
+        }
+
+        public async Task SendWithAttachmentAsync(string toEmail, string toName, string subject, string htmlBody,
+            byte[] attachmentBytes, string attachmentFileName, string? emailType = null)
+        {
+            await SendCoreAsync(string.IsNullOrWhiteSpace(emailType) ? "Direct Email" : emailType, null, toEmail, toName, subject, htmlBody, attachmentBytes, attachmentFileName);
         }
 
         private async Task SendCoreAsync(string emailType, string? templateKey, string? toEmail, string? toName,
-            string? subject, string? htmlBody)
+            string? subject, string? htmlBody, byte[]? attachmentBytes, string? attachmentFileName)
         {
             if (string.IsNullOrWhiteSpace(toEmail))
             {
@@ -75,7 +82,21 @@ namespace CentralLicenceApp.Services
                 };
                 mail.To.Add(new MailAddress(toEmail, toName));
 
-                await client.SendMailAsync(mail);
+                MemoryStream? attachStream = null;
+                if (attachmentBytes != null && attachmentBytes.Length > 0 && !string.IsNullOrWhiteSpace(attachmentFileName))
+                {
+                    attachStream = new MemoryStream(attachmentBytes);
+                    mail.Attachments.Add(new Attachment(attachStream, attachmentFileName, "application/pdf"));
+                }
+
+                try
+                {
+                    await client.SendMailAsync(mail);
+                }
+                finally
+                {
+                    attachStream?.Dispose();
+                }
 #pragma warning restore CA1416
                 _logger.LogInformation("Email sent to {Email} | Subject: {Subject}", toEmail, subject);
                 await LogEmailAsync(emailType, templateKey, toEmail, toName, subject, htmlBody, "Sent", null);
@@ -110,7 +131,7 @@ namespace CentralLicenceApp.Services
             var subject = ReplaceBranding(ReplacePlaceholders(template.Subject, templateValues), companyName);
             var body = ReplaceBranding(ReplacePlaceholders(template.Body, templateValues), companyName);
 
-            await SendCoreAsync(template.TemplateName, template.TemplateKey, toEmail, toName, subject, body);
+            await SendCoreAsync(template.TemplateName, template.TemplateKey, toEmail, toName, subject, body, null, null);
         }
 
         private async Task LogEmailAsync(string emailType, string? templateKey, string? toEmail, string? toName,

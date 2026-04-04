@@ -8,6 +8,7 @@ namespace CentralLicenceApp.Repositories
     {
         Task<IEnumerable<Invoice>> GetAllAsync();
         Task<Invoice?> GetByIdAsync(int id);
+        Task<Invoice?> GetByInvoiceNoAsync(string invoiceNo);
         Task<string> GetNextInvoiceNoAsync();
         Task<decimal> GetPartyOutstandingBalanceAsync(int partyId, int? excludeInvoiceId = null);
         Task<int> CreateAsync(Invoice invoice);

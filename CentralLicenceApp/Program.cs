@@ -51,6 +51,9 @@ builder.Services.AddScoped<IUserPushSubscriptionRepository>(_ => new UserPushSub
 
 // Email service
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddScoped<IViewRenderService, ViewRenderService>();
+builder.Services.AddSingleton<IBrowserProvider, BrowserProvider>();
+builder.Services.AddScoped<IDocumentPdfService, DocumentPdfService>();
 builder.Services.AddScoped<IExpenseBrowserNotificationService, ExpenseBrowserNotificationService>();
 builder.Services.AddTransient<IClaimsTransformation, AdminClaimsTransformation>();
 builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, AdminAuthorizationMiddlewareResultHandler>();
@@ -128,5 +131,8 @@ app.MapControllerRoute(
     pattern: "{controller=Dashboard}/{action=Index}/{id?}");
 
 app.MapHub<ExpenseNotificationHub>("/hubs/expense-notifications");
+
+// Warm up Chromium in the background so the first PDF request is fast.
+_ = app.Services.GetRequiredService<IBrowserProvider>().WarmUpAsync();
 
 app.Run();
