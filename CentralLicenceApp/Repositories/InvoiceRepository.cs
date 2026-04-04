@@ -99,7 +99,7 @@ namespace CentralLicenceApp.Repositories
             // Sum of (TotalAmount - ReceivedAmount + PreviousBalance) for all active invoices of the party
             // excluding Paid and Cancelled invoices, and optionally the invoice being edited
             return await conn.ExecuteScalarAsync<decimal>(@"
-                SELECT ISNULL(SUM(TotalAmount - ReceivedAmount + PreviousBalance), 0)
+                SELECT ISNULL(SUM(TotalAmount - ReceivedAmount), 0)
                 FROM   Invoice
                 WHERE  PartyId = @PartyId
                   AND  Status NOT IN ('Paid', 'Cancelled')

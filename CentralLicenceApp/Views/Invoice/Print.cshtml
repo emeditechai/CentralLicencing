@@ -312,8 +312,12 @@
             }
             <tr class="total-row"><td>Total Amount</td><td>₹&nbsp;@Model.TotalAmount.ToString("0,0")</td></tr>
             <tr><td>Received Amount</td><td>₹&nbsp;@Model.ReceivedAmount.ToString("0,0")</td></tr>
-            <tr><td>Previous Balance</td><td>₹&nbsp;@Model.PreviousBalance.ToString("0,0")</td></tr>
-            <tr class="balance-row"><td>Current Balance</td><td>₹&nbsp;@Model.CurrentBalance.ToString("0,0")</td></tr>
+            <tr class="balance-row"><td>Invoice Balance Due</td><td>₹&nbsp;@Model.CurrentBalance.ToString("0,0")</td></tr>
+            @if (Model.PreviousBalance > 0)
+            {
+                <tr><td style="font-size:8.5px;color:#92400e;">Party's Other Open Dues</td><td style="font-size:8.5px;color:#92400e;">₹&nbsp;@Model.PreviousBalance.ToString("0,0")</td></tr>
+                <tr class="balance-row"><td>Total Party Outstanding</td><td>₹&nbsp;@((Model.CurrentBalance + Model.PreviousBalance).ToString("0,0"))</td></tr>
+            }
         </table>
     </div>
 

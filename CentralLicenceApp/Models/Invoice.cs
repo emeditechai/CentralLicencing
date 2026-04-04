@@ -36,8 +36,8 @@ namespace CentralLicenceApp.Models
         public decimal ReceivedAmount { get; set; }
         public decimal PreviousBalance { get; set; }
 
-        /// <summary>CurrentBalance = TotalAmount - ReceivedAmount + PreviousBalance</summary>
-        public decimal CurrentBalance => TotalAmount - ReceivedAmount + PreviousBalance;
+        /// <summary>CurrentBalance = TotalAmount - ReceivedAmount (this invoice's own outstanding only)</summary>
+        public decimal CurrentBalance => TotalAmount - ReceivedAmount;
 
         /// <summary>Draft | Sent | Paid | Partial | Cancelled</summary>
         public string Status { get; set; } = "Draft";

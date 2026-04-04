@@ -1,0 +1,527 @@
+@model CentralLicenceApp.Models.ViewModels.PaymentFormViewModel
+@{
+    ViewData["Title"] = "Record Payment";
+    var modes    = ViewBag.PaymentModes   as List<CentralLicenceApp.Models.PaymentMode> ?? new();
+    var invoices = ViewBag.UnpaidInvoices as List<CentralLicenceApp.Models.Invoice>     ?? new();
+    var banks    = ViewBag.Banks          as List<CentralLicenceApp.Models.BankMaster>  ?? new();
+}
+
+@section HeadExtra {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" />
+    <style>
+        .ts-wrapper.form-select { padding: 0; }
+        .ts-control { border: none !important; box-shadow: none !important; min-height: 38px; }
+    </style>
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary py-1">
+        <i class="bi bi-arrow-left me-1"></i> Back
+    </a>
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Record Payment</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Record a payment against an existing invoice</p>
+    </div>
+</div>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.85rem;">
+        @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+        {
+            <div><i class="bi bi-exclamation-circle me-1"></i>@error.ErrorMessage</div>
+        }
+    </div>
+}
+
+<form asp-action="Create" method="post" id="paymentForm">
+    @Html.AntiForgeryToken()
+
+    <div class="row g-4">
+        <!-- Left column -->
+        <div class="col-lg-7">
+
+            <!-- Invoice selection -->
+            <div class="card mb-3">
+                <div class="card-header fw-semibold" style="background:#f8fafc;font-size:.9rem;">
+                    <i class="bi bi-receipt me-1"></i> Invoice
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Select Invoice <span class="text-danger">*</span></label>
+                        <select class="form-select" id="invoiceSelect" name="InvoiceId" onchange="onInvoiceChange()" required>
+                            <option value="0">— Choose Invoice —</option>
+                            @foreach (var inv in invoices)
+                            {
+                                var outstanding = inv.TotalAmount - inv.ReceivedAmount;
+                                <option value="@inv.Id" data-invoice-id="@inv.Id"
+                                        selected="@(Model.InvoiceId == inv.Id ? "selected" : null)">
+                                    @inv.InvoiceNo — @inv.PartyName (Outstanding: ₹@outstanding.ToString("N2"))
+                                </option>
+                            }
+                        </select>
+                        <input type="hidden" name="InvoiceNo"  id="hiddenInvoiceNo"  value="@Model.InvoiceNo" />
+                        <input type="hidden" name="PartyId"    id="hiddenPartyId"    value="@Model.PartyId" />
+                        <input type="hidden" name="PartyName"  id="hiddenPartyName"  value="@Model.PartyName" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Invoice summary -->
+            <div class="card mb-3" id="invoiceSummaryCard" style="@(Model.InvoiceId > 0 ? "" : "display:none!")">
+                <div class="card-header fw-semibold" style="background:#f0f4ff;font-size:.9rem;">
+                    <i class="bi bi-info-circle me-1"></i> Invoice Summary
+                </div>
+                <div class="card-body py-3">
+                    <div class="row g-2" style="font-size:.875rem;">
+                        <div class="col-6">
+                            <span class="text-muted">Party:</span>
+                            <span class="fw-semibold ms-1" id="summaryPartyName">@Model.PartyName</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted">Invoice No:</span>
+                            <span class="fw-semibold ms-1" id="summaryInvoiceNo">@Model.InvoiceNo</span>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background:#f1f5f9;">
+                                <div class="text-muted" style="font-size:.75rem;">Invoice Total</div>
+                                <div class="fw-bold" id="summaryTotal">₹@Model.InvoiceTotalAmount.ToString("N2")</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background:#f1f5f9;">
+                                <div class="text-muted" style="font-size:.75rem;">Already Paid</div>
+                                <div class="fw-bold text-success" id="summaryPaid">₹@Model.AlreadyPaid.ToString("N2")</div>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="p-2 rounded" style="background:#fef9c3;">
+                                <div class="text-muted" style="font-size:.75rem;">Invoice Due</div>
+                                <div class="fw-bold" style="color:#854d0e;" id="summaryOutstanding">₹@Model.OutstandingBalance.ToString("N2")</div>
+                            </div>
+                        </div>
+                        @if (Model.PreviousBalance != 0)
+                        {
+                            <div class="col-12">
+                                <div class="p-2 rounded d-flex justify-content-between align-items-center" style="background:#fef2f2;border:1px dashed #fca5a5;">
+                                    <div>
+                                        <span class="fw-semibold" style="color:#b91c1c;font-size:.8rem;">Previous Party Balance</span>
+                                        <div class="text-muted" style="font-size:.72rem;">Carry-over from earlier invoices — not included in this payment</div>
+                                    </div>
+                                    <span class="fw-bold" style="color:#b91c1c;" id="summaryPrevBalance">₹@Model.PreviousBalance.ToString("N2")</span>
+                                </div>
+                            </div>
+                        }
+                        <div id="summaryPrevBalanceRow" class="col-12" style="@(Model.PreviousBalance == 0 ? "display:none;" : "")">
+                            <!-- updated via AJAX if prev balance exists -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment date & notes -->
+            <div class="card mb-3">
+                <div class="card-header fw-semibold" style="background:#f8fafc;font-size:.9rem;">
+                    <i class="bi bi-calendar3 me-1"></i> Payment Details
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Payment Date <span class="text-danger">*</span></label>
+                        <input asp-for="PaymentDate" type="date" class="form-control" style="max-width:220px;" required />
+                    </div>
+                    <div>
+                        <label class="form-label fw-semibold">Notes</label>
+                        <textarea asp-for="Notes" class="form-control" rows="2" placeholder="Optional remarks..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right column: Payment lines -->
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center fw-semibold" style="background:#f8fafc;font-size:.9rem;">
+                    <span><i class="bi bi-credit-card me-1"></i> Payment Lines</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" onclick="addPaymentLine()">
+                        <i class="bi bi-plus-lg me-1"></i> Add Row
+                    </button>
+                </div>
+                <div class="card-body p-3">
+                    <div id="paymentLinesContainer">
+                        @for (int i = 0; i < (Model.Lines.Any() ? Model.Lines.Count : 1); i++)
+                        {
+                            var line = Model.Lines.ElementAtOrDefault(i);
+                            <div class="payment-line-row border rounded p-2 mb-2 position-relative" data-index="@i">
+                                <button type="button" class="btn-close position-absolute" style="top:6px;right:6px;font-size:.6rem;"
+                                        onclick="removeRow(this)" title="Remove"></button>
+
+                                <div class="mb-2">
+                                    <label class="form-label form-label-sm fw-semibold mb-1">Payment Mode</label>
+                                    <select class="form-select form-select-sm mode-select" name="Lines[@i].PaymentModeId"
+                                            onchange="onModeChange(this)" required>
+                                        <option value="">— Select Mode —</option>
+                                        @foreach (var m in modes)
+                                        {
+                                            <option value="@m.Id" data-name="@m.Name"
+                                                    selected="@(line?.PaymentModeId == m.Id ? "selected" : null)">@m.Name</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label form-label-sm fw-semibold mb-1">Amount</label>
+                                        <input type="number" class="form-control form-control-sm amount-input"
+                                               name="Lines[@i].Amount" value="@(line?.Amount > 0 ? line.Amount.ToString("F2") : "")"
+                                               placeholder="0.00" step="0.01" min="0.01" required
+                                               oninput="onAmountInput(this)" onchange="updateTotal()" />
+                                        <div class="text-danger amount-error" style="font-size:.75rem;display:none;">
+                                            Exceeds invoice due amount.
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label form-label-sm fw-semibold mb-1">Reference No</label>
+                                        <input type="text" class="form-control form-control-sm"
+                                               name="Lines[@i].ReferenceNo" value="@line?.ReferenceNo"
+                                               placeholder="Cheque/UTR/etc." />
+                                    </div>
+                                </div>
+
+                                <!-- Extra fields — shown/hidden by JS based on selected mode -->
+                                <div class="extra-fields mt-2" style="display:none;">
+
+                                    <!-- Card Type (only for Cards) -->
+                                    <div class="card-fields row g-2 mb-2" style="display:none;">
+                                        <div class="col-6">
+                                            <label class="form-label form-label-sm fw-semibold mb-1">Card Type <span class="text-danger">*</span></label>
+                                            <select class="form-select form-select-sm card-type-select" name="Lines[@i].CardType">
+                                                <option value="">— Select —</option>
+                                                <option value="Debit"  selected="@(line?.CardType == "Debit"  ? "selected" : null)">Debit</option>
+                                                <option value="Credit" selected="@(line?.CardType == "Credit" ? "selected" : null)">Credit</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label form-label-sm fw-semibold mb-1">Last 4 Digits <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control form-control-sm card-last4-input"
+                                                   name="Lines[@i].CardLastFour" value="@line?.CardLastFour"
+                                                   maxlength="4" placeholder="e.g. 1234"
+                                                   oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+                                        </div>
+                                    </div>
+
+                                    <!-- Bank dropdown (for Cards, Cheque, NEFT, RTGS, IMPS, Bank Transfer) -->
+                                    <div class="bank-field mb-2" style="display:none;">
+                                        <label class="form-label form-label-sm fw-semibold mb-1 bank-label">Bank <span class="text-danger">*</span></label>
+                                        <select class="form-select form-select-sm bank-select" name="Lines[@i].BankId">
+                                            <option value="">— Select Bank —</option>
+                                            @foreach (var b in banks)
+                                            {
+                                                <option value="@b.Id" selected="@(line?.BankId == b.Id ? "selected" : null)">@b.BankName</option>
+                                            }
+                                        </select>
+                                    </div>
+
+                                </div><!-- /extra-fields -->
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Total display -->
+                    <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                        <span class="fw-semibold" style="font-size:.9rem;">Total Paying</span>
+                        <span class="fw-bold" style="font-size:1.1rem;color:#180a3c;" id="totalDisplay">₹0.00</span>
+                    </div>
+                    <div id="overPaymentWarning" class="alert alert-warning py-1 px-2 mt-2 d-none" style="font-size:.8rem;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Total exceeds outstanding balance.
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn w-100 mt-3 text-white fw-semibold"
+                    style="background:#180a3c;border:none;border-radius:10px;padding:.65rem;">
+                <i class="bi bi-check-circle me-1"></i> Record Payment
+            </button>
+        </div>
+    </div>
+
+</form>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<script>
+    // ── Constants ──────────────────────────────────────────────────────────────
+    var lineIndex          = @(Model.Lines.Any() ? Model.Lines.Count : 1);
+    var outstandingBalance = @Model.OutstandingBalance.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+
+    var paymentModesData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        modes.Select(m => new { id = m.Id, name = m.Name })));
+
+    var banksData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        banks.Select(b => new { id = b.Id, name = b.BankName })));
+
+    // Modes requiring Bank dropdown
+    var BANK_MODES  = ['cheque','neft','rtgs','imps','bank transfer','cards'];
+    // Modes requiring Card extra fields (card type + last 4)
+    var CARD_MODES  = ['cards'];
+
+    function modeNameOf(select) {
+        var opt = select.options[select.selectedIndex];
+        return opt ? (opt.dataset.name || opt.text || '').toLowerCase().trim() : '';
+    }
+
+    // Returns the contextual label for the Bank dropdown given the mode name
+    function bankLabelFor(modeName) {
+        if (modeName === 'cards')                                             return 'Card Bank';
+        if (['bank transfer','neft','rtgs'].includes(modeName))              return 'Received Bank';
+        return 'Bank';
+    }
+
+    // ── Show/hide extra fields per row ─────────────────────────────────────────
+    function onModeChange(modeSelect) {
+        var row       = modeSelect.closest('.payment-line-row');
+        var modeName  = modeNameOf(modeSelect);
+        var extra     = row.querySelector('.extra-fields');
+        var cardDiv   = row.querySelector('.card-fields');
+        var bankDiv   = row.querySelector('.bank-field');
+        var bankLbl   = row.querySelector('.bank-label');
+        var cardType  = row.querySelector('.card-type-select');
+        var last4     = row.querySelector('.card-last4-input');
+        var bankSel   = row.querySelector('.bank-select');
+
+        var showCard = CARD_MODES.includes(modeName);
+        var showBank = BANK_MODES.includes(modeName);
+        var showAny  = showCard || showBank;
+
+        extra.style.display    = showAny  ? '' : 'none';
+        cardDiv.style.display  = showCard ? '' : 'none';
+        bankDiv.style.display  = showBank ? '' : 'none';
+
+        // Update bank label dynamically
+        if (bankLbl) bankLbl.innerHTML = bankLabelFor(modeName) + ' <span class="text-danger">*</span>';
+
+        // Toggle required
+        if (cardType) cardType.required = showCard;
+        if (last4)    last4.required    = showCard;
+        if (bankSel)  bankSel.required  = showBank;
+
+        // Clear hidden fields
+        if (!showCard) { if (cardType) cardType.value = ''; if (last4) last4.value = ''; }
+        if (!showBank) { if (bankSel)  bankSel.value  = ''; }
+
+        updateTotal();
+    }
+
+    // ── Amount validation: per-line and total ──────────────────────────────────
+    function onAmountInput(inp) {
+        validateAmountField(inp);
+        updateTotal();
+    }
+
+    function validateAmountField(inp) {
+        var val    = parseFloat(inp.value) || 0;
+        var errDiv = inp.closest('.col-6')
+                       ? inp.closest('.col-6').querySelector('.amount-error')
+                       : null;
+        var rowTotal = getTotalExcluding(inp) + val;
+        var bad      = val > outstandingBalance + 0.005 || rowTotal > outstandingBalance + 0.005;
+        if (errDiv) errDiv.style.display = bad ? 'block' : 'none';
+        inp.classList.toggle('is-invalid', bad);
+        return !bad;
+    }
+
+    function getTotalExcluding(excludeInp) {
+        var total = 0;
+        document.querySelectorAll('.amount-input').forEach(function(inp) {
+            if (inp !== excludeInp) total += parseFloat(inp.value) || 0;
+        });
+        return total;
+    }
+
+    function updateTotal() {
+        var inputs = document.querySelectorAll('.amount-input');
+        var total  = 0;
+        inputs.forEach(function(inp) { total += parseFloat(inp.value) || 0; });
+        document.getElementById('totalDisplay').textContent = '₹' + total.toFixed(2);
+
+        var warn = document.getElementById('overPaymentWarning');
+        if (outstandingBalance > 0 && total > outstandingBalance + 0.005) {
+            warn.classList.remove('d-none');
+        } else {
+            warn.classList.add('d-none');
+        }
+    }
+
+    // ── Build mode options HTML ────────────────────────────────────────────────
+    function buildModeOptions() {
+        return '<option value="" data-name="">— Select Mode —</option>' +
+            paymentModesData.map(function(m) {
+                return '<option value="' + m.id + '" data-name="' + m.name + '">' + m.name + '</option>';
+            }).join('');
+    }
+
+    function buildBankOptions() {
+        return '<option value="">— Select Bank —</option>' +
+            banksData.map(function(b) {
+                return '<option value="' + b.id + '">' + b.name + '</option>';
+            }).join('');
+    }
+
+    // ── Add a new payment line row ─────────────────────────────────────────────
+    function addPaymentLine() {
+        var i   = lineIndex++;
+        var div = document.createElement('div');
+        div.className = 'payment-line-row border rounded p-2 mb-2 position-relative';
+        div.setAttribute('data-index', i);
+        div.innerHTML =
+            '<button type="button" class="btn-close position-absolute" style="top:6px;right:6px;font-size:.6rem;"' +
+            ' onclick="removeRow(this)" title="Remove"></button>' +
+
+            '<div class="mb-2">' +
+            '<label class="form-label form-label-sm fw-semibold mb-1">Payment Mode</label>' +
+            '<select class="form-select form-select-sm mode-select" name="Lines[' + i + '].PaymentModeId"' +
+            ' onchange="onModeChange(this)" required>' + buildModeOptions() + '</select></div>' +
+
+            '<div class="row g-2">' +
+            '<div class="col-6">' +
+            '<label class="form-label form-label-sm fw-semibold mb-1">Amount</label>' +
+            '<input type="number" class="form-control form-control-sm amount-input"' +
+            ' name="Lines[' + i + '].Amount" placeholder="0.00" step="0.01" min="0.01" required' +
+            ' oninput="onAmountInput(this)" onchange="updateTotal()" />' +
+            '<div class="text-danger amount-error" style="font-size:.75rem;display:none;">Exceeds invoice due amount.</div>' +
+            '</div>' +
+            '<div class="col-6">' +
+            '<label class="form-label form-label-sm fw-semibold mb-1">Reference No</label>' +
+            '<input type="text" class="form-control form-control-sm" name="Lines[' + i + '].ReferenceNo" placeholder="Cheque/UTR/etc." />' +
+            '</div></div>' +
+
+            // Extra fields container
+            '<div class="extra-fields mt-2" style="display:none;">' +
+
+            // Card fields
+            '<div class="card-fields row g-2 mb-2" style="display:none;">' +
+            '<div class="col-6">' +
+            '<label class="form-label form-label-sm fw-semibold mb-1">Card Type <span class="text-danger">*</span></label>' +
+            '<select class="form-select form-select-sm card-type-select" name="Lines[' + i + '].CardType">' +
+            '<option value="">— Select —</option>' +
+            '<option value="Debit">Debit</option>' +
+            '<option value="Credit">Credit</option>' +
+            '</select></div>' +
+            '<div class="col-6">' +
+            '<label class="form-label form-label-sm fw-semibold mb-1">Last 4 Digits <span class="text-danger">*</span></label>' +
+            '<input type="text" class="form-control form-control-sm card-last4-input"' +
+            ' name="Lines[' + i + '].CardLastFour" maxlength="4" placeholder="e.g. 1234"' +
+            ' oninput="this.value=this.value.replace(/[^0-9]/g,\'\')" />' +
+            '</div></div>' +
+
+            // Bank field
+            '<div class="bank-field mb-2" style="display:none;">' +
+            '<label class="form-label form-label-sm fw-semibold mb-1 bank-label">Bank <span class="text-danger">*</span></label>' +
+            '<select class="form-select form-select-sm bank-select" name="Lines[' + i + '].BankId">' +
+            buildBankOptions() +
+            '</select></div>' +
+
+            '</div>';// /extra-fields
+
+        document.getElementById('paymentLinesContainer').appendChild(div);
+    }
+
+    function removeRow(btn) {
+        var rows = document.querySelectorAll('.payment-line-row');
+        if (rows.length <= 1) return;
+        btn.closest('.payment-line-row').remove();
+        updateTotal();
+    }
+
+    // ── Form submit guard ─────────────────────────────────────────────────────
+    document.getElementById('paymentForm').addEventListener('submit', function(e) {
+        var inputs = document.querySelectorAll('.amount-input');
+        var total  = 0;
+        inputs.forEach(function(inp) { total += parseFloat(inp.value) || 0; });
+
+        if (outstandingBalance > 0 && total > outstandingBalance + 0.005) {
+            e.preventDefault();
+            document.getElementById('overPaymentWarning').classList.remove('d-none');
+            document.getElementById('overPaymentWarning').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+
+        // Validate card last-4 is exactly 4 digits where required
+        var ok = true;
+        document.querySelectorAll('.card-last4-input').forEach(function(inp) {
+            if (inp.required && !/^\d{4}$/.test(inp.value)) {
+                inp.classList.add('is-invalid');
+                ok = false;
+            }
+        });
+        if (!ok) { e.preventDefault(); return false; }
+    });
+
+    // ── Invoice change ─────────────────────────────────────────────────────────
+    function onInvoiceChange() {
+        var select    = document.getElementById('invoiceSelect');
+        var invoiceId = parseInt(select.value) || 0;
+        if (invoiceId <= 0) {
+            document.getElementById('invoiceSummaryCard').style.display = 'none';
+            return;
+        }
+        fetch('/InvoicePayment/InvoiceDetailsJson?invoiceId=' + invoiceId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                document.getElementById('hiddenInvoiceNo').value  = data.invoiceNo;
+                document.getElementById('hiddenPartyId').value    = data.partyId;
+                document.getElementById('hiddenPartyName').value  = data.partyName;
+                document.getElementById('summaryPartyName').textContent   = data.partyName;
+                document.getElementById('summaryInvoiceNo').textContent   = data.invoiceNo;
+                document.getElementById('summaryTotal').textContent       = '₹' + data.totalAmount.toFixed(2);
+                document.getElementById('summaryPaid').textContent        = '₹' + data.alreadyPaid.toFixed(2);
+                document.getElementById('summaryOutstanding').textContent = '₹' + data.outstandingBalance.toFixed(2);
+                outstandingBalance = data.outstandingBalance;
+
+                var prevRow = document.getElementById('summaryPrevBalanceRow');
+                if (data.previousBalance && data.previousBalance > 0) {
+                    prevRow.style.display = '';
+                    prevRow.innerHTML =
+                        '<div class="p-2 rounded d-flex justify-content-between align-items-center"' +
+                        ' style="background:#fef2f2;border:1px dashed #fca5a5;">' +
+                        '<div><span class="fw-semibold" style="color:#b91c1c;font-size:.8rem;">Previous Party Balance</span>' +
+                        '<div class="text-muted" style="font-size:.72rem;">Carry-over from earlier invoices \u2014 not included in this payment</div></div>' +
+                        '<span class="fw-bold" style="color:#b91c1c;">\u20b9' + data.previousBalance.toFixed(2) + '</span></div>';
+                } else {
+                    prevRow.style.display = 'none';
+                    prevRow.innerHTML = '';
+                }
+                document.getElementById('invoiceSummaryCard').style.display = '';
+                // Re-validate amount fields against new outstanding
+                document.querySelectorAll('.amount-input').forEach(validateAmountField);
+                updateTotal();
+            });
+    }
+
+    // ── Page load ─────────────────────────────────────────────────────────────
+    window.addEventListener('load', function() {
+        updateTotal();
+
+        // Initialise Tom Select on invoice dropdown
+        new TomSelect('#invoiceSelect', {
+            placeholder: '— Type to search invoice / party —',
+            allowEmptyOption: true,
+            maxOptions: 200,
+            onChange: function() { onInvoiceChange(); }
+        });
+
+        // Trigger mode change for pre-filled rows (on validation re-render)
+        document.querySelectorAll('.mode-select').forEach(function(sel) {
+            if (sel.value) onModeChange(sel);
+        });
+    });
+
+    @if (Model.InvoiceId > 0)
+    {
+        <text>
+        document.querySelector('#invoiceSummaryCard').style.removeProperty('display');
+        </text>
+    }
+</script>
+}

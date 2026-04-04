@@ -1,0 +1,154 @@
+@model IEnumerable<CentralLicenceApp.Models.PaymentMode>
+@{
+    ViewData["Title"] = "Payment Modes";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Payment Modes</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Manage payment modes used during receipt recording</p>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show py-2 px-3 rounded-3" style="font-size:.85rem;">
+        @Html.Raw(TempData["Success"])
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show py-2 px-3 rounded-3" style="font-size:.85rem;">
+        @Html.Raw(TempData["Error"])
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Name</th>
+                        <th>Sort Order</th>
+                        <th>Status</th>
+                        @if (User.IsInRole("Administrator"))
+                        {
+                            <th class="pe-3">Actions</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="bi bi-credit-card-2-front fs-1 d-block mb-2"></i>No payment modes found
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var mode in Model)
+                        {
+                            <tr id="row-@mode.Id">
+                                <td class="ps-3 text-muted" style="font-size:.8rem;">@mode.Id</td>
+                                <td>
+                                    <span class="view-name-@mode.Id fw-semibold">@mode.Name</span>
+                                    @if (User.IsInRole("Administrator"))
+                                    {
+                                        <form class="edit-form-@mode.Id d-none" asp-action="Edit" asp-route-id="@mode.Id" method="post" style="display:inline-flex;gap:6px;align-items:center;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="text" name="name" value="@mode.Name" class="form-control form-control-sm" style="width:160px;" required />
+                                            <input type="number" name="sortOrder" value="@mode.SortOrder" class="form-control form-control-sm" style="width:80px;" />
+                                            <button type="submit" class="btn btn-sm btn-success py-0 px-2">Save</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="cancelEdit(@mode.Id)">Cancel</button>
+                                        </form>
+                                    }
+                                </td>
+                                <td class="text-muted sort-order-@mode.Id">@mode.SortOrder</td>
+                                <td>
+                                    @if (mode.IsActive)
+                                    {
+                                        <span class="badge" style="background:#dcfce7;color:#166534;font-size:.76rem;">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge" style="background:#f1f5f9;color:#64748b;font-size:.76rem;">Inactive</span>
+                                    }
+                                </td>
+                                @if (User.IsInRole("Administrator"))
+                                {
+                                    <td class="pe-3">
+                                        <div class="d-flex gap-2 flex-wrap">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                                    onclick="startEdit(@mode.Id)" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <form asp-action="ToggleActive" asp-route-id="@mode.Id" method="post" style="display:inline;">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm py-0 px-2 @(mode.IsActive ? "btn-outline-danger" : "btn-outline-success")"
+                                                        title="@(mode.IsActive ? "Deactivate" : "Activate")">
+                                                    <i class="bi bi-@(mode.IsActive ? "toggle-on" : "toggle-off")"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@if (User.IsInRole("Administrator"))
+{
+    <div class="card mt-4" style="max-width:480px;">
+        <div class="card-header fw-semibold" style="background:#f8fafc;font-size:.9rem;">
+            <i class="bi bi-plus-circle me-1"></i> Add New Payment Mode
+        </div>
+        <div class="card-body">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="row g-2 align-items-end">
+                    <div class="col-6">
+                        <label class="form-label form-label-sm">Name</label>
+                        <input type="text" name="name" class="form-control form-control-sm" placeholder="e.g. Cheque" required />
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label form-label-sm">Sort Order</label>
+                        <input type="number" name="sortOrder" class="form-control form-control-sm" value="10" />
+                    </div>
+                    <div class="col-3">
+                        <button type="submit" class="btn btn-sm w-100 text-white" style="background:#180a3c;border:none;border-radius:8px;">
+                            <i class="bi bi-plus-lg"></i> Add
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        function startEdit(id) {
+            document.querySelector(`.view-name-${id}`).classList.add('d-none');
+            const form = document.querySelector(`.edit-form-${id}`);
+            form.classList.remove('d-none');
+            form.classList.add('d-flex');
+        }
+        function cancelEdit(id) {
+            document.querySelector(`.view-name-${id}`).classList.remove('d-none');
+            const form = document.querySelector(`.edit-form-${id}`);
+            form.classList.add('d-none');
+            form.classList.remove('d-flex');
+        }
+    </script>
+}

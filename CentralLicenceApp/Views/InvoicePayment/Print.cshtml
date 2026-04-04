@@ -1,0 +1,183 @@
+@model CentralLicenceApp.Models.InvoicePayment
+@using CentralLicenceApp.Models
+@using CentralLicenceApp.Repositories
+@inject ICompanySettingsRepository CompanySettingsRepo
+@{
+    Layout = null;
+    var company       = await CompanySettingsRepo.GetParentCompanyAsync();
+    var brandName     = string.IsNullOrWhiteSpace(company?.CompanyName)     ? "EMEDITECH PLUS LLP" : company.CompanyName.Trim().ToUpperInvariant();
+    var brandLogoPath = string.IsNullOrWhiteSpace(company?.CompanyLogoPath) ? null : Url.Content(company.CompanyLogoPath!);
+    var companyAddr   = company?.Address   ?? string.Empty;
+    var companyMobile = company?.ContactNo ?? string.Empty;
+    var companyGstin  = company?.GSTCode   ?? string.Empty;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Receipt @Model.ReceiptNo</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Segoe UI',Arial,sans-serif;font-size:9px;color:#1a1a2e;background:#fff;}
+        .page{width:148mm;min-height:210mm;margin:0 auto;padding:8mm 10mm 20mm;background:#fff;}
+        table{width:100%;border-collapse:collapse;}
+        /* Header */
+        .header-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border-bottom:2px solid #1a1a2e;padding-bottom:6px;margin-bottom:8px;}
+        .brand{font-size:13px;font-weight:700;color:#6366f1;letter-spacing:.04em;}
+        .brand-sub{font-size:8px;color:#555;margin-top:2px;line-height:1.6;}
+        .doc-title{text-align:right;}
+        .doc-title h1{font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#1a1a2e;margin-bottom:2px;}
+        .doc-stamp{display:inline-block;border:1.5px solid #1a1a2e;font-size:7px;font-weight:700;padding:2px 5px;letter-spacing:.1em;margin-bottom:4px;}
+        .doc-meta td{padding:1px 4px;font-size:8.5px;}
+        .doc-meta td:first-child{color:#555;white-space:nowrap;}
+        /* Party */
+        .party-box{border:1px solid #ccc;padding:6px 10px;margin-bottom:8px;background:#f4f4ff;border-radius:4px;}
+        .party-box .lbl{font-size:7px;font-weight:700;letter-spacing:.1em;color:#6366f1;margin-bottom:2px;text-transform:uppercase;}
+        .party-box .name{font-size:11px;font-weight:700;margin-bottom:2px;}
+        /* Table */
+        .items-wrap{border-radius:4px;overflow:hidden;border:1px solid #e2e4f0;margin-bottom:8px;}
+        .items-table{border-collapse:collapse;}
+        .items-table thead tr{background:#1e293b;}
+        .items-table th{padding:5px 7px;font-weight:600;font-size:7px;text-align:left;color:#e2e8f0;letter-spacing:.07em;text-transform:uppercase;border:none;}
+        .items-table tbody tr{border-bottom:1px solid #eeeff6;}
+        .items-table tbody tr:last-child{border-bottom:none;}
+        .items-table tbody tr:nth-child(even){background:#f9f9fd;}
+        .items-table td{padding:4px 7px;font-size:8.5px;border:none;color:#2d2d3a;}
+        .items-table .num{text-align:right;}
+        .total-row td{background:#1e293b;color:#fff;font-weight:700;padding:5px 7px;font-size:9.5px;border:none;}
+        /* Notes */
+        .notes-box{border:1px solid #e2e4f0;padding:6px 10px;border-radius:4px;font-size:8px;color:#555;margin-bottom:8px;}
+        .notes-box strong{font-size:7px;letter-spacing:.06em;text-transform:uppercase;color:#6366f1;display:block;margin-bottom:2px;}
+        /* Sig footer */
+        .sig-footer{
+            position:fixed;bottom:0;left:10mm;right:10mm;
+            border-top:1.5px solid #1e293b;
+            padding:5px 0 6px;
+            display:flex;
+            justify-content:space-between;
+            align-items:flex-end;
+            font-size:8.5px;
+            color:#555;
+        }
+        .sig-block{flex:1;text-align:center;}
+        .sig-block.left{text-align:left;}
+        .sig-block.right{text-align:right;}
+        .sig-line{height:24px;border-bottom:1px dashed #aaa;margin-bottom:3px;}
+        .sig-label{font-size:7.5px;color:#888;}
+        .sig-name{font-weight:700;font-size:8.5px;color:#1e293b;}
+        @@media print{
+            body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+            .no-print{display:none!important;}
+            .page{padding:8mm 10mm 22mm;border:none;box-shadow:none;}
+        }
+        @@media screen{
+            body{background:#d0d0d0;}
+            .page{margin:20px auto;box-shadow:0 4px 24px rgba(0,0,0,.18);border:1px solid #bbb;}
+        }
+    </style>
+</head>
+<body>
+
+<!-- Toolbar screen-only -->
+<div class="no-print" style="padding:10px 20px;background:#1e293b;display:flex;gap:10px;align-items:center;">
+    <button onclick="window.print()" style="background:#6366f1;color:#fff;border:none;padding:7px 22px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;">
+        🖨&nbsp; Print / Save PDF
+    </button>
+    <a href="javascript:history.back()" style="background:#334155;color:#e2e8f0;padding:7px 18px;border-radius:8px;font-size:12px;text-decoration:none;">← Back</a>
+    <span style="color:#94a3b8;font-size:11px;margin-left:auto;">@Model.ReceiptNo</span>
+</div>
+
+<div class="page">
+
+    <!-- Header -->
+    <div class="header-grid">
+        <div>
+            @if (brandLogoPath != null)
+            {
+                <img src="@brandLogoPath" alt="@brandName" style="max-height:42px;max-width:130px;object-fit:contain;margin-bottom:6px;display:block;" />
+            }
+            <div class="brand">@brandName</div>
+            <div class="brand-sub">
+                @if (!string.IsNullOrWhiteSpace(companyAddr))   { <text>@companyAddr<br /></text> }
+                @if (!string.IsNullOrWhiteSpace(companyMobile)) { <text>Mobile : @companyMobile<br /></text> }
+                @if (!string.IsNullOrWhiteSpace(companyGstin))  { <text>GSTIN : @companyGstin</text> }
+            </div>
+        </div>
+        <div class="doc-title">
+            <div class="doc-stamp">PAYMENT RECEIPT</div>
+            <h1>Receipt</h1>
+            <table class="doc-meta" style="margin-left:auto;width:auto;">
+                <tr><td>Receipt No.</td><td style="font-weight:700;">@Model.ReceiptNo</td></tr>
+                <tr><td>Date</td><td style="font-weight:700;">@Model.PaymentDate.ToString("dd/MM/yyyy")</td></tr>
+                <tr><td>Ref. Invoice</td><td style="font-weight:700;">@Model.InvoiceNo</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Received from -->
+    <div class="party-box">
+        <div class="lbl">Received From</div>
+        <div class="name">@Model.PartyName</div>
+    </div>
+
+    <!-- Payment lines table -->
+    <div class="items-wrap">
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th style="width:28px;">#</th>
+                    <th>Payment Mode</th>
+                    <th>Reference No</th>
+                    <th class="num" style="width:90px;">Amount (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{ int sno = 1; }
+                @foreach (var line in Model.Lines)
+                {
+                    <tr>
+                        <td style="color:#9498b4;">@sno</td>
+                        <td style="font-weight:600;">@line.PaymentModeName</td>
+                        <td style="color:#555;">@(string.IsNullOrWhiteSpace(line.ReferenceNo) ? "—" : line.ReferenceNo)</td>
+                        <td class="num" style="font-weight:600;">@line.Amount.ToString("0,0.##")</td>
+                    </tr>
+                    sno++;
+                }
+                @{ var minRows = Math.Max(0, 3 - Model.Lines.Count); }
+                @for (var i = 0; i < minRows; i++)
+                {
+                    <tr><td style="padding:8px;">&nbsp;</td><td></td><td></td><td></td></tr>
+                }
+            </tbody>
+            <tr class="total-row">
+                <td colspan="3" style="letter-spacing:.05em;">TOTAL RECEIVED</td>
+                <td class="num">₹ @Model.TotalAmountPaid.ToString("0,0.##")</td>
+            </tr>
+        </table>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Notes))
+    {
+        <div class="notes-box">
+            <strong>Notes</strong>
+            @Model.Notes
+        </div>
+    }
+
+    <!-- Signature footer -->
+    <div class="sig-footer">
+        <div class="sig-block left">
+            <div class="sig-line" style="width:100px;"></div>
+            <div class="sig-label">Customer Signature</div>
+        </div>
+        <div class="sig-block right">
+            <div class="sig-line" style="width:100px;margin-left:auto;"></div>
+            <div class="sig-label">Authorised Signatory</div>
+            <div class="sig-name">For @brandName</div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

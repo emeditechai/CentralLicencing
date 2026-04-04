@@ -44,6 +44,8 @@ builder.Services.AddScoped<IPartyMasterRepository>(_ => new PartyMasterRepositor
 builder.Services.AddScoped<IQuotationRepository>(_ => new QuotationRepository(connStr));
 builder.Services.AddScoped<IInvoiceRepository>(_ => new InvoiceRepository(connStr));
 builder.Services.AddScoped<IBankMasterRepository>(_ => new BankMasterRepository(connStr));
+builder.Services.AddScoped<IPaymentModeRepository>(_ => new PaymentModeRepository(connStr));
+builder.Services.AddScoped<IInvoicePaymentRepository>(_ => new InvoicePaymentRepository(connStr));
 builder.Services.AddScoped<IClientDetailsReportExportService, ClientDetailsReportExportService>();
 builder.Services.AddScoped<IUserPushSubscriptionRepository>(_ => new UserPushSubscriptionRepository(connStr));
 

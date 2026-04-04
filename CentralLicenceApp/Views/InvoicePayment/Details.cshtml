@@ -1,0 +1,128 @@
+@model CentralLicenceApp.Models.InvoicePayment
+@{
+    ViewData["Title"] = "Receipt Details";
+    var company = ViewBag.CompanySettings as CentralLicenceApp.Models.CompanySetting;
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary py-1">
+        <i class="bi bi-arrow-left me-1"></i> Back
+    </a>
+    <div class="flex-grow-1">
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">@Model.ReceiptNo</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Payment Receipt</p>
+    </div>
+    <a asp-action="Print" asp-route-id="@Model.Id" target="_blank"
+       class="btn btn-sm btn-outline-primary py-1">
+        <i class="bi bi-printer me-1"></i> Print
+    </a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show py-2 px-3 rounded-3" style="font-size:.85rem;">
+        @Html.Raw(TempData["Success"])
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-8">
+
+        <!-- Payment info -->
+        <div class="card mb-3">
+            <div class="card-header fw-semibold" style="background:#f0f4ff;font-size:.9rem;">
+                <i class="bi bi-receipt me-1"></i> Receipt Information
+            </div>
+            <div class="card-body">
+                <div class="row g-3" style="font-size:.875rem;">
+                    <div class="col-sm-4 text-muted">Receipt No</div>
+                    <div class="col-sm-8 fw-semibold" style="color:#6366f1;">@Model.ReceiptNo</div>
+
+                    <div class="col-sm-4 text-muted">Payment Date</div>
+                    <div class="col-sm-8">@Model.PaymentDate.ToString("dd MMM yyyy")</div>
+
+                    <div class="col-sm-4 text-muted">Invoice No</div>
+                    <div class="col-sm-8">
+                        <a asp-controller="Invoice" asp-action="Details" asp-route-id="@Model.InvoiceId"
+                           style="color:#6366f1;text-decoration:none;">@Model.InvoiceNo</a>
+                    </div>
+
+                    <div class="col-sm-4 text-muted">Party</div>
+                    <div class="col-sm-8 fw-semibold">@Model.PartyName</div>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Notes))
+                    {
+                        <div class="col-sm-4 text-muted">Notes</div>
+                        <div class="col-sm-8">@Model.Notes</div>
+                    }
+
+                    <div class="col-sm-4 text-muted">Recorded By</div>
+                    <div class="col-sm-8 text-muted" style="font-size:.8rem;">@Model.CreatedBy — @Model.CreatedAt.ToString("dd MMM yyyy, hh:mm tt")</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment lines -->
+        <div class="card">
+            <div class="card-header fw-semibold" style="background:#f8fafc;font-size:.9rem;">
+                <i class="bi bi-credit-card me-1"></i> Payment Breakdown
+            </div>
+            <div class="card-body p-0">
+                <table class="table tbl-clean mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-3">#</th>
+                            <th>Payment Mode</th>
+                            <th>Reference No</th>
+                            <th class="pe-3 text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ int sno = 1; }
+                        @foreach (var line in Model.Lines)
+                        {
+                            <tr>
+                                <td class="ps-3 text-muted" style="font-size:.8rem;">@sno</td>
+                                <td class="fw-semibold">@line.PaymentModeName</td>
+                                <td class="text-muted">@(string.IsNullOrWhiteSpace(line.ReferenceNo) ? "—" : line.ReferenceNo)</td>
+                                <td class="pe-3 text-end fw-semibold">₹@line.Amount.ToString("N2")</td>
+                            </tr>
+                            sno++;
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr style="background:#1e293b;color:#fff;">
+                            <td colspan="3" class="ps-3 fw-bold" style="font-size:.95rem;">Total Paid</td>
+                            <td class="pe-3 text-end fw-bold" style="font-size:1rem;">₹@Model.TotalAmountPaid.ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Right summary card -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header fw-semibold" style="background:#f8fafc;font-size:.9rem;">
+                <i class="bi bi-info-circle me-1"></i> Invoice Status
+            </div>
+            <div class="card-body text-center py-4">
+                @{
+                    var statusStyle = Model.InvoiceStatus switch
+                    {
+                        "Paid"    => "background:#dcfce7;color:#166534;",
+                        "Partial" => "background:#fef9c3;color:#854d0e;",
+                        _         => "background:#f1f5f9;color:#475569;"
+                    };
+                }
+                <span class="badge px-3 py-2 fs-6" style="@statusStyle">@Model.InvoiceStatus</span>
+                <p class="text-muted mt-3 mb-0" style="font-size:.8rem;">
+                    Invoice status after this receipt was recorded.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

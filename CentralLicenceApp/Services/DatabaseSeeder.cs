@@ -53,6 +53,8 @@ namespace CentralLicenceApp.Services
                 await EnsureInvoiceSignatoriesTableAsync(conn);
                 await EnsureQuotationCancelRemarksAsync(conn);
                 await EnsureInvoiceCancelRemarksAsync(conn);
+                await EnsurePaymentModeTableAsync(conn);
+                await EnsureInvoicePaymentTablesAsync(conn);
             }
             catch (Exception ex)
             {
@@ -1972,6 +1974,82 @@ namespace CentralLicenceApp.Services
                             REFERENCES dbo.Invoice(Id) ON DELETE CASCADE
                     );
                 END");
+        }
+
+        private static async Task EnsurePaymentModeTableAsync(SqlConnection conn)
+        {
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='PaymentMode')
+                BEGIN
+                    CREATE TABLE dbo.PaymentMode (
+                        Id        INT           IDENTITY(1,1) NOT NULL,
+                        Name      NVARCHAR(100) NOT NULL,
+                        IsActive  BIT           NOT NULL DEFAULT(1),
+                        SortOrder INT           NOT NULL DEFAULT(10),
+                        CONSTRAINT PK_PaymentMode PRIMARY KEY (Id)
+                    );
+
+                    INSERT INTO dbo.PaymentMode (Name, IsActive, SortOrder) VALUES
+                        ('Cash',   1, 1),
+                        ('Cheque', 1, 2),
+                        ('NEFT',   1, 3),
+                        ('RTGS',   1, 4),
+                        ('UPI',    1, 5),
+                        ('IMPS',   1, 6);
+                END");
+        }
+
+        private static async Task EnsureInvoicePaymentTablesAsync(SqlConnection conn)
+        {
+            await conn.ExecuteAsync(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='InvoicePayment')
+                BEGIN
+                    CREATE TABLE dbo.InvoicePayment (
+                        Id              INT             IDENTITY(1,1) NOT NULL,
+                        ReceiptNo       NVARCHAR(30)    NOT NULL,
+                        InvoiceId       INT             NOT NULL,
+                        InvoiceNo       NVARCHAR(50)    NOT NULL,
+                        PartyId         INT             NOT NULL,
+                        PartyName       NVARCHAR(300)   NOT NULL,
+                        PaymentDate     DATE            NOT NULL,
+                        TotalAmountPaid DECIMAL(18,2)   NOT NULL DEFAULT(0),
+                        Notes           NVARCHAR(1000)  NULL,
+                        CreatedBy       NVARCHAR(100)   NULL,
+                        CreatedAt       DATETIME        NOT NULL DEFAULT(GETDATE()),
+                        CONSTRAINT PK_InvoicePayment PRIMARY KEY (Id),
+                        CONSTRAINT FK_InvoicePayment_Invoice FOREIGN KEY (InvoiceId)
+                            REFERENCES dbo.Invoice(Id)
+                    );
+                END
+
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name='InvoicePaymentLine')
+                BEGIN
+                    CREATE TABLE dbo.InvoicePaymentLine (
+                        Id              INT             IDENTITY(1,1) NOT NULL,
+                        PaymentId       INT             NOT NULL,
+                        PaymentModeId   INT             NOT NULL,
+                        PaymentModeName NVARCHAR(100)   NOT NULL,
+                        Amount          DECIMAL(18,2)   NOT NULL,
+                        ReferenceNo     NVARCHAR(100)   NULL,
+                        CardType        NVARCHAR(20)    NULL,
+                        CardLastFour    NCHAR(4)        NULL,
+                        BankId          INT             NULL,
+                        BankName        NVARCHAR(150)   NULL,
+                        CONSTRAINT PK_InvoicePaymentLine PRIMARY KEY (Id),
+                        CONSTRAINT FK_InvoicePaymentLine_Payment FOREIGN KEY (PaymentId)
+                            REFERENCES dbo.InvoicePayment(Id) ON DELETE CASCADE
+                    );
+                END
+
+                -- Add extra columns to existing InvoicePaymentLine tables (idempotent migrations)
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.InvoicePaymentLine') AND name = 'CardType')
+                    ALTER TABLE dbo.InvoicePaymentLine ADD CardType     NVARCHAR(20)  NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.InvoicePaymentLine') AND name = 'CardLastFour')
+                    ALTER TABLE dbo.InvoicePaymentLine ADD CardLastFour NCHAR(4)      NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.InvoicePaymentLine') AND name = 'BankId')
+                    ALTER TABLE dbo.InvoicePaymentLine ADD BankId       INT           NULL;
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.InvoicePaymentLine') AND name = 'BankName')
+                    ALTER TABLE dbo.InvoicePaymentLine ADD BankName     NVARCHAR(150) NULL;");
         }
     }
 }
