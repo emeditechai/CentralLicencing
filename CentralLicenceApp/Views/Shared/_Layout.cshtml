@@ -64,7 +64,7 @@
             @{
                 var licencesOpen = ctrl == "ClientLicense" || ctrl == "LicenseHistory";
                 var masterOpen   = ctrl == "EmployeeDepartment" || ctrl == "EmployeeDesignation";
-                var businessUnitMasterOpen = ctrl == "ExpenseCategory" || ctrl == "ProductMaster" || ctrl == "ProductRate" || ctrl == "PartyMaster" || ctrl == "BankMaster" || ctrl == "PaymentMode";
+                var businessUnitMasterOpen = ctrl == "ExpenseCategory" || ctrl == "ProductMaster" || ctrl == "ProductRate" || ctrl == "PartyMaster" || ctrl == "BankMaster" || ctrl == "PaymentMode" || ctrl == "TermsConditionTemplate";
                 var businessUnitTransactionOpen = ctrl == "ExpenseRequest";
                 var quotationInvoiceOpen = ctrl == "Quotation" || ctrl == "Invoice" || ctrl == "InvoicePayment";
                 var businessUnitOpen = businessUnitMasterOpen || businessUnitTransactionOpen || quotationInvoiceOpen;
@@ -159,6 +159,7 @@
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="PartyMaster" asp-action="Index" class="@Act("PartyMaster")"><i class="bi bi-people"></i> Party Master</a></div>
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="BankMaster" asp-action="Index" class="@Act("BankMaster")"><i class="bi bi-bank2"></i> Bank Master</a></div>
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="PaymentMode" asp-action="Index" class="@Act("PaymentMode")"><i class="bi bi-credit-card-2-front"></i> Payment Modes</a></div>
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TermsConditionTemplate" asp-action="Index" class="@Act("TermsConditionTemplate")"><i class="bi bi-file-text"></i> Terms &amp; Conditions</a></div>
                     </div>
                 }
             </div>
@@ -171,6 +172,8 @@
             </div>
             <div class="collapse @(reportsOpen ? "show" : "")" id="section-reports">
                 <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="Reports" asp-action="ClientDetails" class="@(ctrl == "Reports" && (ViewContext.RouteData.Values["action"]?.ToString() == "ClientDetails") ? "active" : "")"><i class="bi bi-file-earmark-bar-graph"></i> Client Details</a></div>
+                <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="Reports" asp-action="ExpenseReport" class="@(ctrl == "Reports" && (ViewContext.RouteData.Values["action"]?.ToString() == "ExpenseReport") ? "active" : "")"><i class="bi bi-wallet2"></i> Expense Report</a></div>
+                <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="Reports" asp-action="SettlementReport" class="@(ctrl == "Reports" && (ViewContext.RouteData.Values["action"]?.ToString() == "SettlementReport") ? "active" : "")"><i class="bi bi-cash-stack"></i> Settlement Report</a></div>
             </div>
         </nav>
         <div style="padding:1rem 1.5rem;border-top:1px solid #2d1258;">

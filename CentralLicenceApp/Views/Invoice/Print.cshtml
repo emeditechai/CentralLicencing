@@ -306,7 +306,7 @@
             {
                 <tr><td>IGST</td><td>₹&nbsp;@totalIgst.ToString("0,0.##")</td></tr>
             }
-            @if (Model.RoundOff != 0)
+            @if (Model.EnableRoundOff && Model.RoundOff != 0)
             {
                 <tr><td>Round Off</td><td>₹&nbsp;@Model.RoundOff.ToString("0.##")</td></tr>
             }
@@ -328,7 +328,7 @@
     }
     @if (!string.IsNullOrWhiteSpace(Model.TermsAndConditions))
     {
-        <div style="margin-top:4px;font-size:9px;color:#444;"><strong>Terms &amp; Conditions:</strong>&nbsp; @Model.TermsAndConditions</div>
+        <div style="margin-top:4px;font-size:9px;color:#444;"><strong>Terms &amp; Conditions:</strong><br />@Html.Raw(Model.TermsAndConditions)</div>
     }
 
     <!-- ── BANK DETAILS (only shown when balance is due) ─────── -->

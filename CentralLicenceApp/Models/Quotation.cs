@@ -20,6 +20,9 @@ namespace CentralLicenceApp.Models
         public string? PartyMobile { get; set; }
 
         public string? Notes { get; set; }
+        /// <summary>FK to TermsConditionTemplate master. Populated from JOIN on load.</summary>
+        public int? TermsConditionTemplateId { get; set; }
+        /// <summary>Populated from TermsConditionTemplate.Description via JOIN — not stored directly.</summary>
         public string? TermsAndConditions { get; set; }
 
         public decimal SubTotal { get; set; }
@@ -27,6 +30,8 @@ namespace CentralLicenceApp.Models
         public decimal TotalSgst { get; set; }
         public decimal TotalIgst { get; set; }
         public decimal TotalGst => TotalCgst + TotalSgst + TotalIgst;
+        public bool EnableRoundOff { get; set; }
+        public decimal RoundOff { get; set; }
         public decimal TotalAmount { get; set; }
 
         /// <summary>Draft | Sent | Accepted | Rejected | Converted | Cancelled</summary>

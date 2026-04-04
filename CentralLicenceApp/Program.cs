@@ -28,6 +28,7 @@ builder.Services.AddScoped<IEmployeeDesignationRepository>(_ => new EmployeeDesi
 builder.Services.AddScoped<IEmployeeTypeRepository>(_ => new EmployeeTypeRepository(connStr));
 builder.Services.AddScoped<IPricingModelRepository>(_ => new PricingModelRepository(connStr));
 builder.Services.AddScoped<IExpenseCategoryRepository>(_ => new ExpenseCategoryRepository(connStr));
+builder.Services.AddScoped<ITermsConditionTemplateRepository>(_ => new TermsConditionTemplateRepository(connStr));
 builder.Services.AddScoped<IProductMasterRepository>(_ => new ProductMasterRepository(connStr));
 builder.Services.AddScoped<IProductRateRepository>(_ => new ProductRateRepository(connStr));
 builder.Services.AddScoped<IProductRateDiscountRepository>(_ => new ProductRateDiscountRepository(connStr));
@@ -47,6 +48,8 @@ builder.Services.AddScoped<IBankMasterRepository>(_ => new BankMasterRepository(
 builder.Services.AddScoped<IPaymentModeRepository>(_ => new PaymentModeRepository(connStr));
 builder.Services.AddScoped<IInvoicePaymentRepository>(_ => new InvoicePaymentRepository(connStr));
 builder.Services.AddScoped<IClientDetailsReportExportService, ClientDetailsReportExportService>();
+builder.Services.AddScoped<IExpenseReportExportService, ExpenseReportExportService>();
+builder.Services.AddScoped<ISettlementReportExportService, SettlementReportExportService>();
 builder.Services.AddScoped<IUserPushSubscriptionRepository>(_ => new UserPushSubscriptionRepository(connStr));
 
 // Email service

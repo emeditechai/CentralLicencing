@@ -25,6 +25,7 @@ namespace CentralLicenceApp.Controllers
         private readonly IEmailService             _emailService;
         private readonly IDocumentPdfService       _pdfService;
         private readonly IServiceScopeFactory      _scopeFactory;
+        private readonly ITermsConditionTemplateRepository _termsRepo;
 
         public InvoiceController(
             IInvoiceRepository        invoiceRepo,
@@ -37,7 +38,8 @@ namespace CentralLicenceApp.Controllers
             IBankMasterRepository     bankRepo,
             IEmailService             emailService,
             IDocumentPdfService       pdfService,
-            IServiceScopeFactory      scopeFactory)
+            IServiceScopeFactory      scopeFactory,
+            ITermsConditionTemplateRepository termsRepo)
         {
             _invoiceRepo     = invoiceRepo;
             _quotationRepo   = quotationRepo;
@@ -50,6 +52,7 @@ namespace CentralLicenceApp.Controllers
             _emailService    = emailService;
             _pdfService      = pdfService;
             _scopeFactory    = scopeFactory;
+            _termsRepo       = termsRepo;
         }
 
         // GET /Invoice
@@ -75,6 +78,7 @@ namespace CentralLicenceApp.Controllers
             ViewBag.SignatoryUsers  = (await _userRepo.GetSignatoryUsersAsync()).ToList();
             ViewBag.PaymentModes    = (await _modeRepo.GetAllActiveAsync()).ToList();
             ViewBag.Banks           = (await _bankRepo.GetAllAsync()).ToList();
+            ViewBag.TermsTemplates  = (await _termsRepo.GetAllActiveAsync()).ToList();
             return View(vm);
         }
 
@@ -113,8 +117,9 @@ namespace CentralLicenceApp.Controllers
                 QuotationNo        = q.QuotationNo,
                 PartyId            = q.PartyId,
                 PreviousBalance    = await _invoiceRepo.GetPartyOutstandingBalanceAsync(q.PartyId),
+                EnableRoundOff     = q.EnableRoundOff,
                 Notes              = q.Notes,
-                TermsAndConditions = q.TermsAndConditions,
+                TermsConditionTemplateId = q.TermsConditionTemplateId,
                 SignatoryUserIds   = q.SignatoryUserIds.ToList(),
                 Lines              = q.Lines.Select(l => new InvoiceLineViewModel
                 {
@@ -139,6 +144,7 @@ namespace CentralLicenceApp.Controllers
             ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
             ViewBag.PaymentModes   = (await _modeRepo.GetAllActiveAsync()).ToList();
             ViewBag.Banks          = (await _bankRepo.GetAllAsync()).ToList();
+            ViewBag.TermsTemplates = (await _termsRepo.GetAllActiveAsync()).ToList();
             return View("Create", vm);
         }
 
@@ -164,6 +170,7 @@ namespace CentralLicenceApp.Controllers
                 ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
                 ViewBag.PaymentModes   = (await _modeRepo.GetAllActiveAsync()).ToList();
                 ViewBag.Banks          = (await _bankRepo.GetAllAsync()).ToList();
+                ViewBag.TermsTemplates = (await _termsRepo.GetAllActiveAsync()).ToList();
                 return View(vm);
             }
 
@@ -176,6 +183,7 @@ namespace CentralLicenceApp.Controllers
                 ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
                 ViewBag.PaymentModes   = (await _modeRepo.GetAllActiveAsync()).ToList();
                 ViewBag.Banks          = (await _bankRepo.GetAllAsync()).ToList();
+                ViewBag.TermsTemplates = (await _termsRepo.GetAllActiveAsync()).ToList();
                 return View(vm);
             }
 
@@ -272,10 +280,11 @@ namespace CentralLicenceApp.Controllers
                 QuotationNo        = inv.QuotationNo,
                 PartyId            = inv.PartyId,
                 Notes              = inv.Notes,
-                TermsAndConditions = inv.TermsAndConditions,
+                TermsConditionTemplateId = inv.TermsConditionTemplateId,
                 ReceivedAmount     = inv.ReceivedAmount,
                 PreviousBalance    = inv.PreviousBalance,
                 SignatoryUserIds   = inv.SignatoryUserIds,
+                EnableRoundOff     = inv.EnableRoundOff,
                 Lines              = inv.Lines.Select(l => new InvoiceLineViewModel
                 {
                     SNo             = l.SNo,
@@ -299,6 +308,7 @@ namespace CentralLicenceApp.Controllers
             ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
             ViewBag.PaymentModes   = (await _modeRepo.GetAllActiveAsync()).ToList();
             ViewBag.Banks          = (await _bankRepo.GetAllAsync()).ToList();
+            ViewBag.TermsTemplates = (await _termsRepo.GetAllActiveAsync()).ToList();
             return View(vm);
         }
 
@@ -320,6 +330,7 @@ namespace CentralLicenceApp.Controllers
                 ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
                 ViewBag.PaymentModes   = (await _modeRepo.GetAllActiveAsync()).ToList();
                 ViewBag.Banks          = (await _bankRepo.GetAllAsync()).ToList();
+                ViewBag.TermsTemplates = (await _termsRepo.GetAllActiveAsync()).ToList();
                 return View(vm);
             }
 
@@ -332,6 +343,7 @@ namespace CentralLicenceApp.Controllers
                 ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
                 ViewBag.PaymentModes   = (await _modeRepo.GetAllActiveAsync()).ToList();
                 ViewBag.Banks          = (await _bankRepo.GetAllAsync()).ToList();
+                ViewBag.TermsTemplates = (await _termsRepo.GetAllActiveAsync()).ToList();
                 return View(vm);
             }
 
@@ -603,7 +615,8 @@ namespace CentralLicenceApp.Controllers
             var totalIgst  = lines.Sum(l => l.IgstAmount);
             var totalGst   = totalCgst + totalSgst + totalIgst;
             var grandTotal = subTotal + totalGst;
-            var roundOff   = Math.Round(grandTotal) - grandTotal;
+            var enableRoundOff = vm.EnableRoundOff;
+            var roundOff   = enableRoundOff ? Math.Round(Math.Round(grandTotal, MidpointRounding.AwayFromZero) - grandTotal, 2) : 0m;
 
             return new Invoice
             {
@@ -621,13 +634,14 @@ namespace CentralLicenceApp.Controllers
                 PartyContactPerson = party.ContactPerson,
                 PartyMobile        = party.Mobile,
                 Notes              = vm.Notes?.Trim(),
-                TermsAndConditions = vm.TermsAndConditions?.Trim(),
+                TermsConditionTemplateId = vm.TermsConditionTemplateId,
                 SubTotal           = subTotal,
                 TotalCgst          = totalCgst,
                 TotalSgst          = totalSgst,
                 TotalIgst          = totalIgst,
-                RoundOff           = Math.Round(roundOff, 2),
-                TotalAmount        = Math.Round(grandTotal),
+                EnableRoundOff     = enableRoundOff,
+                RoundOff           = roundOff,
+                TotalAmount        = enableRoundOff ? Math.Round(grandTotal) : Math.Round(grandTotal, 2),
                 ReceivedAmount     = vm.ReceivedAmount,
                 PreviousBalance    = vm.PreviousBalance,
                 Status             = "Draft",

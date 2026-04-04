@@ -66,13 +66,16 @@ namespace CentralLicenceApp.Models.ViewModels
         [Display(Name = "Notes")]
         public string? Notes { get; set; }
 
-        [Display(Name = "Terms & Conditions")]
-        public string? TermsAndConditions { get; set; }
+        [Display(Name = "Terms &amp; Conditions Template")]
+        public int? TermsConditionTemplateId { get; set; }
 
         public List<QuotationLineViewModel> Lines { get; set; } = new();
 
         /// <summary>Selected authorised signatory user IDs (max 3).</summary>
         public List<int> SignatoryUserIds { get; set; } = new();
+
+        /// <summary>When true, round-off is computed and applied to TotalAmount.</summary>
+        public bool EnableRoundOff { get; set; }
 
         public bool IsNew => Id == 0;
     }

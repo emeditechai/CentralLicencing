@@ -132,6 +132,13 @@
                 <div class="card-body" style="font-size:.875rem;">@Model.Notes</div>
             </div>
         }
+        @if (!string.IsNullOrWhiteSpace(Model.TermsAndConditions))
+        {
+            <div class="card mb-3">
+                <div class="card-header"><i class="bi bi-file-text me-2" style="color:#6366f1;"></i>Terms &amp; Conditions</div>
+                <div class="card-body terms-html" style="font-size:.875rem;">@Html.Raw(Model.TermsAndConditions)</div>
+            </div>
+        }
 
         @{
             var pmtHistory = (await InvoicePaymentRepo.GetByInvoiceIdAsync(Model.Id)).ToList();
@@ -218,7 +225,7 @@
                         <span>₹@Model.TotalIgst.ToString("0.00")</span>
                     </div>
                 }
-                @if (Model.RoundOff != 0)
+                @if (Model.EnableRoundOff && Model.RoundOff != 0)
                 {
                     <div class="d-flex justify-content-between mb-1">
                         <span class="text-muted">Round Off</span>

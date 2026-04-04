@@ -140,7 +140,7 @@
         {
             <div class="card mb-3">
                 <div class="card-header"><i class="bi bi-file-text me-2" style="color:#6366f1;"></i>Terms &amp; Conditions</div>
-                <div class="card-body" style="font-size:.875rem;">@Model.TermsAndConditions</div>
+                <div class="card-body terms-html" style="font-size:.875rem;">@Html.Raw(Model.TermsAndConditions)</div>
             </div>
         }
     </div>
@@ -170,6 +170,13 @@
                     <div class="d-flex justify-content-between mb-2" style="font-size:.875rem;">
                         <span class="text-muted">IGST</span>
                         <span>₹@Model.TotalIgst.ToString("0.00")</span>
+                    </div>
+                }
+                @if (Model.EnableRoundOff && Model.RoundOff != 0)
+                {
+                    <div class="d-flex justify-content-between mb-2" style="font-size:.875rem;">
+                        <span class="text-muted">Round Off</span>
+                        <span>₹@Model.RoundOff.ToString("0.##")</span>
                     </div>
                 }
                 <hr class="my-2" />

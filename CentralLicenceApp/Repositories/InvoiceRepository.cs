@@ -74,6 +74,14 @@ namespace CentralLicenceApp.Repositories
                           WHERE s.InvoiceId = @Id
                           ORDER BY s.SortOrder",
                         new { Id = id })).ToList();
+
+                // Populate TermsAndConditions from master template
+                if (inv.TermsConditionTemplateId.HasValue)
+                {
+                    inv.TermsAndConditions = await conn.ExecuteScalarAsync<string?>(
+                        "SELECT Description FROM TermsConditionTemplate WHERE Id = @Id",
+                        new { Id = inv.TermsConditionTemplateId.Value });
+                }
             }
 
             return inv;
@@ -126,13 +134,13 @@ namespace CentralLicenceApp.Repositories
             var invoiceId = await conn.ExecuteScalarAsync<int>(@"
                 INSERT INTO Invoice
                     (InvoiceNo, InvoiceDate, DueDate, QuotationId, QuotationNo, PartyId, PartyName, PartyAddress, PartyGSTINNo, PartyPANNo,
-                     PartyContactPerson, PartyMobile, Notes, TermsAndConditions,
-                     SubTotal, TotalCgst, TotalSgst, TotalIgst, RoundOff, TotalAmount,
+                     PartyContactPerson, PartyMobile, Notes, TermsConditionTemplateId,
+                     SubTotal, TotalCgst, TotalSgst, TotalIgst, EnableRoundOff, RoundOff, TotalAmount,
                      ReceivedAmount, PreviousBalance, Status, CreatedBy, CreatedAt)
                 VALUES
                     (@InvoiceNo, @InvoiceDate, @DueDate, @QuotationId, @QuotationNo, @PartyId, @PartyName, @PartyAddress, @PartyGSTINNo, @PartyPANNo,
-                     @PartyContactPerson, @PartyMobile, @Notes, @TermsAndConditions,
-                     @SubTotal, @TotalCgst, @TotalSgst, @TotalIgst, @RoundOff, @TotalAmount,
+                     @PartyContactPerson, @PartyMobile, @Notes, @TermsConditionTemplateId,
+                     @SubTotal, @TotalCgst, @TotalSgst, @TotalIgst, @EnableRoundOff, @RoundOff, @TotalAmount,
                      @ReceivedAmount, @PreviousBalance, @Status, @CreatedBy, @CreatedAt);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);",
                 invoice, tx);
@@ -184,11 +192,12 @@ namespace CentralLicenceApp.Repositories
                     PartyContactPerson = @PartyContactPerson,
                     PartyMobile        = @PartyMobile,
                     Notes              = @Notes,
-                    TermsAndConditions = @TermsAndConditions,
+                    TermsConditionTemplateId = @TermsConditionTemplateId,
                     SubTotal           = @SubTotal,
                     TotalCgst          = @TotalCgst,
                     TotalSgst          = @TotalSgst,
                     TotalIgst          = @TotalIgst,
+                    EnableRoundOff     = @EnableRoundOff,
                     RoundOff           = @RoundOff,
                     TotalAmount        = @TotalAmount,
                     ReceivedAmount     = @ReceivedAmount,

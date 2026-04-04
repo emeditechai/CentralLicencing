@@ -1,0 +1,217 @@
+@model CentralLicenceApp.Models.ViewModels.SettlementReportViewModel
+@{
+    ViewData["Title"] = "Settlement Details Report";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4 gap-3 flex-wrap">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Settlement Details Report</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">
+            @if (Model.IsAdminView)
+            {
+                <span><i class="bi bi-shield-check me-1 text-success"></i>Administrator view — showing all settled records</span>
+            }
+            else
+            {
+                <span><i class="bi bi-person-circle me-1"></i>Showing your own settled expense requests</span>
+            }
+        </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-action="ExportSettlementReportExcel"
+           asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+           asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+           class="btn btn-success"
+           style="border-radius:10px;background:#15803d;border:none;">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
+        <a asp-action="ExportSettlementReportPdf"
+           asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+           asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+           class="btn btn-danger"
+           style="border-radius:10px;background:#b91c1c;border:none;">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">TOTAL SETTLEMENTS</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#1e293b;">@Model.TotalSettlements</div>
+                <div class="text-muted" style="font-size:.78rem;">Matching selected filters</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">TOTAL REQUESTED</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#2563eb;">₹@Model.TotalRequestedAmount.ToString("N2")</div>
+                <div class="text-muted" style="font-size:.78rem;">Sum of original request amounts</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">TOTAL SETTLED</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#15803d;">₹@Model.TotalSettlementAmount.ToString("N2")</div>
+                <div class="text-muted" style="font-size:.78rem;">Sum of settled amounts</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4" style="border:1px solid #e2e8f0;">
+    <div class="card-body py-3">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Settlement Date From</label>
+                <input type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" class="form-control" style="border-radius:10px;" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Settlement Date To</label>
+                <input type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" class="form-control" style="border-radius:10px;" />
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-primary" style="background:#1d4ed8;border:none;border-radius:10px;"><i class="bi bi-funnel me-1"></i>Filter</button>
+                <a asp-action="SettlementReport" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
+            </div>
+        </form>
+        @if (!ViewContext.ViewData.ModelState.IsValid)
+        {
+            <div asp-validation-summary="All" class="alert alert-danger mt-3 mb-0 py-2 px-3 rounded-3" style="font-size:.83rem;"></div>
+        }
+    </div>
+</div>
+
+<div class="card" style="border:1px solid #e2e8f0;box-shadow:0 12px 28px rgba(15,23,42,.05);">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Request No.</th>
+                        <th>Request By User</th>
+                        @if (Model.IsAdminView)
+                        {
+                            <th>Employee Code</th>
+                        }
+                        <th>Purpose of Travel</th>
+                        <th class="text-end">Requested (₹)</th>
+                        <th class="text-end">Settled (₹)</th>
+                        <th>Settlement Date</th>
+                        <th>Payment Mode</th>
+                        <th>Reference No.</th>
+                        <th>Settlement Receipt</th>
+                        <th>Settled By User</th>
+                        <th class="pe-3">Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Items.Any())
+                    {
+                        <tr>
+                            <td colspan="@(Model.IsAdminView ? 13 : 12)" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>No settlement records found for the selected date range
+                            </td>
+                        </tr>
+                    }
+                    @{int sr = 0;}
+                    @foreach (var row in Model.Items)
+                    {
+                        sr++;
+                        <tr>
+                            <td class="ps-3 text-muted" style="font-size:.8rem;">@sr</td>
+                            <td>
+                                <a asp-controller="ExpenseRequest" asp-action="Details" asp-route-id="@row.Id"
+                                   class="fw-semibold" style="color:#1d4ed8;font-size:.85rem;">@row.RequestNumber</a>
+                            </td>
+                            <td style="font-size:.85rem;">@row.RequestedByUser</td>
+                            @if (Model.IsAdminView)
+                            {
+                                <td style="font-size:.82rem;color:#64748b;">@(row.EmployeeCode ?? "—")</td>
+                            }
+                            <td style="font-size:.83rem;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="@row.PurposeOfTravel">@row.PurposeOfTravel</td>
+                            <td class="text-end fw-semibold" style="font-size:.85rem;">@row.TotalAmount.ToString("N2")</td>
+                            <td class="text-end fw-semibold" style="font-size:.85rem;color:#15803d;">
+                                @(row.SettlementAmount.HasValue ? row.SettlementAmount.Value.ToString("N2") : "—")
+                            </td>
+                            <td style="font-size:.82rem;white-space:nowrap;">
+                                @(row.SettlementDate.HasValue ? row.SettlementDate.Value.ToString("dd MMM yyyy") : "—")
+                            </td>
+                            <td style="font-size:.83rem;">@(string.IsNullOrWhiteSpace(row.SettlementMode) ? "—" : row.SettlementMode)</td>
+                            <td style="font-size:.83rem;">@(string.IsNullOrWhiteSpace(row.SettlementReferenceNo) ? "—" : row.SettlementReferenceNo)</td>
+                            <td style="font-size:.83rem;">
+                                @if (!string.IsNullOrWhiteSpace(row.SettlementReceiptNumber))
+                                {
+                                    <a asp-controller="ExpenseRequest" asp-action="SettlementReceipt" asp-route-id="@row.Id"
+                                       class="text-success" title="View receipt">
+                                        <i class="bi bi-receipt me-1"></i>@row.SettlementReceiptNumber
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td style="font-size:.83rem;">@(string.IsNullOrWhiteSpace(row.SettledByUser) ? "—" : row.SettledByUser)</td>
+                            <td class="pe-3" style="font-size:.82rem;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="@row.SettlementRemarks">
+                                @(string.IsNullOrWhiteSpace(row.SettlementRemarks) ? "—" : row.SettlementRemarks)
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="d-flex align-items-center justify-content-between px-3 py-3 border-top" style="font-size:.82rem;">
+            <span class="text-muted">
+                Showing @((Model.PageNumber - 1) * Model.PageSize + 1)&ndash;@(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalCount)) of @Model.TotalCount records
+            </span>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    @if (Model.PageNumber > 1)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" asp-action="SettlementReport"
+                               asp-route-page="@(Model.PageNumber - 1)"
+                               asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">&laquo;</a>
+                        </li>
+                    }
+                    @{
+                        int startPg = Math.Max(1, Model.PageNumber - 2);
+                        int endPg   = Math.Min(Model.TotalPages, startPg + 4);
+                        if (endPg - startPg < 4) startPg = Math.Max(1, endPg - 4);
+                    }
+                    @for (int pg = startPg; pg <= endPg; pg++)
+                    {
+                        <li class="page-item @(pg == Model.PageNumber ? "active" : "")">
+                            <a class="page-link" asp-action="SettlementReport"
+                               asp-route-page="@pg"
+                               asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">@pg</a>
+                        </li>
+                    }
+                    @if (Model.PageNumber < Model.TotalPages)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" asp-action="SettlementReport"
+                               asp-route-page="@(Model.PageNumber + 1)"
+                               asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">&raquo;</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+    }
+</div>

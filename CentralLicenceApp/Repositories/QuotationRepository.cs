@@ -66,6 +66,14 @@ namespace CentralLicenceApp.Repositories
                           ORDER BY qs.SortOrder",
                         new { Id = id })).ToList();
                 }
+
+                // Populate TermsAndConditions from master template
+                if (q.TermsConditionTemplateId.HasValue)
+                {
+                    q.TermsAndConditions = await conn.ExecuteScalarAsync<string?>(
+                        "SELECT Description FROM TermsConditionTemplate WHERE Id = @Id",
+                        new { Id = q.TermsConditionTemplateId.Value });
+                }
             }
 
             return q;
@@ -104,12 +112,12 @@ namespace CentralLicenceApp.Repositories
             var quotationId = await conn.ExecuteScalarAsync<int>(@"
                 INSERT INTO Quotation
                     (QuotationNo, QuotationDate, ValidUntilDate, PartyId, PartyName, PartyAddress, PartyGSTINNo, PartyPANNo,
-                     PartyContactPerson, PartyMobile, Notes, TermsAndConditions,
-                     SubTotal, TotalCgst, TotalSgst, TotalIgst, TotalAmount, Status, CreatedBy, CreatedAt)
+                     PartyContactPerson, PartyMobile, Notes, TermsConditionTemplateId,
+                     SubTotal, TotalCgst, TotalSgst, TotalIgst, EnableRoundOff, RoundOff, TotalAmount, Status, CreatedBy, CreatedAt)
                 VALUES
                     (@QuotationNo, @QuotationDate, @ValidUntilDate, @PartyId, @PartyName, @PartyAddress, @PartyGSTINNo, @PartyPANNo,
-                     @PartyContactPerson, @PartyMobile, @Notes, @TermsAndConditions,
-                     @SubTotal, @TotalCgst, @TotalSgst, @TotalIgst, @TotalAmount, @Status, @CreatedBy, @CreatedAt);
+                     @PartyContactPerson, @PartyMobile, @Notes, @TermsConditionTemplateId,
+                     @SubTotal, @TotalCgst, @TotalSgst, @TotalIgst, @EnableRoundOff, @RoundOff, @TotalAmount, @Status, @CreatedBy, @CreatedAt);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);",
                 quotation, tx);
 
@@ -158,11 +166,13 @@ namespace CentralLicenceApp.Repositories
                     PartyContactPerson = @PartyContactPerson,
                     PartyMobile        = @PartyMobile,
                     Notes              = @Notes,
-                    TermsAndConditions = @TermsAndConditions,
+                    TermsConditionTemplateId = @TermsConditionTemplateId,
                     SubTotal           = @SubTotal,
                     TotalCgst          = @TotalCgst,
                     TotalSgst          = @TotalSgst,
                     TotalIgst          = @TotalIgst,
+                    EnableRoundOff     = @EnableRoundOff,
+                    RoundOff           = @RoundOff,
                     TotalAmount        = @TotalAmount,
                     Status             = @Status
                 WHERE Id = @Id AND Status != 'Converted'",

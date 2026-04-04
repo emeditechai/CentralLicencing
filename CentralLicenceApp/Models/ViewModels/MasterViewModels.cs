@@ -52,4 +52,20 @@ namespace CentralLicenceApp.Models.ViewModels
         [Display(Name = "Is Active")]
         public bool IsActive { get; set; } = true;
     }
+
+    public class TermsConditionTemplateFormViewModel
+    {
+        public int Id { get; set; }
+
+        [Required(ErrorMessage = "Terms Name is required")]
+        [Display(Name = "Terms Name")]
+        [StringLength(200)]
+        public string TermsName { get; set; } = string.Empty;
+
+        [Display(Name = "Description")]
+        public string? Description { get; set; }
+
+        [Display(Name = "Is Active")]
+        public bool IsActive { get; set; } = true;
+    }
 }

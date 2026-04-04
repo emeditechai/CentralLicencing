@@ -22,6 +22,7 @@ namespace CentralLicenceApp.Controllers
         private readonly IEmailService          _emailService;
         private readonly IDocumentPdfService    _pdfService;
         private readonly IServiceScopeFactory   _scopeFactory;
+        private readonly ITermsConditionTemplateRepository _termsRepo;
 
         public QuotationController(
             IQuotationRepository quotationRepo,
@@ -31,7 +32,8 @@ namespace CentralLicenceApp.Controllers
             IUserRepository        userRepo,
             IEmailService          emailService,
             IDocumentPdfService    pdfService,
-            IServiceScopeFactory   scopeFactory)
+            IServiceScopeFactory   scopeFactory,
+            ITermsConditionTemplateRepository termsRepo)
         {
             _quotationRepo   = quotationRepo;
             _invoiceRepo     = invoiceRepo;
@@ -41,6 +43,7 @@ namespace CentralLicenceApp.Controllers
             _emailService    = emailService;
             _pdfService      = pdfService;
             _scopeFactory    = scopeFactory;
+            _termsRepo       = termsRepo;
         }
 
         // GET /Quotation
@@ -64,6 +67,7 @@ namespace CentralLicenceApp.Controllers
             ViewBag.Parties = (await _partyRepo.GetAllActiveAsync()).ToList();
             ViewBag.CompanyGstin = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
             ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
+            ViewBag.TermsTemplates = (await _termsRepo.GetAllActiveAsync()).ToList();
             return View(vm);
         }
 
@@ -83,6 +87,8 @@ namespace CentralLicenceApp.Controllers
             {
                 ViewBag.Parties = (await _partyRepo.GetAllActiveAsync()).ToList();
                 ViewBag.CompanyGstin = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
+                ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
+                ViewBag.TermsTemplates = (await _termsRepo.GetAllActiveAsync()).ToList();
                 return View(vm);
             }
 
@@ -92,6 +98,8 @@ namespace CentralLicenceApp.Controllers
                 ModelState.AddModelError(nameof(vm.PartyId), "Selected party not found.");
                 ViewBag.Parties = (await _partyRepo.GetAllActiveAsync()).ToList();
                 ViewBag.CompanyGstin = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
+                ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
+                ViewBag.TermsTemplates = (await _termsRepo.GetAllActiveAsync()).ToList();
                 return View(vm);
             }
 
@@ -103,6 +111,8 @@ namespace CentralLicenceApp.Controllers
             var totalSgst  = lines.Sum(l => l.SgstAmount);
             var totalIgst  = lines.Sum(l => l.IgstAmount);
             var totalGst   = totalCgst + totalSgst + totalIgst;
+            var gross      = subTotal + totalGst;
+            var roundOff   = vm.EnableRoundOff ? Math.Round(Math.Round(gross, MidpointRounding.AwayFromZero) - gross, 2) : 0m;
 
             var quotation = new Quotation
             {
@@ -117,12 +127,14 @@ namespace CentralLicenceApp.Controllers
                 PartyContactPerson = party.ContactPerson,
                 PartyMobile        = party.Mobile,
                 Notes              = vm.Notes?.Trim(),
-                TermsAndConditions = vm.TermsAndConditions?.Trim(),
+                TermsConditionTemplateId = vm.TermsConditionTemplateId,
                 SubTotal           = subTotal,
                 TotalCgst          = totalCgst,
                 TotalSgst          = totalSgst,
                 TotalIgst          = totalIgst,
-                TotalAmount        = subTotal + totalGst,
+                EnableRoundOff     = vm.EnableRoundOff,
+                RoundOff           = roundOff,
+                TotalAmount        = gross + roundOff,
                 Status             = "Draft",
                 CreatedBy          = User.Identity?.Name,
                 Lines              = lines,
@@ -163,7 +175,7 @@ namespace CentralLicenceApp.Controllers
                 ValidUntilDate     = q.ValidUntilDate,
                 PartyId            = q.PartyId,
                 Notes              = q.Notes,
-                TermsAndConditions = q.TermsAndConditions,
+                TermsConditionTemplateId = q.TermsConditionTemplateId,
                 Lines              = q.Lines.Select(l => new QuotationLineViewModel
                 {
                     SNo             = l.SNo,
@@ -180,12 +192,14 @@ namespace CentralLicenceApp.Controllers
                     SgstAmount      = l.SgstAmount,
                     IgstAmount      = l.IgstAmount
                 }).ToList(),
-                SignatoryUserIds   = q.SignatoryUserIds
+                SignatoryUserIds   = q.SignatoryUserIds,
+                EnableRoundOff     = q.EnableRoundOff
             };
 
             ViewBag.Parties = (await _partyRepo.GetAllActiveAsync()).ToList();
             ViewBag.CompanyGstin = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
             ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
+            ViewBag.TermsTemplates = (await _termsRepo.GetAllActiveAsync()).ToList();
             return View(vm);
         }
 
@@ -205,6 +219,7 @@ namespace CentralLicenceApp.Controllers
                 ViewBag.Parties = (await _partyRepo.GetAllActiveAsync()).ToList();
                 ViewBag.CompanyGstin = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
                 ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
+                ViewBag.TermsTemplates = (await _termsRepo.GetAllActiveAsync()).ToList();
                 return View(vm);
             }
 
@@ -215,6 +230,7 @@ namespace CentralLicenceApp.Controllers
                 ViewBag.Parties = (await _partyRepo.GetAllActiveAsync()).ToList();
                 ViewBag.CompanyGstin = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
                 ViewBag.SignatoryUsers = (await _userRepo.GetSignatoryUsersAsync()).ToList();
+                ViewBag.TermsTemplates = (await _termsRepo.GetAllActiveAsync()).ToList();
                 return View(vm);
             }
 
@@ -225,6 +241,8 @@ namespace CentralLicenceApp.Controllers
             var totalSgst  = lines.Sum(l => l.SgstAmount);
             var totalIgst  = lines.Sum(l => l.IgstAmount);
             var totalGst   = totalCgst + totalSgst + totalIgst;
+            var gross      = subTotal + totalGst;
+            var roundOff   = vm.EnableRoundOff ? Math.Round(Math.Round(gross, MidpointRounding.AwayFromZero) - gross, 2) : 0m;
 
             var quotation = new Quotation
             {
@@ -240,12 +258,14 @@ namespace CentralLicenceApp.Controllers
                 PartyContactPerson = party.ContactPerson,
                 PartyMobile        = party.Mobile,
                 Notes              = vm.Notes?.Trim(),
-                TermsAndConditions = vm.TermsAndConditions?.Trim(),
+                TermsConditionTemplateId = vm.TermsConditionTemplateId,
                 SubTotal           = subTotal,
                 TotalCgst          = totalCgst,
                 TotalSgst          = totalSgst,
                 TotalIgst          = totalIgst,
-                TotalAmount        = subTotal + totalGst,
+                EnableRoundOff     = vm.EnableRoundOff,
+                RoundOff           = roundOff,
+                TotalAmount        = gross + roundOff,
                 Status             = "Draft",
                 Lines              = lines,
                 SignatoryUserIds   = vm.SignatoryUserIds.Distinct().Take(3).ToList()

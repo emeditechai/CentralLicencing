@@ -20,8 +20,8 @@
     var totalSgst  = Model.TotalSgst;
     var totalIgst  = Model.TotalIgst;
     var totalGst   = totalCgst + totalSgst + totalIgst;
-    var grandTotal = Math.Round(subTotal + totalGst);
-    var roundOff   = grandTotal - (subTotal + totalGst);
+    var roundOff   = Model.EnableRoundOff ? Model.RoundOff : 0m;
+    var grandTotal = subTotal + totalGst + roundOff;
     var isInter    = totalIgst > 0;
 
     static string NumberToWords(long n)
@@ -309,7 +309,7 @@
             {
                 <tr><td>Round Off</td><td>₹&nbsp;@roundOff.ToString("0.##")</td></tr>
             }
-            <tr class="total-row"><td>Total Amount</td><td>₹&nbsp;@grandTotal.ToString("0,0")</td></tr>
+            <tr class="total-row"><td>Total Amount</td><td>₹&nbsp;@grandTotal.ToString("0,0.##")</td></tr>
         </table>
     </div>
 
@@ -320,7 +320,7 @@
     }
     @if (!string.IsNullOrWhiteSpace(Model.TermsAndConditions))
     {
-        <div style="margin-top:4px;font-size:9px;color:#444;"><strong>Terms &amp; Conditions:</strong>&nbsp; @Model.TermsAndConditions</div>
+        <div style="margin-top:4px;font-size:9px;color:#444;"><strong>Terms &amp; Conditions:</strong><br />@Html.Raw(Model.TermsAndConditions)</div>
     }
 
     @if (Model.ValidUntilDate.HasValue)

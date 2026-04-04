@@ -68,8 +68,8 @@ namespace CentralLicenceApp.Models.ViewModels
         [Display(Name = "Notes")]
         public string? Notes { get; set; }
 
-        [Display(Name = "Terms & Conditions")]
-        public string? TermsAndConditions { get; set; }
+        [Display(Name = "Terms &amp; Conditions Template")]
+        public int? TermsConditionTemplateId { get; set; }
 
         [Range(0, double.MaxValue)]
         [Display(Name = "Received Amount")]
@@ -82,6 +82,9 @@ namespace CentralLicenceApp.Models.ViewModels
         public List<InvoiceLineViewModel> Lines { get; set; } = new();
 
         public List<int> SignatoryUserIds { get; set; } = new();
+
+        /// <summary>When true, round-off is computed and applied to TotalAmount.</summary>
+        public bool EnableRoundOff { get; set; }
 
         public bool IsNew => Id == 0;
 

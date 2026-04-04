@@ -1,0 +1,223 @@
+@model CentralLicenceApp.Models.ViewModels.ExpenseReportViewModel
+@{
+    ViewData["Title"] = "Expense Report Details";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4 gap-3 flex-wrap">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Expense Report Details</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">
+            @if (Model.IsAdminView)
+            {
+                <span><i class="bi bi-shield-check me-1 text-success"></i>Administrator view — showing all employee records</span>
+            }
+            else
+            {
+                <span><i class="bi bi-person-circle me-1"></i>Showing your own expense requests</span>
+            }
+        </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-action="ExportExpenseReportExcel"
+           asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+           asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+           class="btn btn-success"
+           style="border-radius:10px;background:#15803d;border:none;">
+            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+        </a>
+        <a asp-action="ExportExpenseReportPdf"
+           asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+           asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+           class="btn btn-danger"
+           style="border-radius:10px;background:#b91c1c;border:none;">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">TOTAL REQUESTS</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#1e293b;">@Model.TotalRequests</div>
+                <div class="text-muted" style="font-size:.78rem;">Matching selected filters</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">TOTAL AMOUNT</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#2563eb;">₹@Model.TotalAmount.ToString("N2")</div>
+                <div class="text-muted" style="font-size:.78rem;">Sum of all matched requests</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">SETTLED</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#15803d;">@Model.SettledCount</div>
+                <div class="text-muted" style="font-size:.78rem;">Requests fully settled</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4" style="border:1px solid #e2e8f0;">
+    <div class="card-body py-3">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Request Date From</label>
+                <input type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" class="form-control" style="border-radius:10px;" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Request Date To</label>
+                <input type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" class="form-control" style="border-radius:10px;" />
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-primary" style="background:#1d4ed8;border:none;border-radius:10px;"><i class="bi bi-funnel me-1"></i>Filter</button>
+                <a asp-action="ExpenseReport" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
+            </div>
+        </form>
+        @if (!ViewContext.ViewData.ModelState.IsValid)
+        {
+            <div asp-validation-summary="All" class="alert alert-danger mt-3 mb-0 py-2 px-3 rounded-3" style="font-size:.83rem;"></div>
+        }
+    </div>
+</div>
+
+<div class="card" style="border:1px solid #e2e8f0;box-shadow:0 12px 28px rgba(15,23,42,.05);">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Request No.</th>
+                        <th>Request By User</th>
+                        @if (Model.IsAdminView)
+                        {
+                            <th>Employee Code</th>
+                        }
+                        <th>Purpose of Travel</th>
+                        <th>Status</th>
+                        <th class="text-end">Amount (₹)</th>
+                        <th>Items</th>
+                        <th>Request Date</th>
+                        <th>Submitted At</th>
+                        <th>Approved By</th>
+                        <th>Settled By User</th>
+                        <th class="pe-3 text-end">Settlement (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Items.Any())
+                    {
+                        <tr>
+                            <td colspan="@(Model.IsAdminView ? 13 : 12)" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>No expense records found for the selected date range
+                            </td>
+                        </tr>
+                    }
+                    @{int sr = 0;}
+                    @foreach (var row in Model.Items)
+                    {
+                        sr++;
+                        <tr>
+                            <td class="ps-3 text-muted" style="font-size:.8rem;">@sr</td>
+                            <td>
+                                <a asp-controller="ExpenseRequest" asp-action="Details" asp-route-id="@row.Id"
+                                   class="fw-semibold" style="color:#1d4ed8;font-size:.85rem;">@row.RequestNumber</a>
+                            </td>
+                            <td style="font-size:.85rem;">@row.RequestedByUser</td>
+                            @if (Model.IsAdminView)
+                            {
+                                <td style="font-size:.82rem;color:#64748b;">@(row.EmployeeCode ?? "—")</td>
+                            }
+                            <td style="font-size:.83rem;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="@row.PurposeOfTravel">@row.PurposeOfTravel</td>
+                            <td>
+                                @{
+                                    var statusBadge = row.Status switch
+                                    {
+                                        "Draft"                  => "secondary",
+                                        "PendingApproval"        => "warning",
+                                        "Approved"               => "info",
+                                        "Rejected"               => "danger",
+                                        "ReimbursementInProcess" => "primary",
+                                        "Settled"                => "success",
+                                        _                        => "secondary"
+                                    };
+                                    var statusLabel = row.Status switch
+                                    {
+                                        "PendingApproval"        => "Pending Approval",
+                                        "ReimbursementInProcess" => "Reimbursement In Process",
+                                        _                        => row.Status
+                                    };
+                                }
+                                <span class="badge bg-@statusBadge" style="font-size:.73rem;">@statusLabel</span>
+                            </td>
+                            <td class="text-end fw-semibold" style="font-size:.85rem;">@row.TotalAmount.ToString("N2")</td>
+                            <td class="text-center" style="font-size:.83rem;">@row.ItemCount</td>
+                            <td style="font-size:.82rem;white-space:nowrap;">@row.CreatedAt.ToString("dd MMM yyyy")</td>
+                            <td style="font-size:.82rem;white-space:nowrap;">
+                                @(row.SubmittedAt.HasValue ? row.SubmittedAt.Value.ToString("dd MMM yyyy") : "—")
+                            </td>
+                            <td style="font-size:.83rem;">@(string.IsNullOrWhiteSpace(row.ApprovedByUser) ? "—" : row.ApprovedByUser)</td>
+                            <td style="font-size:.83rem;">@(string.IsNullOrWhiteSpace(row.SettledByUser) ? "—" : row.SettledByUser)</td>
+                            <td class="pe-3 text-end" style="font-size:.83rem;">
+                                @(row.SettlementAmount.HasValue ? row.SettlementAmount.Value.ToString("N2") : "—")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="d-flex align-items-center justify-content-between px-3 py-3 border-top" style="font-size:.82rem;">
+            <span class="text-muted">
+                Showing @((Model.PageNumber - 1) * Model.PageSize + 1)&ndash;@(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalCount)) of @Model.TotalCount records
+            </span>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    @if (Model.PageNumber > 1)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" asp-action="ExpenseReport"
+                               asp-route-page="@(Model.PageNumber - 1)"
+                               asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">&laquo;</a>
+                        </li>
+                    }
+                    @{
+                        int startPg = Math.Max(1, Model.PageNumber - 2);
+                        int endPg   = Math.Min(Model.TotalPages, startPg + 4);
+                        if (endPg - startPg < 4) startPg = Math.Max(1, endPg - 4);
+                    }
+                    @for (int pg = startPg; pg <= endPg; pg++)
+                    {
+                        <li class="page-item @(pg == Model.PageNumber ? "active" : "")">
+                            <a class="page-link" asp-action="ExpenseReport"
+                               asp-route-page="@pg"
+                               asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">@pg</a>
+                        </li>
+                    }
+                    @if (Model.PageNumber < Model.TotalPages)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" asp-action="ExpenseReport"
+                               asp-route-page="@(Model.PageNumber + 1)"
+                               asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">&raquo;</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+    }
+</div>

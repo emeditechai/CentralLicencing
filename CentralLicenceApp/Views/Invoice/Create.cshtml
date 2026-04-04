@@ -9,6 +9,7 @@
     var partiesJson  = JsonSerializer.Serialize(parties.Select(p => new {
         id = p.Id, gstinNo = p.GSTINNo ?? string.Empty
     }));
+    var termsTemplates = ViewBag.TermsTemplates as List<CentralLicenceApp.Models.TermsConditionTemplate> ?? new();
 }
 
 <div class="d-flex align-items-center gap-3 mb-4">
@@ -161,11 +162,24 @@
                             <tr id="row-cgst" style="display:none;"><td class="text-muted pe-4 py-1">CGST</td><td class="text-end" id="cgstDisplay">₹0.00</td></tr>
                             <tr id="row-sgst" style="display:none;"><td class="text-muted pe-4 py-1">SGST</td><td class="text-end" id="sgstDisplay">₹0.00</td></tr>
                             <tr id="row-igst" style="display:none;"><td class="text-muted pe-4 py-1">IGST</td><td class="text-end" id="igstDisplay">₹0.00</td></tr>
+                            <tr id="row-roundoff" style="display:none;"><td class="text-muted pe-4 py-1">Round Off</td><td class="text-end" id="roundOffDisplay">₹0.00</td></tr>
                             <tr style="border-top:2px solid #e2e8f0;">
                                 <td class="fw-bold pe-4 py-1">Grand Total</td>
                                 <td class="fw-bold text-end" id="grandTotalDisplay" style="color:#6366f1;font-size:1rem;">₹0.00</td>
                             </tr>
                         </table>
+                    </div>
+                    <!-- Round-Off toggle -->
+                    <div class="px-3 pb-3 d-flex align-items-center gap-3">
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch" id="enableRoundOffToggle"
+                                   name="EnableRoundOff" value="true" @(Model.EnableRoundOff ? "checked" : "")
+                                   onchange="recompute()" />
+                            <label class="form-check-label" for="enableRoundOffToggle" style="font-size:.85rem;">
+                                Apply Round-Off Adjustment
+                            </label>
+                        </div>
+                        <span class="text-muted" style="font-size:.78rem;">Rounds total to nearest whole rupee</span>
                     </div>
                 </div>
             </div>
@@ -211,8 +225,14 @@
         <div class="col-md-3">
             <div class="card h-100">
                 <div class="card-body">
-                    <label asp-for="TermsAndConditions" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <textarea asp-for="TermsAndConditions" class="form-control" rows="3" style="border-radius:10px;"></textarea>
+                    <label asp-for="TermsConditionTemplateId" class="form-label fw-semibold" style="font-size:.82rem;">Terms &amp; Conditions</label>
+                    <select asp-for="TermsConditionTemplateId" class="form-select" style="border-radius:10px;">
+                        <option value="">-- None --</option>
+                        @foreach (var t in termsTemplates)
+                        {
+                            <option value="@t.Id">@t.TermsName</option>
+                        }
+                    </select>
                 </div>
             </div>
         </div>
@@ -379,9 +399,19 @@
             totalSgst += sgst;
             totalIgst += igst;
         });
-        const grandTotal = subTotal + totalCgst + totalSgst + totalIgst;
+        const gross     = subTotal + totalCgst + totalSgst + totalIgst;
+        const enableRO  = document.getElementById('enableRoundOffToggle').checked;
+        const roundOff  = enableRO ? (Math.round(gross) - gross) : 0;
+        const grandTotal = gross + roundOff;
         document.getElementById('subTotalDisplay').textContent  = '₹' + subTotal.toFixed(2);
         document.getElementById('grandTotalDisplay').textContent = '₹' + grandTotal.toFixed(2);
+        const roRow = document.getElementById('row-roundoff');
+        if (enableRO && roundOff !== 0) {
+            roRow.style.display = '';
+            document.getElementById('roundOffDisplay').textContent = (roundOff >= 0 ? '₹' : '-₹') + Math.abs(roundOff).toFixed(2);
+        } else {
+            roRow.style.display = 'none';
+        }
 
         const rowCgst = document.getElementById('row-cgst');
         const rowSgst = document.getElementById('row-sgst');
