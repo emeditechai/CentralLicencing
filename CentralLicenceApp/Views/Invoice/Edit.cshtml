@@ -207,13 +207,34 @@
             <div class="card h-100">
                 <div class="card-body">
                     <label asp-for="TermsConditionTemplateId" class="form-label fw-semibold" style="font-size:.82rem;">Terms &amp; Conditions</label>
-                    <select asp-for="TermsConditionTemplateId" class="form-select" style="border-radius:10px;">
-                        <option value="">-- None --</option>
-                        @foreach (var t in termsTemplates)
-                        {
-                            <option value="@t.Id">@t.TermsName</option>
-                        }
-                    </select>
+                    <div class="d-flex gap-2 align-items-center">
+                        <select asp-for="TermsConditionTemplateId" id="termsSelect" class="form-select" style="border-radius:10px;">
+                            <option value="">-- None --</option>
+                            @foreach (var t in termsTemplates)
+                            {
+                                <option value="@t.Id">@t.TermsName</option>
+                            }
+                        </select>
+                        <button type="button" id="btnViewTerms" class="btn btn-outline-secondary flex-shrink-0" style="border-radius:10px;" title="Preview Terms" disabled>
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terms & Conditions Preview Modal -->
+        <div class="modal fade" id="termsPreviewModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header" style="background:#f0f4ff;">
+                        <h5 class="modal-title fw-semibold" id="termsModalTitle"><i class="bi bi-file-earmark-text me-2" style="color:#6366f1;"></i>Terms &amp; Conditions</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="termsModalBody" style="font-size:.9rem;"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" style="border-radius:10px;" data-bs-dismiss="modal">Close</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -274,7 +295,30 @@
 <script>
     const COMPANY_GSTIN = '@Html.Raw(companyGstin)';
     const PARTIES_DATA  = @Html.Raw(partiesJson);
+    const TERMS_DATA    = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        termsTemplates.Select(t => new { id = t.Id, name = t.TermsName, description = t.Description })));
     let productRates    = [];
+
+    // ── Terms preview button ──────────────────────────────────
+    const termsSelect  = document.getElementById('termsSelect');
+    const btnViewTerms = document.getElementById('btnViewTerms');
+    const termsModal   = new bootstrap.Modal(document.getElementById('termsPreviewModal'));
+
+    function syncTermsButton() {
+        btnViewTerms.disabled = termsSelect.value === '';
+    }
+    termsSelect.addEventListener('change', syncTermsButton);
+    syncTermsButton();
+
+    btnViewTerms.addEventListener('click', function () {
+        const t = TERMS_DATA.find(x => x.id == termsSelect.value);
+        if (!t) return;
+        document.getElementById('termsModalTitle').innerHTML =
+            '<i class="bi bi-file-earmark-text me-2" style="color:#6366f1;"></i>' + t.name;
+        document.getElementById('termsModalBody').innerHTML = t.description || '<em class="text-muted">No content available.</em>';
+        termsModal.show();
+    });
+    // ──────────────────────────────────────────────────
 
     function isInterState() {
         const partyId  = document.getElementById('PartyId')?.value;

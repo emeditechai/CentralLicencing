@@ -20,6 +20,7 @@ builder.Services.Configure<PushNotificationSettings>(builder.Configuration.GetSe
 
 // Repositories
 builder.Services.AddScoped<IClientLicenseRepository>(_ => new ClientLicenseRepository(connStr));
+builder.Services.AddScoped<IClientLicenseAuditLogRepository>(_ => new ClientLicenseAuditLogRepository(connStr));
 builder.Services.AddScoped<ILicenseHistoryRepository>(_ => new LicenseHistoryRepository(connStr));
 builder.Services.AddScoped<IUserRepository>(_ => new UserRepository(connStr));
 builder.Services.AddScoped<IRoleRepository>(_ => new RoleRepository(connStr));

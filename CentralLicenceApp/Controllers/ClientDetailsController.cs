@@ -70,7 +70,8 @@ namespace CentralLicenceApp.Controllers
                     AmcCalculationType = p.AmcCalculationType,
                     AmcPercentage = p.AmcPercentage,
                     AmcAmount = p.AmcAmount,
-                    InvoiceNo = p.InvoiceNo
+                    InvoiceNo = p.InvoiceNo,
+                    SubscriptionStartDate = p.SubscriptionStartDate
                 }).ToList();
             }
 
@@ -140,6 +141,7 @@ namespace CentralLicenceApp.Controllers
                     AmcPercentage = productRate.AmcPercentage,
                     AmcAmount = productRate.AmcAmount,
                     InvoiceNo = string.IsNullOrWhiteSpace(row.InvoiceNo) ? null : row.InvoiceNo.Trim(),
+                    SubscriptionStartDate = row.SubscriptionStartDate,
                     IsActive = true
                 });
             }

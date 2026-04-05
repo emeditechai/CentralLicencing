@@ -178,6 +178,8 @@
                                                 <th>Base Price</th>
                                                 <th>AMC</th>
                                                 <th>Invoice No</th>
+                                                <th>Subscription Start</th>
+                                                <th>Last Renewed</th>
                                                 <th>Sub Total</th>
                                                 <th>GST</th>
                                                 <th>Total Amount</th>
@@ -219,6 +221,34 @@
                                                         {
                                                             <div class="fw-semibold" style="color:#6366f1;">@item.InvoiceNo</div>
                                                             <div class="text-muted inv-inv-date" style="font-size:.72rem;"></div>
+                                                        }
+                                                    </td>
+                                                    <td style="font-size:.82rem;">
+                                                        @if (item.IsSubscription && item.SubscriptionStartDate.HasValue)
+                                                        {
+                                                            <span>@item.SubscriptionStartDate.Value.ToString("dd MMM yyyy")</span>
+                                                        }
+                                                        else if (item.IsSubscription)
+                                                        {
+                                                            <span class="text-muted" style="font-size:.75rem;">Not set</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">—</span>
+                                                        }
+                                                    </td>
+                                                    <td style="font-size:.82rem;">
+                                                        @if (item.IsSubscription && item.LastRenewedAt.HasValue)
+                                                        {
+                                                            <span class="fw-semibold" style="color:#10b981;">@item.LastRenewedAt.Value.ToString("dd MMM yyyy")</span>
+                                                        }
+                                                        else if (item.IsSubscription)
+                                                        {
+                                                            <span class="text-muted" style="font-size:.75rem;">Never</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-muted">—</span>
                                                         }
                                                     </td>
                                                     <td class="inv-subtotal-cell" style="font-size:.82rem;">@(string.IsNullOrWhiteSpace(item.InvoiceNo) ? "—" : "…")</td>

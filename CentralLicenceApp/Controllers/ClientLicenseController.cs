@@ -15,12 +15,18 @@ namespace CentralLicenceApp.Controllers
         private readonly IClientLicenseRepository _repo;
         private readonly IEmailService _emailService;
         private readonly IClientDetailsRepository _detailsRepo;
+        private readonly IClientLicenseAuditLogRepository _auditRepo;
 
-        public ClientLicenseController(IClientLicenseRepository repo, IEmailService emailService, IClientDetailsRepository detailsRepo)
+        public ClientLicenseController(
+            IClientLicenseRepository repo,
+            IEmailService emailService,
+            IClientDetailsRepository detailsRepo,
+            IClientLicenseAuditLogRepository auditRepo)
         {
             _repo         = repo;
             _emailService = emailService;
             _detailsRepo  = detailsRepo;
+            _auditRepo    = auditRepo;
         }
 
         public async Task<IActionResult> Index(string? search, string? status, string? productType, int page = 1)
@@ -126,20 +132,54 @@ namespace CentralLicenceApp.Controllers
             if (existing == null) return NotFound();
 
             // Capture before-state for email trigger detection
-            var wasActive     = existing.IsActive;
-            var oldExpiryDate = existing.ExpiryDate;
+            var wasActive        = existing.IsActive;
+            var oldExpiryDate    = existing.ExpiryDate;
+            var oldAmcExpiry     = existing.AMC_Expireddate;
 
-            existing.ClientName      = vm.ClientName;
-            existing.ContactNumber   = vm.ContactNumber;
-            existing.EmailID         = vm.EmailID;
-            existing.AppUrl          = vm.AppUrl;
-            existing.ExpiryDate      = vm.ExpiryDate;
-            existing.AMC_Expireddate = vm.AMC_Expireddate;
-            existing.IsActive        = vm.IsActive;
-            existing.ProductType     = vm.ProductType;
+            existing.ClientName       = vm.ClientName;
+            existing.ContactNumber    = vm.ContactNumber;
+            existing.EmailID          = vm.EmailID;
+            existing.AppUrl           = vm.AppUrl;
+            existing.ExpiryDate       = vm.ExpiryDate;
+            existing.AMC_Expireddate  = vm.AMC_Expireddate;
+            existing.IsActive         = vm.IsActive;
+            existing.ProductType      = vm.ProductType;
             existing.ConnectionString = vm.ConnectionString;
 
             await _repo.UpdateAsync(existing);
+
+            // ── Audit log: record date field changes ──────────────────────────
+            var changedBy = User.Identity?.Name ?? "System";
+            if (existing.ExpiryDate.Date != oldExpiryDate.Date)
+            {
+                await _auditRepo.AddAsync(new ClientLicenseAuditLog
+                {
+                    ClientLicenseId = existing.Id,
+                    ClientCode      = existing.ClientCode,
+                    ClientName      = existing.ClientName,
+                    ProductType     = existing.ProductType,
+                    FieldChanged    = "ExpiryDate",
+                    OldValue        = oldExpiryDate.ToString("dd MMM yyyy"),
+                    NewValue        = existing.ExpiryDate.ToString("dd MMM yyyy"),
+                    ChangedBy       = changedBy
+                });
+            }
+
+            if (existing.AMC_Expireddate?.Date != oldAmcExpiry?.Date)
+            {
+                await _auditRepo.AddAsync(new ClientLicenseAuditLog
+                {
+                    ClientLicenseId = existing.Id,
+                    ClientCode      = existing.ClientCode,
+                    ClientName      = existing.ClientName,
+                    ProductType     = existing.ProductType,
+                    FieldChanged    = "AMCExpiryDate",
+                    OldValue        = oldAmcExpiry?.ToString("dd MMM yyyy"),
+                    NewValue        = existing.AMC_Expireddate?.ToString("dd MMM yyyy"),
+                    ChangedBy       = changedBy
+                });
+            }
+            // ─────────────────────────────────────────────────────────────────
 
             // ── Email notifications ────────────────────────────────────────────
             if (!string.IsNullOrWhiteSpace(existing.EmailID))

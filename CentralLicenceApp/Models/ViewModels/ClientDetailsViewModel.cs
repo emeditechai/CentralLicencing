@@ -23,6 +23,7 @@ namespace CentralLicenceApp.Models.ViewModels
         public decimal AmcPercentage { get; set; }
         public decimal AmcAmount { get; set; }
         public string? InvoiceNo { get; set; }
+        public DateTime? SubscriptionStartDate { get; set; }
     }
 
     public class ClientDetailsViewModel

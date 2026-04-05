@@ -73,36 +73,6 @@
     </div>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-sm-4">
-        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#16a34a,#15803d);">
-            <div class="stat-ico"><i class="bi bi-patch-check"></i></div>
-            <div>
-                <div class="stat-val">@Model.ApprovedExpenseRequests</div>
-                <div class="stat-lbl">Approved Requests</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-4">
-        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
-            <div class="stat-ico"><i class="bi bi-hourglass-split"></i></div>
-            <div>
-                <div class="stat-val">@Model.ReimbursementInProcessRequests</div>
-                <div class="stat-lbl">In Reimbursement</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-4">
-        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#0f766e,#0d9488);">
-            <div class="stat-ico"><i class="bi bi-cash-coin"></i></div>
-            <div>
-                <div class="stat-val">@Model.SettledExpenseRequests</div>
-                <div class="stat-lbl">Settled Requests</div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Second row: Validation stats -->
 <div class="row g-3 mb-4">
     <div class="col-sm-4">
@@ -230,3 +200,142 @@
     </div>
 </div>
 
+@{
+    var isCoreMember = (bool)(ViewBag.IsCoreMember ?? false);
+}
+
+<!-- Subscription Invoice Reminders -->
+@if (Model.SubscriptionReminders.Any())
+{
+<div class="row g-3 mt-1">
+    <div class="col-12">
+        <div class="card subscription-reminders-card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span>
+                    <i class="bi bi-bell-fill me-2" style="color:#f59e0b;"></i>
+                    <strong>Subscription Invoice Reminders</strong>
+                    <span class="badge rounded-pill ms-2" style="background:#fef9c3;color:#92400e;font-size:.73rem;">@Model.SubscriptionReminders.Count due within 5 days</span>
+                </span>
+                <a asp-controller="ClientDetails" asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;">View Clients</a>
+            </div>
+            @Html.AntiForgeryToken()
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table tbl-clean mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">Client</th>
+                                <th>Product</th>
+                                <th>Frequency</th>
+                                <th>Base Price</th>
+                                <th>Next Renewal</th>
+                                <th>Due In</th>
+                                <th>Last Invoice No</th>
+                                @if (isCoreMember) { <th>Action</th> }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in Model.SubscriptionReminders)
+                            {
+                                var urgency   = r.DaysUntilRenewal == 0 ? "#ef4444" : r.DaysUntilRenewal <= 2 ? "#f59e0b" : "#6366f1";
+                                var urgencyBg = r.DaysUntilRenewal == 0 ? "#fef2f2" : r.DaysUntilRenewal <= 2 ? "#fffbeb" : "#eef2ff";
+                                var dueLabel  = r.DaysUntilRenewal == 0 ? "Today" : r.DaysUntilRenewal == 1 ? "Tomorrow" : $"{r.DaysUntilRenewal} days";
+                                <tr>
+                                    <td class="ps-3">
+                                        <div class="fw-semibold" style="font-size:.85rem;">@r.ClientName</div>
+                                        <div style="font-size:.74rem;color:#6366f1;">@r.ClientCode</div>
+                                    </td>
+                                    <td style="font-size:.83rem;">@r.ProductName</td>
+                                    <td>
+                                        <span class="badge" style="background:#e0e7ff;color:#4338ca;font-size:.72rem;">@r.BillingFrequency</span>
+                                    </td>
+                                    <td style="font-size:.83rem;font-weight:600;">₹@r.BasePrice.ToString("N2")</td>
+                                    <td style="font-size:.82rem;">@r.NextRenewalDate.ToString("dd MMM yyyy")</td>
+                                    <td>
+                                        <span style="display:inline-block;background:@urgencyBg;color:@urgency;border-radius:20px;padding:.2rem .65rem;font-size:.75rem;font-weight:700;">
+                                            @dueLabel
+                                        </span>
+                                    </td>
+                                    <td style="font-size:.8rem;color:#64748b;">@(string.IsNullOrWhiteSpace(r.InvoiceNo) ? "—" : r.InvoiceNo)</td>
+                                    @if (isCoreMember)
+                                    {
+                                        <td>
+                                            <button type="button"
+                                                    class="btn btn-sm renew-btn"
+                                                    style="background:#d1fae5;color:#065f46;border:none;border-radius:8px;font-size:.76rem;font-weight:600;padding:.25rem .6rem;"
+                                                    data-id="@r.PurchasedProductId"
+                                                    onclick="markRenewed(this)">
+                                                <i class="bi bi-check2-circle me-1"></i>Renew
+                                            </button>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+}
+
+@if ((bool)(ViewBag.IsCoreMember ?? false))
+{
+<script>
+    function markRenewed(btn) {
+        Swal.fire({
+            ...swalTheme,
+            icon: 'question',
+            title: 'Mark as Renewed?',
+            html: 'This subscription will be removed from the reminder list for the current cycle.',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, Renew',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true,
+            focusCancel: true
+        }).then(function (result) {
+            if (!result.isConfirmed) return;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Renewing\u2026';
+
+            const id = btn.dataset.id;
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
+
+            fetch('@Url.Action("MarkRenewed", "Dashboard")', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': token
+                },
+                body: 'id=' + encodeURIComponent(id) + '&__RequestVerificationToken=' + encodeURIComponent(token)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const row = btn.closest('tr');
+                    row.style.transition = 'opacity .4s ease';
+                    row.style.opacity = '0';
+                    setTimeout(() => {
+                        row.remove();
+                        const tbody = document.querySelector('.subscription-reminders-card tbody');
+                        if (tbody && tbody.querySelectorAll('tr').length === 0) {
+                            document.querySelector('.subscription-reminders-card')?.closest('.row').remove();
+                        }
+                    }, 420);
+                } else {
+                    showAppAlert('error', 'Failed', data.message || 'Could not mark as renewed.');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Renew';
+                }
+            })
+            .catch(() => {
+                showAppAlert('error', 'Network Error', 'Could not reach the server. Please try again.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Renew';
+            });
+        });
+    }
+</script>
+}

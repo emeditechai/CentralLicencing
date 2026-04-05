@@ -20,6 +20,7 @@ namespace CentralLicenceApp.Models.ViewModels
         public List<ClientAppLicense> UpcomingExpiries { get; set; } = new();
         public List<MonthlyValidationStat> MonthlyStats { get; set; } = new();
         public List<ValidationStatusStat> ValidationStatusStats { get; set; } = new();
+        public List<SubscriptionInvoiceReminder> SubscriptionReminders { get; set; } = new();
     }
 
     public class MonthlyValidationStat

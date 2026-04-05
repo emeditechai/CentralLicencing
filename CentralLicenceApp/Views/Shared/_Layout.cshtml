@@ -62,7 +62,7 @@
 
             <!-- Licences section -->
             @{
-                var licencesOpen = ctrl == "ClientLicense" || ctrl == "LicenseHistory";
+                var licencesOpen = ctrl == "ClientLicense" || ctrl == "LicenseHistory" || ctrl == "LicenseAuditLog";
                 var masterOpen   = ctrl == "EmployeeDepartment" || ctrl == "EmployeeDesignation";
                 var businessUnitMasterOpen = ctrl == "ExpenseCategory" || ctrl == "ProductMaster" || ctrl == "ProductRate" || ctrl == "PartyMaster" || ctrl == "BankMaster" || ctrl == "PaymentMode" || ctrl == "TermsConditionTemplate";
                 var businessUnitTransactionOpen = ctrl == "ExpenseRequest";
@@ -81,6 +81,7 @@
             <div class="collapse @(licencesOpen ? "show" : "")" id="section-licences">
                 <div class="nav-item"><a asp-controller="ClientLicense" asp-action="Index" class="@Act("ClientLicense")"><i class="bi bi-card-checklist"></i> Client Licences</a></div>
                 <div class="nav-item"><a asp-controller="LicenseHistory" asp-action="Index" class="@Act("LicenseHistory")"><i class="bi bi-clock-history"></i> Validation History</a></div>
+                <div class="nav-item"><a asp-controller="LicenseAuditLog" asp-action="Index" class="@Act("LicenseAuditLog")"><i class="bi bi-clipboard2-pulse"></i> Audit Log</a></div>
             </div><!-- /section-licences collapse -->
 
             @if (isAdmin)

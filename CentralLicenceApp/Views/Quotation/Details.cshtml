@@ -21,21 +21,6 @@
     <span class="badge rounded-pill px-3 py-2 ms-auto" style="font-size:.8rem;@statusStyle">@Model.Status</span>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show py-2 px-3 rounded-3" style="font-size:.85rem;">
-        @Html.Raw(TempData["Success"])
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show py-2 px-3 rounded-3" style="font-size:.85rem;">
-        @Html.Raw(TempData["Error"])
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-
 <div class="row g-3">
     <div class="col-lg-8">
         <!-- Party & Dates -->
@@ -243,11 +228,11 @@
                                 <i class="bi bi-arrow-right-circle me-1"></i> Convert to Invoice
                             </a>
                         }
-                        else
+                        else if (!Model.IsConverted && !Model.IsCancelled)
                         {
                             <div class="alert alert-warning py-2 px-3 rounded-3 mb-0" style="font-size:.82rem;">
                                 <i class="bi bi-info-circle me-1"></i>
-                                Quotation must be <strong>Sent</strong> and <strong>Accepted</strong> before converting to Invoice.
+                                Quotation must be <strong>Accepted</strong> before converting to Invoice.
                             </div>
                         }
 

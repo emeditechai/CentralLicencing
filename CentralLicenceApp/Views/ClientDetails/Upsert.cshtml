@@ -160,6 +160,13 @@
                                                    data-initial="@row.InvoiceNo"
                                                    oninput="scheduleInvoiceFetch(this)" />
                                         </div>
+                                        <div class="col-md-4 subscription-start-wrap" style="@(row.BillingModel.Equals("Subscription", StringComparison.OrdinalIgnoreCase) ? "" : "display:none;")">
+                                            <label class="form-label fw-semibold" style="font-size:.8rem;">Subscription Start Date</label>
+                                            <input type="date" name="PurchasedProducts[@i].SubscriptionStartDate"
+                                                   value="@((row.SubscriptionStartDate ?? (row.BillingModel.Equals("Subscription", StringComparison.OrdinalIgnoreCase) ? DateTime.Today : (DateTime?)null))?.ToString("yyyy-MM-dd"))"
+                                                   class="form-control" style="border-radius:10px;" />
+                                            <div class="text-muted mt-1" style="font-size:.71rem;">Used to calculate next renewal date on dashboard.</div>
+                                        </div>
                                         <div class="col-12">
                                             <div class="invoice-detail-panel d-none mt-1 p-3 rounded-3" style="background:#f0f7ff;border:1px solid #c7ddf9;font-size:.82rem;">
                                                 <div class="d-flex flex-wrap gap-3 align-items-center">
@@ -301,6 +308,13 @@
         amcAmount.textContent = selectedRate.amcCalculationType
             ? `₹${Number(selectedRate.amcAmount).toFixed(2)}`
             : '-';
+
+        // Show Subscription Start Date field only when billing model is Subscription
+        const subsWrap = row.querySelector('.subscription-start-wrap');
+        if (subsWrap) {
+            const isSubscription = selectedRate.billingModel.toLowerCase() === 'subscription';
+            subsWrap.style.display = isSubscription ? '' : 'none';
+        }
     }
 
     function handleProductChange(select) {
@@ -382,6 +396,11 @@
                         <div class="col-md-4">
                             <label class="form-label fw-semibold" style="font-size:.8rem;">Invoice No</label>
                             <input type="text" name="PurchasedProducts[${index}].InvoiceNo" class="form-control invoice-no-input" placeholder="e.g. EL/SL/26-27/0001" style="border-radius:10px;" oninput="scheduleInvoiceFetch(this)" />
+                        </div>
+                        <div class="col-md-4 subscription-start-wrap" style="display:none;">
+                            <label class="form-label fw-semibold" style="font-size:.8rem;">Subscription Start Date</label>
+                            <input type="date" name="PurchasedProducts[${index}].SubscriptionStartDate" class="form-control" value="${new Date().toISOString().slice(0,10)}" style="border-radius:10px;" />
+                            <div class="text-muted mt-1" style="font-size:.71rem;">Used to calculate next renewal date on dashboard.</div>
                         </div>
                         <div class="col-12">
                             <div class="invoice-detail-panel d-none mt-1 p-3 rounded-3" style="background:#f0f7ff;border:1px solid #c7ddf9;font-size:.82rem;">

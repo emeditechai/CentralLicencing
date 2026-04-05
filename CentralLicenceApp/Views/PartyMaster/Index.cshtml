@@ -13,21 +13,6 @@
     </a>
 </div>
 
-@if (TempData["Success"] != null)
-{
-    <div class="alert alert-success alert-dismissible fade show py-2 px-3 rounded-3" style="font-size:.85rem;">
-        @Html.Raw(TempData["Success"])
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-@if (TempData["Error"] != null)
-{
-    <div class="alert alert-danger alert-dismissible fade show py-2 px-3 rounded-3" style="font-size:.85rem;">
-        @Html.Raw(TempData["Error"])
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-}
-
 <div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">

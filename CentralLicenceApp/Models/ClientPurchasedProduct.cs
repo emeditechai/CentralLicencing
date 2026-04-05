@@ -19,6 +19,8 @@ namespace CentralLicenceApp.Models
         public decimal AmcPercentage { get; set; }
         public decimal AmcAmount { get; set; }
         public string? InvoiceNo { get; set; }
+        public DateTime? SubscriptionStartDate { get; set; }
+        public DateTime? LastRenewedAt { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; }
 

@@ -9,5 +9,7 @@ namespace CentralLicenceApp.Repositories
         Task UpsertAsync(ClientDetails details);
         Task<System.Collections.Generic.IEnumerable<string>> GetClientCodesWithDetailsAsync();
         Task<System.Collections.Generic.IReadOnlyList<ClientPurchasedProduct>> GetPurchasedProductsByClientCodeAsync(string clientCode);
+        Task<System.Collections.Generic.IReadOnlyList<SubscriptionInvoiceReminder>> GetSubscriptionRemindersAsync(int daysAhead = 5);
+        Task MarkRenewedAsync(int purchasedProductId);
     }
 }

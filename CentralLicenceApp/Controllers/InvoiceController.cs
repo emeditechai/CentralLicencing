@@ -91,9 +91,7 @@ namespace CentralLicenceApp.Controllers
 
             if (q.Status != "Accepted")
             {
-                TempData["Error"] = q.Status == "Sent"
-                    ? "Quotation must be <strong>Accepted</strong> before converting to Invoice. It is currently Sent — please mark it as Accepted first."
-                    : $"Only an <strong>Accepted</strong> quotation can be converted to Invoice. Current status: <strong>{q.Status}</strong>.";
+                TempData["Error"] = $"Quotation must be <strong>Accepted</strong> before converting to Invoice. Current status: <strong>{q.Status}</strong>.";
                 return RedirectToAction("Details", "Quotation", new { id });
             }
 
