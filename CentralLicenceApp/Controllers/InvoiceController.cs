@@ -258,6 +258,7 @@ namespace CentralLicenceApp.Controllers
         {
             var inv = await _invoiceRepo.GetByIdAsync(id);
             if (inv == null) return NotFound();
+            ViewBag.HasActivePayments = await _paymentRepo.HasActivePaymentsAsync(id);
             return View(inv);
         }
 
@@ -535,6 +536,15 @@ namespace CentralLicenceApp.Controllers
                 TempData["Error"] = "Cancellation remarks are required.";
                 return RedirectToAction(nameof(Details), new { id });
             }
+
+            // Block cancellation if there are active (non-voided) payments
+            var hasPayments = await _paymentRepo.HasActivePaymentsAsync(id);
+            if (hasPayments)
+            {
+                TempData["Error"] = "This invoice has active payment records. Please <strong>void</strong> all payments against this invoice before cancelling it.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
             var cancelled = await _invoiceRepo.CancelAsync(id, remarks.Trim());
             TempData[cancelled ? "Success" : "Error"] = cancelled
                 ? "Invoice has been cancelled."

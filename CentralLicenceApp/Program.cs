@@ -48,6 +48,7 @@ builder.Services.AddScoped<IInvoiceRepository>(_ => new InvoiceRepository(connSt
 builder.Services.AddScoped<IBankMasterRepository>(_ => new BankMasterRepository(connStr));
 builder.Services.AddScoped<IPaymentModeRepository>(_ => new PaymentModeRepository(connStr));
 builder.Services.AddScoped<IInvoicePaymentRepository>(_ => new InvoicePaymentRepository(connStr));
+builder.Services.AddScoped<IInvoiceRefundRepository>(_ => new InvoiceRefundRepository(connStr));
 builder.Services.AddScoped<IClientDetailsReportExportService, ClientDetailsReportExportService>();
 builder.Services.AddScoped<IExpenseReportExportService, ExpenseReportExportService>();
 builder.Services.AddScoped<ISettlementReportExportService, SettlementReportExportService>();

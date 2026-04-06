@@ -34,7 +34,10 @@ namespace CentralLicenceApp.Repositories
                     new { Ids = ids });
 
                 foreach (var inv in invoices)
+                {
                     inv.Lines = lines.Where(l => l.InvoiceId == inv.Id).ToList();
+                    NormalizeStatus(inv);
+                }
             }
 
             return invoices;
@@ -59,6 +62,8 @@ namespace CentralLicenceApp.Repositories
                 inv.Lines = (await conn.QueryAsync<InvoiceLine>(
                     "SELECT * FROM InvoiceLine WHERE InvoiceId = @Id ORDER BY SNo",
                     new { Id = id })).ToList();
+
+                NormalizeStatus(inv);
 
                 // Load signatory IDs
                 inv.SignatoryUserIds = (await conn.QueryAsync<int>(
@@ -265,6 +270,17 @@ namespace CentralLicenceApp.Repositories
             var rows = await conn.ExecuteAsync("DELETE FROM Invoice WHERE Id = @Id", new { Id = id }, tx);
             tx.Commit();
             return rows > 0;
+        }
+
+        /// <summary>
+        /// Ensures status is "Paid" whenever the outstanding balance is zero,
+        /// unless the invoice is Cancelled or still in Draft.
+        /// </summary>
+        private static void NormalizeStatus(Invoice inv)
+        {
+            if (inv.Status is "Cancelled" or "Draft") return;
+            if (inv.TotalAmount - inv.ReceivedAmount <= 0)
+                inv.Status = "Paid";
         }
     }
 }

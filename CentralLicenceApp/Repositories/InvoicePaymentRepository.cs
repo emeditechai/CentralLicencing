@@ -35,9 +35,15 @@ namespace CentralLicenceApp.Repositories
                 var lines = await conn.QueryAsync<InvoicePaymentLine>(
                     "SELECT * FROM InvoicePaymentLine WHERE PaymentId IN @Ids",
                     new { Ids = ids });
+                var refunds = await conn.QueryAsync<InvoiceRefund>(
+                    "SELECT * FROM InvoiceRefund WHERE PaymentId IN @Ids",
+                    new { Ids = ids });
 
                 foreach (var pmt in payments)
-                    pmt.Lines = lines.Where(l => l.PaymentId == pmt.Id).ToList();
+                {
+                    pmt.Lines   = lines.Where(l => l.PaymentId == pmt.Id).ToList();
+                    pmt.Refunds = refunds.Where(r => r.PaymentId == pmt.Id).ToList();
+                }
             }
 
             return payments;
@@ -60,9 +66,15 @@ namespace CentralLicenceApp.Repositories
                 var lines = await conn.QueryAsync<InvoicePaymentLine>(
                     "SELECT * FROM InvoicePaymentLine WHERE PaymentId IN @Ids",
                     new { Ids = ids });
+                var refunds = await conn.QueryAsync<InvoiceRefund>(
+                    "SELECT * FROM InvoiceRefund WHERE PaymentId IN @Ids",
+                    new { Ids = ids });
 
                 foreach (var pmt in payments)
-                    pmt.Lines = lines.Where(l => l.PaymentId == pmt.Id).ToList();
+                {
+                    pmt.Lines   = lines.Where(l => l.PaymentId == pmt.Id).ToList();
+                    pmt.Refunds = refunds.Where(r => r.PaymentId == pmt.Id).ToList();
+                }
             }
 
             return payments;
@@ -82,6 +94,9 @@ namespace CentralLicenceApp.Repositories
             {
                 payment.Lines = (await conn.QueryAsync<InvoicePaymentLine>(
                     "SELECT * FROM InvoicePaymentLine WHERE PaymentId = @Id",
+                    new { Id = id })).ToList();
+                payment.Refunds = (await conn.QueryAsync<InvoiceRefund>(
+                    "SELECT * FROM InvoiceRefund WHERE PaymentId = @Id ORDER BY CreatedAt",
                     new { Id = id })).ToList();
             }
 
@@ -174,6 +189,58 @@ namespace CentralLicenceApp.Repositories
 
             tx.Commit();
             return paymentId;
+        }
+
+        public async Task<bool> HasActivePaymentsAsync(int invoiceId)
+        {
+            using var conn = CreateConnection();
+            var count = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(1) FROM InvoicePayment WHERE InvoiceId = @InvoiceId AND IsVoided = 0",
+                new { InvoiceId = invoiceId });
+            return count > 0;
+        }
+
+        public async Task<bool> VoidAsync(int id, string voidedBy, string remarks)
+        {
+            using var conn = CreateConnection();
+            conn.Open();
+            using var tx = conn.BeginTransaction();
+
+            // Load the payment
+            var payment = await conn.QuerySingleOrDefaultAsync<InvoicePayment>(
+                "SELECT * FROM InvoicePayment WHERE Id = @Id AND IsVoided = 0",
+                new { Id = id }, tx);
+
+            if (payment == null) return false;
+
+            // Mark payment as voided
+            await conn.ExecuteAsync(@"
+                UPDATE InvoicePayment
+                SET    IsVoided    = 1,
+                       VoidedAt   = @VoidedAt,
+                       VoidedBy   = @VoidedBy,
+                       VoidRemarks = @Remarks
+                WHERE  Id = @Id",
+                new { Id = id, VoidedAt = DateTime.Now, VoidedBy = voidedBy, Remarks = remarks }, tx);
+
+            // Reverse the payment on the invoice
+            await conn.ExecuteAsync(@"
+                UPDATE Invoice
+                SET    ReceivedAmount = CASE WHEN ReceivedAmount - @Paid < 0 THEN 0
+                                             ELSE ReceivedAmount - @Paid END,
+                       Status = CASE
+                           WHEN (TotalAmount - CASE WHEN ReceivedAmount - @Paid < 0 THEN 0 ELSE ReceivedAmount - @Paid END) <= 0
+                               THEN 'Paid'
+                           WHEN CASE WHEN ReceivedAmount - @Paid < 0 THEN 0 ELSE ReceivedAmount - @Paid END > 0
+                               THEN 'Partial'
+                           ELSE 'Sent'
+                       END
+                WHERE  Id     = @InvoiceId
+                  AND  Status NOT IN ('Cancelled')",
+                new { Paid = payment.TotalAmountPaid, InvoiceId = payment.InvoiceId }, tx);
+
+            tx.Commit();
+            return true;
         }
     }
 }

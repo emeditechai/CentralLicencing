@@ -11,5 +11,7 @@ namespace CentralLicenceApp.Repositories
         Task<InvoicePayment?> GetByIdAsync(int id);
         Task<string> GetNextReceiptNoAsync();
         Task<int> CreateAsync(InvoicePayment payment);
+        Task<bool> HasActivePaymentsAsync(int invoiceId);
+        Task<bool> VoidAsync(int id, string voidedBy, string remarks);
     }
 }

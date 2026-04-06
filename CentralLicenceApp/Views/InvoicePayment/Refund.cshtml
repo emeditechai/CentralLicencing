@@ -1,0 +1,176 @@
+@model CentralLicenceApp.Models.InvoicePayment
+@{
+    ViewData["Title"] = "Issue Refund";
+    var maxRefundable  = (decimal)(ViewBag.MaxRefundable ?? 0m);
+    var modes          = ViewBag.PaymentModes as List<CentralLicenceApp.Models.PaymentMode> ?? new();
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-secondary py-1">
+        <i class="bi bi-arrow-left me-1"></i> Back
+    </a>
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Issue Refund</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Refund against receipt @Model.ReceiptNo</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header fw-semibold" style="background:#fff7ed;font-size:.9rem;">
+                <i class="bi bi-arrow-counterclockwise me-1" style="color:#ea580c;"></i> Refund Details
+            </div>
+            <div class="card-body">
+                <form asp-action="Refund" asp-route-id="@Model.Id" method="post" id="refundForm">
+                    @Html.AntiForgeryToken()
+
+                    <!-- Refund Amount -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:.85rem;">
+                            Refund Amount <span class="text-danger">*</span>
+                            <span class="text-muted fw-normal">(max ₹@maxRefundable.ToString("N2"))</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">₹</span>
+                            <input type="number" name="amount" id="refundAmount" class="form-control"
+                                   step="0.01" min="0.01" max="@maxRefundable.ToString("F2")"
+                                   placeholder="0.00" style="border-radius:0 10px 10px 0;" required />
+                        </div>
+                        <div class="invalid-feedback">Enter a valid amount (1–@maxRefundable.ToString("N2")).</div>
+                    </div>
+
+                    <!-- Refund Date -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:.85rem;">
+                            Refund Date <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" name="refundDate" class="form-control"
+                               value="@DateTime.Today.ToString("yyyy-MM-dd")"
+                               style="border-radius:10px;" required />
+                    </div>
+
+                    <!-- Payment Mode -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:.85rem;">
+                            Refund Mode <span class="text-danger">*</span>
+                        </label>
+                        <select name="paymentModeId" class="form-select" style="border-radius:10px;" required>
+                            <option value="">— Select Mode —</option>
+                            @foreach (var m in modes)
+                            {
+                                <option value="@m.Id">@m.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Reference No -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:.85rem;">Reference No</label>
+                        <input type="text" name="referenceNo" class="form-control"
+                               placeholder="Cheque / UTR / Transaction ID…" style="border-radius:10px;" />
+                    </div>
+
+                    <!-- Remarks -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold" style="font-size:.85rem;">
+                            Remarks <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="remarks" class="form-control" rows="3"
+                                  placeholder="Reason for refund…" style="border-radius:10px;" required></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <a asp-action="Details" asp-route-id="@Model.Id"
+                           class="btn btn-outline-secondary" style="border-radius:10px;">Cancel</a>
+                        <button type="submit" class="btn text-white" style="background:#ea580c;border:none;border-radius:10px;">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Confirm Refund
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary sidebar -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header fw-semibold" style="background:#f0f4ff;font-size:.9rem;">
+                <i class="bi bi-receipt me-1"></i> Original Payment Summary
+            </div>
+            <div class="card-body" style="font-size:.875rem;">
+                <div class="row g-2">
+                    <div class="col-5 text-muted">Receipt No</div>
+                    <div class="col-7 fw-semibold" style="color:#6366f1;">@Model.ReceiptNo</div>
+
+                    <div class="col-5 text-muted">Invoice No</div>
+                    <div class="col-7">
+                        <a asp-controller="Invoice" asp-action="Details" asp-route-id="@Model.InvoiceId"
+                           style="color:#6366f1;text-decoration:none;">@Model.InvoiceNo</a>
+                    </div>
+
+                    <div class="col-5 text-muted">Party</div>
+                    <div class="col-7 fw-semibold">@Model.PartyName</div>
+
+                    <div class="col-5 text-muted">Amount Paid</div>
+                    <div class="col-7 fw-semibold">₹@Model.TotalAmountPaid.ToString("N2")</div>
+
+                    @if (Model.Refunds.Any())
+                    {
+                        var alreadyRefunded = Model.Refunds.Sum(r => r.Amount);
+                        <div class="col-5 text-muted">Already Refunded</div>
+                        <div class="col-7 fw-semibold" style="color:#ea580c;">₹@alreadyRefunded.ToString("N2")</div>
+                    }
+
+                    <div class="col-5 text-muted">Max Refundable</div>
+                    <div class="col-7 fw-bold" style="color:#16a34a;">₹@maxRefundable.ToString("N2")</div>
+                </div>
+            </div>
+        </div>
+
+        @if (Model.Refunds.Any())
+        {
+            <div class="card mt-3">
+                <div class="card-header fw-semibold" style="background:#f8fafc;font-size:.9rem;">
+                    <i class="bi bi-arrow-counterclockwise me-1" style="color:#ea580c;"></i> Previous Refunds
+                </div>
+                <div class="card-body p-0">
+                    <table class="table tbl-clean mb-0" style="font-size:.83rem;">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">Refund No</th>
+                                <th>Date</th>
+                                <th class="pe-3 text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in Model.Refunds)
+                            {
+                                <tr>
+                                    <td class="ps-3" style="color:#ea580c;">@r.RefundNo</td>
+                                    <td>@r.RefundDate.ToString("dd MMM yyyy")</td>
+                                    <td class="pe-3 text-end fw-semibold">₹@r.Amount.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+    document.getElementById('refundForm')?.addEventListener('submit', function (e) {
+        var amt = parseFloat(document.getElementById('refundAmount').value);
+        var max = @maxRefundable.ToString("F2");
+        if (isNaN(amt) || amt <= 0 || amt > max + 0.005) {
+            e.preventDefault();
+            document.getElementById('refundAmount').classList.add('is-invalid');
+            document.getElementById('refundAmount').focus();
+        }
+    });
+    document.getElementById('refundAmount')?.addEventListener('input', function () {
+        this.classList.remove('is-invalid');
+    });
+</script>

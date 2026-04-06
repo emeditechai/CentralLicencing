@@ -303,7 +303,8 @@
                             </form>
                         }
                         <button type="button" class="btn btn-outline-danger w-100" style="border-radius:10px;"
-                                data-bs-toggle="modal" data-bs-target="#cancelModal">
+                                data-bs-toggle="modal"
+                                data-bs-target="@((bool)(ViewBag.HasActivePayments ?? false) ? "#cancelBlockedModal" : "#cancelModal")">
                             <i class="bi bi-x-circle me-1"></i> Cancel Invoice
                         </button>
                     }
@@ -360,3 +361,32 @@
             document.getElementById('cancelRemarksError').style.display = 'none';
     });
 </script>
+
+<!-- Cancel Blocked Modal — shown when invoice has active payments -->
+<div class="modal fade" id="cancelBlockedModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-danger"><i class="bi bi-shield-exclamation me-2"></i>Cannot Cancel Invoice</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <div class="alert alert-warning border-0 rounded-3" style="font-size:.875rem;">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>@Model.InvoiceNo</strong> has one or more active payment records.
+                </div>
+                <p style="font-size:.875rem;color:#475569;">
+                    To cancel this invoice you must first <strong>void</strong> all payments recorded against it.
+                    Go to <strong>Payment Process</strong>, open each receipt for this invoice, and void it before attempting cancellation.
+                </p>
+                <a asp-controller="InvoicePayment" asp-action="Index"
+                   class="btn btn-outline-primary w-100" style="border-radius:10px;">
+                    <i class="bi bi-credit-card me-1"></i> Go to Payment Process
+                </a>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:8px;">Close</button>
+            </div>
+        </div>
+    </div>
+</div>

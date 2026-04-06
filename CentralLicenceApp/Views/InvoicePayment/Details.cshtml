@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = "Receipt Details";
     var company = ViewBag.CompanySettings as CentralLicenceApp.Models.CompanySetting;
+    var totalRefunded  = Model.Refunds.Sum(r => r.Amount);
+    var netPaid        = Model.TotalAmountPaid - totalRefunded;
 }
 
 <div class="d-flex align-items-center gap-3 mb-4">
@@ -9,14 +11,36 @@
         <i class="bi bi-arrow-left me-1"></i> Back
     </a>
     <div class="flex-grow-1">
-        <h4 class="fw-bold mb-0" style="color:#1e293b;">@Model.ReceiptNo</h4>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">
+            @Model.ReceiptNo
+            @if (Model.IsVoided)
+            {
+                <span class="badge ms-2" style="background:#fee2e2;color:#b91c1c;font-size:.65rem;vertical-align:middle;">VOIDED</span>
+            }
+        </h4>
         <p class="text-muted mb-0" style="font-size:.85rem;">Payment Receipt</p>
     </div>
-    <a asp-action="Print" asp-route-id="@Model.Id" target="_blank"
-       class="btn btn-sm btn-outline-primary py-1">
-        <i class="bi bi-printer me-1"></i> Print
-    </a>
+    @if (!Model.IsVoided)
+    {
+        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank"
+           class="btn btn-sm btn-outline-primary py-1">
+            <i class="bi bi-printer me-1"></i> Print
+        </a>
+    }
 </div>
+
+@if (Model.IsVoided)
+{
+    <div class="alert alert-danger border-0 rounded-3 mb-4" style="font-size:.875rem;">
+        <i class="bi bi-x-circle-fill me-2"></i>
+        <strong>This payment has been voided</strong> by <strong>@Model.VoidedBy</strong>
+        on @Model.VoidedAt?.ToString("dd MMM yyyy, hh:mm tt").
+        @if (!string.IsNullOrWhiteSpace(Model.VoidRemarks))
+        {
+            <span>Reason: <em>@Model.VoidRemarks</em></span>
+        }
+    </div>
+}
 
 <div class="row g-4">
     <div class="col-lg-8">
@@ -56,7 +80,7 @@
         </div>
 
         <!-- Payment lines -->
-        <div class="card">
+        <div class="card mb-3">
             <div class="card-header fw-semibold" style="background:#f8fafc;font-size:.9rem;">
                 <i class="bi bi-credit-card me-1"></i> Payment Breakdown
             </div>
@@ -88,16 +112,65 @@
                             <td colspan="3" class="ps-3 fw-bold" style="font-size:.95rem;">Total Paid</td>
                             <td class="pe-3 text-end fw-bold" style="font-size:1rem;">₹@Model.TotalAmountPaid.ToString("N2")</td>
                         </tr>
+                        @if (totalRefunded > 0)
+                        {
+                            <tr style="background:#fef3c7;color:#92400e;">
+                                <td colspan="3" class="ps-3 fw-semibold" style="font-size:.875rem;">Total Refunded</td>
+                                <td class="pe-3 text-end fw-semibold">− ₹@totalRefunded.ToString("N2")</td>
+                            </tr>
+                            <tr style="background:#dcfce7;color:#166534;">
+                                <td colspan="3" class="ps-3 fw-bold" style="font-size:.95rem;">Net Effective</td>
+                                <td class="pe-3 text-end fw-bold" style="font-size:1rem;">₹@netPaid.ToString("N2")</td>
+                            </tr>
+                        }
                     </tfoot>
                 </table>
             </div>
         </div>
 
+        <!-- Refunds Section -->
+        @if (Model.Refunds.Any())
+        {
+            <div class="card mb-3">
+                <div class="card-header fw-semibold" style="background:#fff7ed;font-size:.9rem;">
+                    <i class="bi bi-arrow-counterclockwise me-1" style="color:#ea580c;"></i> Refunds Issued
+                </div>
+                <div class="card-body p-0">
+                    <table class="table tbl-clean mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-3">Refund No</th>
+                                <th>Date</th>
+                                <th>Mode</th>
+                                <th>Reference</th>
+                                <th>Remarks</th>
+                                <th class="pe-3 text-end">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var r in Model.Refunds)
+                            {
+                                <tr>
+                                    <td class="ps-3 fw-semibold" style="color:#ea580c;font-size:.85rem;">@r.RefundNo</td>
+                                    <td style="font-size:.85rem;">@r.RefundDate.ToString("dd MMM yyyy")</td>
+                                    <td style="font-size:.85rem;">@r.PaymentModeName</td>
+                                    <td class="text-muted" style="font-size:.82rem;">@(string.IsNullOrWhiteSpace(r.ReferenceNo) ? "—" : r.ReferenceNo)</td>
+                                    <td class="text-muted" style="font-size:.82rem;">@(string.IsNullOrWhiteSpace(r.Remarks) ? "—" : r.Remarks)</td>
+                                    <td class="pe-3 text-end fw-semibold" style="color:#ea580c;">₹@r.Amount.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
     </div>
 
-    <!-- Right summary card -->
+    <!-- Right sidebar -->
     <div class="col-lg-4">
-        <div class="card">
+        <!-- Invoice Status card -->
+        <div class="card mb-3">
             <div class="card-header fw-semibold" style="background:#f8fafc;font-size:.9rem;">
                 <i class="bi bi-info-circle me-1"></i> Invoice Status
             </div>
@@ -112,9 +185,109 @@
                 }
                 <span class="badge px-3 py-2 fs-6" style="@statusStyle">@Model.InvoiceStatus</span>
                 <p class="text-muted mt-3 mb-0" style="font-size:.8rem;">
-                    Invoice status after this receipt was recorded.
+                    Current invoice status.
                 </p>
             </div>
         </div>
+
+        @if (User.IsInRole("Administrator") && !Model.IsVoided)
+        {
+            <!-- Actions card -->
+            <div class="card">
+                <div class="card-header fw-semibold" style="background:#f8fafc;font-size:.9rem;">
+                    <i class="bi bi-lightning me-1" style="color:#6366f1;"></i> Actions
+                </div>
+                <div class="card-body d-flex flex-column gap-2">
+                    <button type="button" class="btn btn-outline-danger w-100" style="border-radius:10px;"
+                            data-bs-toggle="modal" data-bs-target="#voidModal">
+                        <i class="bi bi-x-circle me-1"></i> Void Payment
+                    </button>
+                    <small class="text-muted text-center" style="font-size:.78rem;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Void the payment first to enable refund.
+                    </small>
+                </div>
+            </div>
+        }
+
+        @if (User.IsInRole("Administrator") && Model.IsVoided)
+        {
+            var alreadyRefunded = Model.Refunds.Sum(r => r.Amount);
+            var refundable      = Model.TotalAmountPaid - alreadyRefunded;
+            if (refundable > 0)
+            {
+                <!-- Refund card — only after void -->
+                <div class="card">
+                    <div class="card-header fw-semibold" style="background:#fff7ed;font-size:.9rem;">
+                        <i class="bi bi-arrow-counterclockwise me-1" style="color:#ea580c;"></i> Refund
+                    </div>
+                    <div class="card-body d-flex flex-column gap-2">
+                        <p class="text-muted mb-1" style="font-size:.8rem;">
+                            This payment has been voided. You can now issue a refund of up to
+                            <strong>₹@refundable.ToString("N2")</strong> to the party.
+                        </p>
+                        <a asp-action="Refund" asp-route-id="@Model.Id"
+                           class="btn w-100 text-white" style="background:#ea580c;border:none;border-radius:10px;">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Issue Refund
+                        </a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-success border-0 rounded-3 mb-0 py-2 px-3" style="font-size:.8rem;">
+                    <i class="bi bi-check-circle-fill me-1"></i> Full amount has been refunded.
+                </div>
+            }
+        }
     </div>
 </div>
+
+@if (User.IsInRole("Administrator") && !Model.IsVoided)
+{
+    <!-- Void Payment Modal -->
+    <div class="modal fade" id="voidModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-danger"><i class="bi bi-x-circle me-2"></i>Void Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form asp-action="VoidPayment" asp-route-id="@Model.Id" method="post" id="voidForm">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-body pt-2">
+                        <div class="alert alert-warning border-0 rounded-3 mb-3" style="font-size:.8rem;">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            Voiding <strong>@Model.ReceiptNo</strong> will reverse ₹@Model.TotalAmountPaid.ToString("N2")
+                            from the invoice balance. This cannot be undone.
+                        </div>
+                        <label class="form-label fw-semibold" style="font-size:.85rem;">
+                            Reason for Voiding <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="voidRemarks" id="voidRemarks" class="form-control" rows="3"
+                                  placeholder="Enter reason for voiding this payment…" style="border-radius:10px;"></textarea>
+                        <div id="voidRemarksError" class="text-danger mt-1" style="font-size:.82rem;display:none;">
+                            Reason is required.
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="border-radius:8px;">Cancel</button>
+                        <button type="submit" class="btn btn-danger" style="border-radius:8px;">
+                            <i class="bi bi-x-circle me-1"></i> Confirm Void
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('voidForm')?.addEventListener('submit', function (e) {
+            var r = document.getElementById('voidRemarks').value.trim();
+            if (!r) { e.preventDefault(); document.getElementById('voidRemarksError').style.display = 'block'; document.getElementById('voidRemarks').focus(); }
+        });
+        document.getElementById('voidRemarks')?.addEventListener('input', function () {
+            if (this.value.trim()) document.getElementById('voidRemarksError').style.display = 'none';
+        });
+    </script>
+}
+

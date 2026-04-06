@@ -16,17 +16,20 @@ namespace CentralLicenceApp.Controllers
         private readonly IInvoiceRepository        _invoiceRepo;
         private readonly IPaymentModeRepository    _modeRepo;
         private readonly IBankMasterRepository     _bankRepo;
+        private readonly IInvoiceRefundRepository  _refundRepo;
 
         public InvoicePaymentController(
             IInvoicePaymentRepository paymentRepo,
             IInvoiceRepository        invoiceRepo,
             IPaymentModeRepository    modeRepo,
-            IBankMasterRepository     bankRepo)
+            IBankMasterRepository     bankRepo,
+            IInvoiceRefundRepository  refundRepo)
         {
             _paymentRepo = paymentRepo;
             _invoiceRepo = invoiceRepo;
             _modeRepo    = modeRepo;
             _bankRepo    = bankRepo;
+            _refundRepo  = refundRepo;
         }
 
         // GET /InvoicePayment
@@ -73,10 +76,11 @@ namespace CentralLicenceApp.Controllers
                 vm.OutstandingBalance = inv.TotalAmount - inv.ReceivedAmount;
             }
 
-            // All open invoices for the dropdown (exclude only Paid and Cancelled)
+            // All open invoices for the dropdown (exclude Paid, Cancelled, and zero-due invoices)
             var allInvoices = await _invoiceRepo.GetAllAsync();
             ViewBag.UnpaidInvoices = allInvoices
-                .Where(i => i.Status is not "Paid" and not "Cancelled")
+                .Where(i => i.Status is not "Paid" and not "Cancelled"
+                         && (i.TotalAmount - i.ReceivedAmount) > 0)
                 .OrderByDescending(i => i.InvoiceDate)
                 .ToList();
 
@@ -98,7 +102,8 @@ namespace CentralLicenceApp.Controllers
                 ViewBag.Banks = (await _bankRepo.GetAllAsync()).ToList();
                 var allInvoices = await _invoiceRepo.GetAllAsync();
                 ViewBag.UnpaidInvoices = allInvoices
-                    .Where(i => i.Status is not "Paid" and not "Cancelled")
+                    .Where(i => i.Status is not "Paid" and not "Cancelled"
+                             && (i.TotalAmount - i.ReceivedAmount) > 0)
                     .OrderByDescending(i => i.InvoiceDate)
                     .ToList();
 
@@ -237,6 +242,123 @@ namespace CentralLicenceApp.Controllers
                 previousBalance    = livePreviousBalance,
                 outstandingBalance = inv.TotalAmount - inv.ReceivedAmount
             });
+        }
+
+        // -----------------------------------------------------------------------
+        // POST /InvoicePayment/VoidPayment/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator")]
+        public async Task<IActionResult> VoidPayment(int id, string voidRemarks)
+        {
+            if (string.IsNullOrWhiteSpace(voidRemarks))
+            {
+                TempData["Error"] = "Void remarks are required.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            var payment = await _paymentRepo.GetByIdAsync(id);
+            if (payment == null) return NotFound();
+
+            if (payment.IsVoided)
+            {
+                TempData["Error"] = "This payment has already been voided.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            var voided = await _paymentRepo.VoidAsync(id, User.Identity?.Name ?? "system", voidRemarks.Trim());
+            TempData[voided ? "Success" : "Error"] = voided
+                ? $"Payment <strong>{payment.ReceiptNo}</strong> has been voided successfully. The invoice balance has been restored."
+                : "Payment could not be voided.";
+
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        // GET /InvoicePayment/Refund/5
+        [Authorize(Roles = "Administrator")]
+        public async Task<IActionResult> Refund(int id)
+        {
+            var payment = await _paymentRepo.GetByIdAsync(id);
+            if (payment == null) return NotFound();
+
+            if (!payment.IsVoided)
+            {
+                TempData["Error"] = "The payment must be voided before a refund can be issued. Please void the payment first."; 
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            var alreadyRefunded = payment.Refunds.Sum(r => r.Amount);
+            var maxRefundable   = payment.TotalAmountPaid - alreadyRefunded;
+
+            if (maxRefundable <= 0)
+            {
+                TempData["Error"] = "The full payment amount has already been refunded.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            ViewBag.MaxRefundable = maxRefundable;
+            ViewBag.PaymentModes  = (await _modeRepo.GetAllActiveAsync()).ToList();
+            return View(payment);
+        }
+
+        // POST /InvoicePayment/Refund/5
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator")]
+        public async Task<IActionResult> Refund(int id, decimal amount, int paymentModeId,
+                                                  string? referenceNo, string? remarks, DateTime refundDate)
+        {
+            var payment = await _paymentRepo.GetByIdAsync(id);
+            if (payment == null) return NotFound();
+
+            if (!payment.IsVoided)
+            {
+                TempData["Error"] = "The payment must be voided before a refund can be issued.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            var alreadyRefunded = payment.Refunds.Sum(r => r.Amount);
+            var maxRefundable   = payment.TotalAmountPaid - alreadyRefunded;
+
+            if (amount <= 0 || amount > maxRefundable + 0.005m)
+            {
+                TempData["Error"] = $"Refund amount must be between ₹0.01 and ₹{maxRefundable:N2}.";
+                ViewBag.MaxRefundable = maxRefundable;
+                ViewBag.PaymentModes  = (await _modeRepo.GetAllActiveAsync()).ToList();
+                return View(payment);
+            }
+
+            var modes = (await _modeRepo.GetAllActiveAsync()).ToList();
+            var mode  = modes.FirstOrDefault(m => m.Id == paymentModeId);
+            if (mode == null)
+            {
+                TempData["Error"] = "Please select a valid payment mode.";
+                ViewBag.MaxRefundable = maxRefundable;
+                ViewBag.PaymentModes  = modes;
+                return View(payment);
+            }
+
+            var refundNo = await _refundRepo.GetNextRefundNoAsync();
+            var refund   = new InvoiceRefund
+            {
+                RefundNo        = refundNo,
+                PaymentId       = id,
+                InvoiceId       = payment.InvoiceId,
+                InvoiceNo       = payment.InvoiceNo,
+                PartyId         = payment.PartyId,
+                PartyName       = payment.PartyName,
+                RefundDate      = refundDate == default ? DateTime.Today : refundDate,
+                Amount          = amount,
+                PaymentModeId   = paymentModeId,
+                PaymentModeName = mode.Name,
+                ReferenceNo     = referenceNo?.Trim(),
+                Remarks         = remarks?.Trim(),
+                CreatedBy       = User.Identity?.Name
+            };
+
+            await _refundRepo.CreateAsync(refund);
+            TempData["Success"] = $"Refund <strong>{refundNo}</strong> of ₹{amount:N2} recorded successfully.";
+            return RedirectToAction(nameof(Details), new { id });
         }
 
         // -----------------------------------------------------------------------
