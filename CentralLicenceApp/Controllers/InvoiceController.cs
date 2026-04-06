@@ -56,10 +56,21 @@ namespace CentralLicenceApp.Controllers
         }
 
         // GET /Invoice
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(DateTime? from, DateTime? to, string? status)
         {
-            var invoices = await _invoiceRepo.GetAllAsync();
-            return View(invoices.ToList());
+            var fromDate = (from ?? DateTime.Today.AddDays(-7)).Date;
+            var toDate   = (to   ?? DateTime.Today).Date;
+
+            var all = await _invoiceRepo.GetAllAsync();
+            var invoices = all
+                .Where(i => i.InvoiceDate.Date >= fromDate && i.InvoiceDate.Date <= toDate)
+                .Where(i => string.IsNullOrEmpty(status) || i.Status == status)
+                .ToList();
+
+            ViewBag.From   = fromDate.ToString("yyyy-MM-dd");
+            ViewBag.To     = toDate.ToString("yyyy-MM-dd");
+            ViewBag.Status = status ?? string.Empty;
+            return View(invoices);
         }
 
         // GET /Invoice/Create

@@ -47,10 +47,21 @@ namespace CentralLicenceApp.Controllers
         }
 
         // GET /Quotation
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(DateTime? from, DateTime? to, string? status)
         {
-            var quotations = await _quotationRepo.GetAllAsync();
-            return View(quotations.ToList());
+            var fromDate = (from ?? DateTime.Today.AddDays(-7)).Date;
+            var toDate   = (to   ?? DateTime.Today).Date;
+
+            var all = await _quotationRepo.GetAllAsync();
+            var quotations = all
+                .Where(q => q.QuotationDate.Date >= fromDate && q.QuotationDate.Date <= toDate)
+                .Where(q => string.IsNullOrEmpty(status) || q.Status == status)
+                .ToList();
+
+            ViewBag.From   = fromDate.ToString("yyyy-MM-dd");
+            ViewBag.To     = toDate.ToString("yyyy-MM-dd");
+            ViewBag.Status = status ?? string.Empty;
+            return View(quotations);
         }
 
         // GET /Quotation/Create

@@ -9,17 +9,59 @@
     var convertedCount = Model.Count(q => q.Status == "Converted");
     var rejectedCount  = Model.Count(q => q.Status == "Rejected" || q.Status == "Cancelled");
     var acceptedValue  = Model.Where(q => q.Status == "Accepted").Sum(q => q.TotalAmount);
+    var fromVal        = ViewBag.From  as string ?? string.Empty;
+    var toVal          = ViewBag.To    as string ?? string.Empty;
+    var statusVal      = ViewBag.Status as string ?? string.Empty;
 }
 
 <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
         <h4 class="fw-bold mb-0" style="color:#1e293b;">Quotations</h4>
-        <p class="text-muted mb-0" style="font-size:.85rem;">@Model.Count quotation@(Model.Count == 1 ? "" : "s")</p>
+        <p class="text-muted mb-0" style="font-size:.85rem;">
+            @Model.Count quotation@(Model.Count == 1 ? "" : "s")
+            <span class="ms-1" style="color:#6366f1;">(@fromVal.Replace("-","/") – @toVal.Replace("-","/"))</span>
+        </p>
     </div>
     <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
         <i class="bi bi-plus-lg me-1"></i> New Quotation
     </a>
 </div>
+
+<!-- Filter Bar -->
+<form method="get" asp-action="Index" class="card mb-4 border-0 shadow-sm">
+    <div class="card-body py-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;">From Date</label>
+                <input type="date" name="from" value="@fromVal" class="form-control form-control-sm" style="border-radius:8px;" />
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;">To Date</label>
+                <input type="date" name="to" value="@toVal" class="form-control form-control-sm" style="border-radius:8px;" />
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;">Status</label>
+                <select name="status" class="form-select form-select-sm" style="border-radius:8px;">
+                    <option value="" selected="@(statusVal == "")">All Status</option>
+                    <option value="Draft"     selected="@(statusVal == "Draft")">Draft</option>
+                    <option value="Sent"      selected="@(statusVal == "Sent")">Sent</option>
+                    <option value="Accepted"  selected="@(statusVal == "Accepted")">Accepted</option>
+                    <option value="Converted" selected="@(statusVal == "Converted")">Converted</option>
+                    <option value="Rejected"  selected="@(statusVal == "Rejected")">Rejected</option>
+                    <option value="Cancelled" selected="@(statusVal == "Cancelled")">Cancelled</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary flex-fill" style="background:#6366f1;border:none;border-radius:8px;">
+                    <i class="bi bi-funnel me-1"></i> Filter
+                </button>
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;" title="Clear filters">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</form>
 
 <!-- Summary Cards -->
 <div class="row g-3 mb-4">
