@@ -1,0 +1,124 @@
+@model CentralLicenceApp.Models.CreditNote
+@{
+    ViewData["Title"] = "Issue Credit Note";
+    var modes  = ViewBag.PaymentModes as List<CentralLicenceApp.Models.PaymentMode> ?? new();
+    var refund = ViewBag.Refund as CentralLicenceApp.Models.InvoiceRefund;
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-controller="InvoicePayment" asp-action="Details" asp-route-id="@Model.PaymentId"
+       class="btn btn-sm btn-outline-secondary py-1">
+        <i class="bi bi-arrow-left me-1"></i> Back
+    </a>
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Issue Credit Note</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Against refund @Model.RefundNo — receipt @Model.ReceiptNo</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header fw-semibold" style="background:#f0fdf4;font-size:.9rem;">
+                <i class="bi bi-file-earmark-plus me-1" style="color:#16a34a;"></i> Credit Note Details
+            </div>
+            <div class="card-body">
+                <form asp-action="Generate" asp-route-id="@(refund?.Id ?? 0)" method="post" id="cnForm">
+                    @Html.AntiForgeryToken()
+
+                    <!-- Credit Note Date -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:.85rem;">
+                            Credit Note Date <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" name="CreditNoteDate" class="form-control"
+                               value="@(Model.CreditNoteDate == default ? DateTime.Today.ToString("yyyy-MM-dd") : Model.CreditNoteDate.ToString("yyyy-MM-dd"))"
+                               style="border-radius:10px;" required />
+                    </div>
+
+                    <!-- Party Address -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:.85rem;">Party Address</label>
+                        <textarea name="PartyAddress" class="form-control" rows="2" style="border-radius:10px;">@Model.PartyAddress</textarea>
+                    </div>
+
+                    <!-- GSTIN -->
+                    <div class="row g-3 mb-3">
+                        <div class="col">
+                            <label class="form-label fw-semibold" style="font-size:.85rem;">GSTIN</label>
+                            <input type="text" name="PartyGSTINNo" class="form-control"
+                                   value="@Model.PartyGSTINNo" style="border-radius:10px;" />
+                        </div>
+                        <div class="col">
+                            <label class="form-label fw-semibold" style="font-size:.85rem;">PAN</label>
+                            <input type="text" name="PartyPANNo" class="form-control"
+                                   value="@Model.PartyPANNo" style="border-radius:10px;" />
+                        </div>
+                    </div>
+
+                    <!-- Reason -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold" style="font-size:.85rem;">Reason / Remarks</label>
+                        <textarea name="Reason" class="form-control" rows="2"
+                                  placeholder="e.g. Refund issued due to cancellation of Invoice @Model.InvoiceNo"
+                                  style="border-radius:10px;">@Model.Reason</textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success px-4" style="background:#16a34a;border:none;border-radius:10px;">
+                            <i class="bi bi-file-earmark-check me-1"></i> Issue Credit Note
+                        </button>
+                        <a asp-controller="InvoicePayment" asp-action="Details" asp-route-id="@Model.PaymentId"
+                           class="btn btn-outline-secondary" style="border-radius:10px;">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar: refund summary -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header fw-semibold" style="background:#fff7ed;font-size:.9rem;">
+                <i class="bi bi-arrow-counterclockwise me-1" style="color:#ea580c;"></i> Refund Summary
+            </div>
+            <div class="card-body" style="font-size:.875rem;">
+                <div class="row g-2">
+                    <div class="col-5 text-muted">Refund No</div>
+                    <div class="col-7 fw-semibold" style="color:#ea580c;">@Model.RefundNo</div>
+
+                    <div class="col-5 text-muted">Invoice</div>
+                    <div class="col-7">@Model.InvoiceNo</div>
+
+                    <div class="col-5 text-muted">Receipt</div>
+                    <div class="col-7">@Model.ReceiptNo</div>
+
+                    <div class="col-5 text-muted">Party</div>
+                    <div class="col-7 fw-semibold">@Model.PartyName</div>
+
+                    <div class="col-5 text-muted">Date</div>
+                    <div class="col-7">@(refund?.RefundDate.ToString("dd MMM yyyy"))</div>
+
+                    <div class="col-5 text-muted">Mode</div>
+                    <div class="col-7">@Model.PaymentModeName</div>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.ReferenceNo))
+                    {
+                        <div class="col-5 text-muted">Reference</div>
+                        <div class="col-7 text-muted">@Model.ReferenceNo</div>
+                    }
+
+                    <div class="col-12 mt-2 pt-2 border-top d-flex justify-content-between align-items-center">
+                        <span class="fw-bold">Credit Amount</span>
+                        <span class="fw-bold fs-5" style="color:#16a34a;">₹@Model.Amount.ToString("N2")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="alert border-0 rounded-3 mt-3 py-2 px-3" style="background:#f0fdf4;font-size:.8rem;color:#166534;">
+            <i class="bi bi-info-circle me-1"></i>
+            A Credit Note is a formal document acknowledging that the above amount has been refunded to <strong>@Model.PartyName</strong>.
+            It can be printed and shared with the party as confirmation.
+        </div>
+    </div>
+</div>

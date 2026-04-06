@@ -1,0 +1,307 @@
+@model CentralLicenceApp.Models.CreditNote
+@using CentralLicenceApp.Models
+@using CentralLicenceApp.Repositories
+@inject ICompanySettingsRepository CompanySettingsRepo
+@{
+    Layout = null;
+    var company       = await CompanySettingsRepo.GetParentCompanyAsync();
+    var brandName     = string.IsNullOrWhiteSpace(company?.CompanyName)     ? "YOUR COMPANY" : company.CompanyName.Trim().ToUpperInvariant();
+    var brandLogoPath = string.IsNullOrWhiteSpace(company?.CompanyLogoPath) ? null : Url.Content(company.CompanyLogoPath!);
+    var companyAddr   = company?.Address   ?? string.Empty;
+    var companyMobile = company?.ContactNo ?? string.Empty;
+    var companyGstin  = company?.GSTCode   ?? string.Empty;
+
+    static string NumberToWords(long n)
+    {
+        if (n == 0) return "Zero";
+        string[] ones = {"","One","Two","Three","Four","Five","Six","Seven","Eight","Nine",
+                         "Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen",
+                         "Seventeen","Eighteen","Nineteen","Twenty","Twenty One","Twenty Two",
+                         "Twenty Three","Twenty Four","Twenty Five","Twenty Six","Twenty Seven",
+                         "Twenty Eight","Twenty Nine","Thirty","Thirty One","Thirty Two","Thirty Three",
+                         "Thirty Four","Thirty Five","Thirty Six","Thirty Seven","Thirty Eight",
+                         "Thirty Nine","Forty","Forty One","Forty Two","Forty Three","Forty Four",
+                         "Forty Five","Forty Six","Forty Seven","Forty Eight","Forty Nine","Fifty",
+                         "Fifty One","Fifty Two","Fifty Three","Fifty Four","Fifty Five","Fifty Six",
+                         "Fifty Seven","Fifty Eight","Fifty Nine","Sixty","Sixty One","Sixty Two",
+                         "Sixty Three","Sixty Four","Sixty Five","Sixty Six","Sixty Seven","Sixty Eight",
+                         "Sixty Nine","Seventy","Seventy One","Seventy Two","Seventy Three","Seventy Four",
+                         "Seventy Five","Seventy Six","Seventy Seven","Seventy Eight","Seventy Nine","Eighty",
+                         "Eighty One","Eighty Two","Eighty Three","Eighty Four","Eighty Five","Eighty Six",
+                         "Eighty Seven","Eighty Eight","Eighty Nine","Ninety","Ninety One","Ninety Two",
+                         "Ninety Three","Ninety Four","Ninety Five","Ninety Six","Ninety Seven",
+                         "Ninety Eight","Ninety Nine"};
+        if (n < 0)        return "Minus " + NumberToWords(-n);
+        if (n < 100)      return ones[n];
+        if (n < 1000)     return ones[n / 100] + " Hundred" + (n % 100 != 0 ? " " + NumberToWords(n % 100) : "");
+        if (n < 100000)   return NumberToWords(n / 1000) + " Thousand" + (n % 1000 != 0 ? " " + NumberToWords(n % 1000) : "");
+        if (n < 10000000) return NumberToWords(n / 100000) + " Lakh" + (n % 100000 != 0 ? " " + NumberToWords(n % 100000) : "");
+        return NumberToWords(n / 10000000) + " Crore" + (n % 10000000 != 0 ? " " + NumberToWords(n % 10000000) : "");
+    }
+    var amountWords = NumberToWords((long)Model.Amount) + " Rupees Only";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Credit Note @Model.CreditNoteNo</title>
+    <style>
+        *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+        @@page {
+            size: A5 portrait;
+            margin: 10mm 12mm 12mm;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 9.5px;
+            color: #1a1a2e;
+            background: #fff;
+        }
+        @@media screen {
+            body { background: #b0b8c8; }
+            .page { width: 148mm; margin: 0 auto; box-shadow: 0 6px 32px rgba(0,0,0,.22); }
+            .print-toolbar { display: flex; }
+        }
+        @@media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .print-toolbar { display: none !important; }
+            .page { width: 100%; box-shadow: none; }
+        }
+        .print-toolbar {
+            align-items: center; gap: 10px;
+            padding: 8px 16px;
+            background: #1e293b;
+            position: sticky; top: 0; z-index: 10;
+        }
+        .print-toolbar button {
+            background: #16a34a; color: #fff; border: none;
+            padding: 6px 20px; border-radius: 7px; cursor: pointer;
+            font-size: 12px; font-weight: 600;
+        }
+        .print-toolbar a {
+            background: #334155; color: #e2e8f0;
+            padding: 6px 16px; border-radius: 7px;
+            font-size: 12px; text-decoration: none;
+        }
+        .print-toolbar .doc-no { color: #94a3b8; font-size: 11px; margin-left: auto; }
+
+        .page { background: #fff; }
+
+        .top-band {
+            background: #166534;
+            padding: 10px 14px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .top-band .brand-logo img { max-height: 36px; max-width: 120px; object-fit: contain; display: block; }
+        .top-band .brand-name { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: .04em; }
+        .top-band .brand-sub  { font-size: 7.5px; color: #bbf7d0; margin-top: 2px; line-height: 1.55; }
+        .top-band .doc-badge {
+            background: rgba(255,255,255,.13);
+            border: 1.5px solid rgba(255,255,255,.35);
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .top-band .doc-badge .doc-type  { font-size: 9px; letter-spacing: .12em; text-transform: uppercase; opacity: .8; }
+        .top-band .doc-badge .doc-no    { font-size: 13px; font-weight: 700; letter-spacing: .04em; }
+        .top-band .doc-badge .doc-date  { font-size: 8px; opacity: .75; margin-top: 2px; }
+
+        .party-strip {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .party-box {
+            padding: 8px 12px;
+            font-size: 8.5px;
+            line-height: 1.6;
+        }
+        .party-box:first-child { border-right: 1px solid #e2e8f0; }
+        .party-box .lbl { font-weight: 700; color: #64748b; text-transform: uppercase; font-size: 7px; letter-spacing: .08em; }
+        .party-box .val { font-weight: 600; font-size: 9.5px; }
+
+        .ref-tags {
+            display: flex; gap: 8px; flex-wrap: wrap;
+            padding: 6px 12px;
+            background: #f0fdf4;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 8px;
+        }
+        .ref-tags .tag { background: #dcfce7; color: #166534; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+
+        .cn-amount-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8.5px;
+        }
+        .cn-amount-table th {
+            background: #f1f5f9;
+            padding: 5px 10px;
+            text-align: left;
+            font-size: 7.5px;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: #64748b;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .cn-amount-table td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
+        .cn-amount-table .total-row td {
+            background: #dcfce7; color: #166534;
+            font-weight: 700; font-size: 9.5px;
+        }
+
+        .words-box {
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            padding: 5px 12px;
+            font-size: 7.5px;
+            color: #475569;
+        }
+
+        .reason-box {
+            padding: 5px 12px 6px;
+            font-size: 8px;
+            color: #475569;
+            border-top: 1px solid #f1f5f9;
+        }
+        .reason-box strong { font-size: 7.5px; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
+
+        .footer-band {
+            background: #f1f5f9;
+            padding: 6px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 7.5px;
+            color: #64748b;
+            margin-top: auto;
+        }
+        .footer-band .sig-line {
+            text-align: center;
+        }
+        .footer-band .sig-line .sig-space {
+            height: 20px;
+            border-bottom: 1px dashed #cbd5e1;
+            width: 90px;
+            margin: 0 auto 3px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Print toolbar (screen only) -->
+<div class="print-toolbar">
+    <button onclick="window.print()">🖨 Print</button>
+    <a href="@Url.Action("Details", "CreditNote", new { id = Model.Id })">← Back</a>
+    <span class="doc-no">Credit Note — @Model.CreditNoteNo</span>
+</div>
+
+<div class="page">
+
+    <!-- Top band -->
+    <div class="top-band">
+        <div>
+            @if (brandLogoPath != null)
+            {
+                <div class="brand-logo"><img src="@brandLogoPath" alt="logo" /></div>
+            }
+            else
+            {
+                <div class="brand-name">@brandName</div>
+            }
+            <div class="brand-sub">
+                @if (!string.IsNullOrWhiteSpace(companyAddr))   { <span>@companyAddr</span><br /> }
+                @if (!string.IsNullOrWhiteSpace(companyMobile)) { <span>📞 @companyMobile</span> }
+                @if (!string.IsNullOrWhiteSpace(companyGstin))  { <span>  ·  GSTIN: @companyGstin</span> }
+            </div>
+        </div>
+        <div class="doc-badge">
+            <div class="doc-type">Credit Note</div>
+            <div class="doc-no">@Model.CreditNoteNo</div>
+            <div class="doc-date">@Model.CreditNoteDate.ToString("dd MMM yyyy")</div>
+        </div>
+    </div>
+
+    <!-- Party strip -->
+    <div class="party-strip">
+        <div class="party-box">
+            <div class="lbl">Issued To</div>
+            <div class="val">@Model.PartyName</div>
+            @if (!string.IsNullOrWhiteSpace(Model.PartyAddress))   { <div>@Model.PartyAddress</div> }
+            @if (!string.IsNullOrWhiteSpace(Model.PartyGSTINNo))   { <div>GSTIN: @Model.PartyGSTINNo</div> }
+            @if (!string.IsNullOrWhiteSpace(Model.PartyPANNo))     { <div>PAN: @Model.PartyPANNo</div> }
+            @if (!string.IsNullOrWhiteSpace(Model.PartyMobile))    { <div>📞 @Model.PartyMobile</div> }
+        </div>
+        <div class="party-box">
+            <div class="lbl">References</div>
+            <div><span style="color:#64748b;">Invoice:</span> <strong>@Model.InvoiceNo</strong></div>
+            <div><span style="color:#64748b;">Receipt:</span> <strong>@Model.ReceiptNo</strong></div>
+            <div><span style="color:#64748b;">Refund:</span>  <strong>@Model.RefundNo</strong></div>
+        </div>
+    </div>
+
+    <!-- Ref tags -->
+    <div class="ref-tags">
+        <span>This credit note supersedes the above refund.</span>
+        <span class="tag">Original Invoice: @Model.InvoiceNo</span>
+        <span class="tag">Receipt: @Model.ReceiptNo</span>
+    </div>
+
+    <!-- Amount table -->
+    <table class="cn-amount-table">
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th>Payment Mode</th>
+                <th>Reference</th>
+                <th style="text-align:right;">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Refund against @Model.InvoiceNo</td>
+                <td>@Model.PaymentModeName</td>
+                <td>@(string.IsNullOrWhiteSpace(Model.ReferenceNo) ? "—" : Model.ReferenceNo)</td>
+                <td style="text-align:right;font-weight:600;">₹ @Model.Amount.ToString("N2")</td>
+            </tr>
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="3" style="text-align:right;">Total Credit</td>
+                <td style="text-align:right;">₹ @Model.Amount.ToString("N2")</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- Amount in words -->
+    <div class="words-box">
+        <strong>Amount in Words:</strong> @amountWords
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.Reason))
+    {
+        <div class="reason-box">
+            <strong>Reason:</strong> @Model.Reason
+        </div>
+    }
+
+    <!-- Footer -->
+    <div class="footer-band">
+        <div>
+            <div>Issued by: <strong>@Model.CreatedBy</strong></div>
+            <div style="color:#94a3b8;">@Model.CreatedAt.ToString("dd MMM yyyy, hh:mm tt")</div>
+        </div>
+        <div class="sig-line">
+            <div class="sig-space"></div>
+            <div>Authorised Signatory</div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

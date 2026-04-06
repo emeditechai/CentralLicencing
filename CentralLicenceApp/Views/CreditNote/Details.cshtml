@@ -1,0 +1,147 @@
+@model CentralLicenceApp.Models.CreditNote
+@{
+    ViewData["Title"] = "Credit Note Details";
+    var company = ViewBag.CompanySettings as CentralLicenceApp.Models.CompanySetting;
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-controller="InvoicePayment" asp-action="Details" asp-route-id="@Model.PaymentId"
+       class="btn btn-sm btn-outline-secondary py-1">
+        <i class="bi bi-arrow-left me-1"></i> Back to Receipt
+    </a>
+    <div class="flex-grow-1">
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">@Model.CreditNoteNo</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Credit Note</p>
+    </div>
+    <a asp-action="Print" asp-route-id="@Model.Id" target="_blank"
+       class="btn btn-sm btn-outline-primary py-1">
+        <i class="bi bi-printer me-1"></i> Print
+    </a>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success border-0 rounded-3 mb-4" style="font-size:.875rem;">
+        <i class="bi bi-check-circle-fill me-2"></i> @Html.Raw(TempData["Success"])
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-8">
+
+        <!-- Credit Note Info -->
+        <div class="card mb-3">
+            <div class="card-header fw-semibold" style="background:#f0fdf4;font-size:.9rem;">
+                <i class="bi bi-file-earmark-check me-1" style="color:#16a34a;"></i> Credit Note Information
+            </div>
+            <div class="card-body">
+                <div class="row g-3" style="font-size:.875rem;">
+                    <div class="col-sm-4 text-muted">Credit Note No</div>
+                    <div class="col-sm-8 fw-semibold" style="color:#16a34a;">@Model.CreditNoteNo</div>
+
+                    <div class="col-sm-4 text-muted">Credit Note Date</div>
+                    <div class="col-sm-8">@Model.CreditNoteDate.ToString("dd MMM yyyy")</div>
+
+                    <div class="col-sm-4 text-muted">Against Invoice</div>
+                    <div class="col-sm-8">
+                        <a asp-controller="Invoice" asp-action="Details" asp-route-id="@Model.InvoiceId"
+                           style="color:#6366f1;text-decoration:none;">@Model.InvoiceNo</a>
+                    </div>
+
+                    <div class="col-sm-4 text-muted">Against Receipt</div>
+                    <div class="col-sm-8">
+                        <a asp-controller="InvoicePayment" asp-action="Details" asp-route-id="@Model.PaymentId"
+                           style="color:#6366f1;text-decoration:none;">@Model.ReceiptNo</a>
+                    </div>
+
+                    <div class="col-sm-4 text-muted">Against Refund</div>
+                    <div class="col-sm-8" style="color:#ea580c;">@Model.RefundNo</div>
+
+                    <div class="col-sm-4 text-muted">Party</div>
+                    <div class="col-sm-8 fw-semibold">@Model.PartyName</div>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.PartyAddress))
+                    {
+                        <div class="col-sm-4 text-muted">Address</div>
+                        <div class="col-sm-8">@Model.PartyAddress</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.PartyGSTINNo))
+                    {
+                        <div class="col-sm-4 text-muted">GSTIN</div>
+                        <div class="col-sm-8">@Model.PartyGSTINNo</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.PartyPANNo))
+                    {
+                        <div class="col-sm-4 text-muted">PAN</div>
+                        <div class="col-sm-8">@Model.PartyPANNo</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Amount -->
+        <div class="card mb-3">
+            <div class="card-header fw-semibold" style="background:#f8fafc;font-size:.9rem;">
+                <i class="bi bi-currency-rupee me-1"></i> Credit Details
+            </div>
+            <div class="card-body p-0">
+                <table class="table tbl-clean mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-3">Payment Mode</th>
+                            <th>Reference No</th>
+                            <th class="pe-3 text-end">Amount Credited</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="ps-3 fw-semibold">@Model.PaymentModeName</td>
+                            <td class="text-muted">@(string.IsNullOrWhiteSpace(Model.ReferenceNo) ? "—" : Model.ReferenceNo)</td>
+                            <td class="pe-3 text-end fw-semibold" style="color:#16a34a;">₹@Model.Amount.ToString("N2")</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr style="background:#dcfce7;color:#166534;">
+                            <td colspan="2" class="ps-3 fw-bold" style="font-size:.95rem;">Total Credit</td>
+                            <td class="pe-3 text-end fw-bold" style="font-size:1rem;">₹@Model.Amount.ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Reason))
+        {
+            <div class="card">
+                <div class="card-header fw-semibold" style="background:#f8fafc;font-size:.9rem;">
+                    <i class="bi bi-chat-left-text me-1"></i> Reason / Remarks
+                </div>
+                <div class="card-body" style="font-size:.875rem;">@Model.Reason</div>
+            </div>
+        }
+
+    </div>
+
+    <!-- Right sidebar -->
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header fw-semibold" style="background:#f0fdf4;font-size:.9rem;">
+                <i class="bi bi-info-circle me-1"></i> Summary
+            </div>
+            <div class="card-body text-center py-4">
+                <div class="fw-bold" style="font-size:1.6rem;color:#16a34a;">₹@Model.Amount.ToString("N2")</div>
+                <p class="text-muted mt-2 mb-0" style="font-size:.8rem;">Credit issued to @Model.PartyName</p>
+                <p class="text-muted mb-0" style="font-size:.78rem;">on @Model.CreditNoteDate.ToString("dd MMM yyyy")</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header fw-semibold" style="background:#f8fafc;font-size:.9rem;">
+                <i class="bi bi-person me-1"></i> Issued By
+            </div>
+            <div class="card-body" style="font-size:.8rem;color:#475569;">
+                @Model.CreatedBy — @Model.CreatedAt.ToString("dd MMM yyyy, hh:mm tt")
+            </div>
+        </div>
+    </div>
+</div>

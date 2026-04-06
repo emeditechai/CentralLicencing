@@ -144,7 +144,8 @@
                                 <th>Mode</th>
                                 <th>Reference</th>
                                 <th>Remarks</th>
-                                <th class="pe-3 text-end">Amount</th>
+                                <th class="text-end">Amount</th>
+                                <th class="pe-3 text-center">Credit Note</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -156,7 +157,29 @@
                                     <td style="font-size:.85rem;">@r.PaymentModeName</td>
                                     <td class="text-muted" style="font-size:.82rem;">@(string.IsNullOrWhiteSpace(r.ReferenceNo) ? "—" : r.ReferenceNo)</td>
                                     <td class="text-muted" style="font-size:.82rem;">@(string.IsNullOrWhiteSpace(r.Remarks) ? "—" : r.Remarks)</td>
-                                    <td class="pe-3 text-end fw-semibold" style="color:#ea580c;">₹@r.Amount.ToString("N2")</td>
+                                    <td class="text-end fw-semibold" style="color:#ea580c;">₹@r.Amount.ToString("N2")</td>
+                                    <td class="pe-3 text-center">
+                                        @if (r.CreditNoteId.HasValue)
+                                        {
+                                            <a asp-controller="CreditNote" asp-action="Details" asp-route-id="@r.CreditNoteId"
+                                               class="badge text-decoration-none"
+                                               style="background:#dcfce7;color:#166534;font-size:.78rem;padding:4px 8px;border-radius:6px;">
+                                                <i class="bi bi-file-earmark-check me-1"></i>@r.CreditNoteNo
+                                            </a>
+                                        }
+                                        else if (User.IsInRole("Administrator"))
+                                        {
+                                            <a asp-controller="CreditNote" asp-action="Generate" asp-route-id="@r.Id"
+                                               class="btn btn-sm py-0 px-2"
+                                               style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:6px;font-size:.78rem;">
+                                                <i class="bi bi-plus-circle me-1"></i> Issue Credit Note
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted" style="font-size:.78rem;">—</span>
+                                        }
+                                    </td>
                                 </tr>
                             }
                         </tbody>
@@ -238,6 +261,19 @@
                 <div class="alert alert-success border-0 rounded-3 mb-0 py-2 px-3" style="font-size:.8rem;">
                     <i class="bi bi-check-circle-fill me-1"></i> Full amount has been refunded.
                 </div>
+                    var pendingCreditNotes = Model.Refunds.Where(r => !r.CreditNoteId.HasValue).ToList();
+                if (User.IsInRole("Administrator") && pendingCreditNotes.Any())
+                {
+                    <div class="mt-2">
+                        @foreach (var pr in pendingCreditNotes)
+                        {
+                            <a asp-controller="CreditNote" asp-action="Generate" asp-route-id="@pr.Id"
+                               class="btn w-100 mb-1 text-white" style="background:#16a34a;border:none;border-radius:10px;font-size:.85rem;">
+                                <i class="bi bi-file-earmark-plus me-1"></i> Issue Credit Note for @pr.RefundNo
+                            </a>
+                        }
+                    </div>
+                }
             }
         }
     </div>

@@ -56,6 +56,10 @@ namespace CentralLicenceApp.Models
         public string? Remarks { get; set; }
         public string? CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
+
+        /// <summary>Populated via LEFT JOIN with CreditNote table — null if no credit note issued yet.</summary>
+        public int? CreditNoteId { get; set; }
+        public string? CreditNoteNo { get; set; }
     }
 
     public class InvoicePaymentLine

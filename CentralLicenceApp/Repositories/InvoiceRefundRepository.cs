@@ -22,9 +22,24 @@ namespace CentralLicenceApp.Repositories
         public async Task<IEnumerable<InvoiceRefund>> GetByPaymentIdAsync(int paymentId)
         {
             using var conn = CreateConnection();
-            return await conn.QueryAsync<InvoiceRefund>(
-                "SELECT * FROM InvoiceRefund WHERE PaymentId = @PaymentId ORDER BY CreatedAt",
+            return await conn.QueryAsync<InvoiceRefund>(@"
+                SELECT r.*, cn.Id AS CreditNoteId, cn.CreditNoteNo
+                FROM   InvoiceRefund r
+                LEFT JOIN CreditNote cn ON cn.RefundId = r.Id
+                WHERE  r.PaymentId = @PaymentId
+                ORDER  BY r.CreatedAt",
                 new { PaymentId = paymentId });
+        }
+
+        public async Task<InvoiceRefund?> GetByIdAsync(int id)
+        {
+            using var conn = CreateConnection();
+            return await conn.QueryFirstOrDefaultAsync<InvoiceRefund>(@"
+                SELECT r.*, cn.Id AS CreditNoteId, cn.CreditNoteNo
+                FROM   InvoiceRefund r
+                LEFT JOIN CreditNote cn ON cn.RefundId = r.Id
+                WHERE  r.Id = @Id",
+                new { Id = id });
         }
 
         public async Task<string> GetNextRefundNoAsync()
