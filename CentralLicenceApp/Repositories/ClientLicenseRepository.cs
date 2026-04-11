@@ -242,5 +242,21 @@ namespace CentralLicenceApp.Repositories
                 }
             };
         }
+
+        public async Task<bool> UpdateMaintenanceAlertAsync(int id, bool isDisplayAlerts, DateTime? alertStartDate, TimeSpan? alertStartTime, DateTime? alertEndDate, TimeSpan? alertEndTime, string? alertMessage)
+        {
+            using var conn = CreateConnection();
+            var rows = await conn.ExecuteAsync(@"
+                UPDATE ClientAppLicense
+                SET IsDisplayAlerts = @IsDisplayAlerts,
+                    AlertStartDate  = @AlertStartDate,
+                    AlertStartTime  = @AlertStartTime,
+                    AlertEndDate    = @AlertEndDate,
+                    AlertEndTime    = @AlertEndTime,
+                    AlertMessage    = @AlertMessage
+                WHERE Id = @Id",
+                new { Id = id, IsDisplayAlerts = isDisplayAlerts, AlertStartDate = alertStartDate, AlertStartTime = alertStartTime, AlertEndDate = alertEndDate, AlertEndTime = alertEndTime, AlertMessage = alertMessage });
+            return rows > 0;
+        }
     }
 }

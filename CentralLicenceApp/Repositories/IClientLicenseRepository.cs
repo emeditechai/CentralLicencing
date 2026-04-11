@@ -18,5 +18,6 @@ namespace CentralLicenceApp.Repositories
         Task<IEnumerable<string>> GetDistinctProductTypesAsync();
         Task<IEnumerable<ClientAppLicense>> GetLicensesExpiringWithinDaysAsync(int days);
         Task<IEnumerable<ClientAppLicense>> GetAmcExpiringWithinDaysAsync(int days);
+        Task<bool> UpdateMaintenanceAlertAsync(int id, bool isDisplayAlerts, DateTime? alertStartDate, TimeSpan? alertStartTime, DateTime? alertEndDate, TimeSpan? alertEndTime, string? alertMessage);
     }
 }

@@ -24,5 +24,13 @@ namespace CentralLicenceApp.Models
         public string? AppUrl { get; set; }
         public string? ConnectionString { get; set; }
         public string ProductType { get; set; } = "eRestoPOS";
+
+        // Maintenance Alert fields
+        public bool IsDisplayAlerts { get; set; }
+        public DateTime? AlertStartDate { get; set; }
+        public TimeSpan? AlertStartTime { get; set; }
+        public DateTime? AlertEndDate { get; set; }
+        public TimeSpan? AlertEndTime { get; set; }
+        public string? AlertMessage { get; set; }
     }
 }

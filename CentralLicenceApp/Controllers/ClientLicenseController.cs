@@ -228,5 +228,32 @@ namespace CentralLicenceApp.Controllers
             TempData["Success"] = "License record deleted.";
             return RedirectToAction(nameof(Index));
         }
+
+        [HttpGet]
+        [Authorize(Roles = "Administrator")]
+        public async Task<IActionResult> GetMaintenanceAlert(int id)
+        {
+            var license = await _repo.GetByIdAsync(id);
+            if (license == null) return NotFound();
+            return Json(new
+            {
+                license.Id,
+                license.IsDisplayAlerts,
+                AlertStartDate = license.AlertStartDate?.ToString("yyyy-MM-dd"),
+                AlertStartTime = license.AlertStartTime?.ToString(@"hh\:mm"),
+                AlertEndDate = license.AlertEndDate?.ToString("yyyy-MM-dd"),
+                AlertEndTime = license.AlertEndTime?.ToString(@"hh\:mm"),
+                license.AlertMessage
+            });
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Administrator")]
+        public async Task<IActionResult> UpdateMaintenanceAlert(int id, bool isDisplayAlerts, DateTime? alertStartDate, TimeSpan? alertStartTime, DateTime? alertEndDate, TimeSpan? alertEndTime, string? alertMessage)
+        {
+            var result = await _repo.UpdateMaintenanceAlertAsync(id, isDisplayAlerts, alertStartDate, alertStartTime, alertEndDate, alertEndTime, alertMessage);
+            if (!result) return Json(new { success = false, message = "License not found." });
+            return Json(new { success = true, message = "Maintenance alert updated successfully." });
+        }
     }
 }
