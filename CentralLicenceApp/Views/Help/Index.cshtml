@@ -1,0 +1,964 @@
+@{
+    ViewData["Title"] = "Help & Guide";
+    var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+    var isAdmin = User.IsInRole("Administrator") || string.Equals(User.Identity?.Name, "admin", StringComparison.OrdinalIgnoreCase);
+    var isCrmOnly = (User.IsInRole("ClientTicket") || User.IsInRole("Ticket Admin") || User.IsInRole("Ticket Agent")) && !isAdmin;
+}
+
+@section HeadExtra {
+<style>
+    .help-hero {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+        border-radius: 20px;
+        padding: 2.5rem 2rem;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+    .help-hero::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 300px;
+        height: 300px;
+        background: rgba(255,255,255,.06);
+        border-radius: 50%;
+    }
+    .help-hero::after {
+        content: '';
+        position: absolute;
+        bottom: -40%;
+        left: 5%;
+        width: 200px;
+        height: 200px;
+        background: rgba(255,255,255,.04);
+        border-radius: 50%;
+    }
+    .help-hero h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        margin-bottom: .5rem;
+        letter-spacing: -.02em;
+    }
+    .help-hero p {
+        opacity: .88;
+        font-size: .92rem;
+        margin-bottom: 0;
+        max-width: 600px;
+    }
+    .help-search-box {
+        max-width: 480px;
+        margin-top: 1.25rem;
+        position: relative;
+    }
+    .help-search-box input {
+        border: none;
+        border-radius: 12px;
+        padding: .65rem 1rem .65rem 2.8rem;
+        font-size: .88rem;
+        width: 100%;
+        background: rgba(255,255,255,.95);
+        color: #1e293b;
+        box-shadow: 0 4px 16px rgba(0,0,0,.1);
+    }
+    .help-search-box input::placeholder { color: #94a3b8; }
+    .help-search-box input:focus { outline: none; box-shadow: 0 4px 24px rgba(0,0,0,.15); }
+    .help-search-box .search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6366f1;
+        font-size: 1rem;
+    }
+
+    .help-toc {
+        position: sticky;
+        top: 80px;
+    }
+    .help-toc .toc-title {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        font-weight: 700;
+        color: #94a3b8;
+        margin-bottom: .75rem;
+    }
+    .help-toc a {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        padding: .5rem .75rem;
+        border-radius: 10px;
+        font-size: .82rem;
+        font-weight: 500;
+        color: #475569;
+        text-decoration: none;
+        transition: all .15s;
+        margin-bottom: .15rem;
+    }
+    .help-toc a:hover, .help-toc a.active {
+        background: #f1f5f9;
+        color: #6366f1;
+    }
+    .help-toc a i {
+        font-size: .9rem;
+        width: 20px;
+        text-align: center;
+    }
+
+    .help-module {
+        background: #fff;
+        border: 1px solid #f1f5f9;
+        border-radius: 16px;
+        padding: 1.75rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,.04);
+        transition: box-shadow .2s;
+        scroll-margin-top: 90px;
+    }
+    .help-module:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,.06);
+    }
+    .help-module-header {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        margin-bottom: 1rem;
+    }
+    .help-module-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .help-module-header h3 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+    }
+    .help-module-header .module-badge {
+        font-size: .65rem;
+        font-weight: 600;
+        padding: .2rem .55rem;
+        border-radius: 6px;
+        background: #f1f5f9;
+        color: #64748b;
+        margin-left: auto;
+        white-space: nowrap;
+    }
+
+    .help-module p {
+        font-size: .85rem;
+        color: #475569;
+        line-height: 1.65;
+        margin-bottom: .75rem;
+    }
+
+    .help-steps {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        counter-reset: step;
+    }
+    .help-steps li {
+        counter-increment: step;
+        display: flex;
+        gap: .75rem;
+        padding: .6rem 0;
+        border-bottom: 1px solid #f8fafc;
+        font-size: .84rem;
+        color: #334155;
+        line-height: 1.55;
+    }
+    .help-steps li:last-child { border-bottom: none; }
+    .help-steps li::before {
+        content: counter(step);
+        flex-shrink: 0;
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        background: #f1f5f9;
+        color: #6366f1;
+        font-size: .72rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .help-features {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: .5rem;
+        margin-top: .5rem;
+    }
+    .help-feature-tag {
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+        font-size: .78rem;
+        color: #475569;
+        background: #f8fafc;
+        border: 1px solid #f1f5f9;
+        border-radius: 8px;
+        padding: .4rem .65rem;
+    }
+    .help-feature-tag i { color: #6366f1; font-size: .75rem; }
+
+    .help-tip {
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        border: 1px solid #fde68a;
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-top: .75rem;
+        font-size: .82rem;
+        color: #92400e;
+        display: flex;
+        align-items: flex-start;
+        gap: .6rem;
+    }
+    .help-tip i { font-size: 1rem; margin-top: .1rem; flex-shrink: 0; }
+
+    .help-nav-badge {
+        font-size: .7rem;
+        font-weight: 600;
+        padding: .15rem .4rem;
+        border-radius: 4px;
+        margin-left: auto;
+    }
+
+    .quick-links-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: .75rem;
+        margin-bottom: 2rem;
+    }
+    .quick-link-card {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        padding: 1rem 1.15rem;
+        background: #fff;
+        border: 1px solid #f1f5f9;
+        border-radius: 14px;
+        text-decoration: none;
+        color: #334155;
+        transition: all .15s;
+        cursor: pointer;
+    }
+    .quick-link-card:hover {
+        border-color: #c7d2fe;
+        box-shadow: 0 4px 16px rgba(99,102,241,.08);
+        transform: translateY(-1px);
+    }
+    .quick-link-card .ql-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+    .quick-link-card .ql-label {
+        font-size: .82rem;
+        font-weight: 600;
+    }
+    .quick-link-card .ql-desc {
+        font-size: .72rem;
+        color: #94a3b8;
+        margin-top: .1rem;
+    }
+
+    .help-section-divider {
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+        margin: 1.75rem 0 1rem;
+    }
+    .help-section-divider .divider-line {
+        flex: 1;
+        height: 1px;
+        background: #e2e8f0;
+    }
+    .help-section-divider .divider-label {
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        font-weight: 700;
+        color: #94a3b8;
+        white-space: nowrap;
+    }
+
+    @@media (max-width: 991px) {
+        .help-toc { display: none; }
+    }
+</style>
+}
+
+<div class="px-2">
+    <!-- Hero Banner -->
+    <div class="help-hero">
+        <h1><i class="bi bi-book me-2"></i>Help & Guide</h1>
+        <p>Welcome to the application manual. Find step-by-step guidance for every module, understand workflows, and get the most out of the platform.</p>
+        <div class="help-search-box">
+            <i class="bi bi-search search-icon"></i>
+            <input type="text" id="helpSearchInput" placeholder="Search help topics..." autocomplete="off" />
+        </div>
+    </div>
+
+    <!-- Quick Navigation Links -->
+    <div class="quick-links-grid" id="quickLinksGrid">
+        @if (!isCrmOnly)
+        {
+        <a class="quick-link-card" href="#module-dashboard">
+            <div class="ql-icon" style="background:#eef2ff;color:#6366f1;"><i class="bi bi-speedometer2"></i></div>
+            <div><div class="ql-label">Dashboard</div><div class="ql-desc">Overview & analytics</div></div>
+        </a>
+        <a class="quick-link-card" href="#module-licences">
+            <div class="ql-icon" style="background:#ecfdf5;color:#059669;"><i class="bi bi-card-checklist"></i></div>
+            <div><div class="ql-label">Licence Management</div><div class="ql-desc">Clients, validation & audit</div></div>
+        </a>
+        <a class="quick-link-card" href="#module-expenses">
+            <div class="ql-icon" style="background:#fef3c7;color:#d97706;"><i class="bi bi-wallet2"></i></div>
+            <div><div class="ql-label">Expenses & Advance</div><div class="ql-desc">Requests, approvals & reimbursement</div></div>
+        </a>
+        <a class="quick-link-card" href="#module-quotation-invoice">
+            <div class="ql-icon" style="background:#fce7f3;color:#db2777;"><i class="bi bi-receipt-cutoff"></i></div>
+            <div><div class="ql-label">Quotations & Invoices</div><div class="ql-desc">Billing, payments & credit notes</div></div>
+        </a>
+        }
+        <a class="quick-link-card" href="#module-crm">
+            <div class="ql-icon" style="background:#e0f2fe;color:#0284c7;"><i class="bi bi-headset"></i></div>
+            <div><div class="ql-label">Help Desk / CRM</div><div class="ql-desc">Tickets & support</div></div>
+        </a>
+        @if (!isCrmOnly)
+        {
+        <a class="quick-link-card" href="#module-reports">
+            <div class="ql-icon" style="background:#f3e8ff;color:#9333ea;"><i class="bi bi-bar-chart-line"></i></div>
+            <div><div class="ql-label">Reports</div><div class="ql-desc">Analytics & exports</div></div>
+        </a>
+        }
+        @if (isAdmin)
+        {
+        <a class="quick-link-card" href="#module-admin">
+            <div class="ql-icon" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-gear"></i></div>
+            <div><div class="ql-label">Administration</div><div class="ql-desc">Users, roles & settings</div></div>
+        </a>
+        <a class="quick-link-card" href="#module-masters">
+            <div class="ql-icon" style="background:#f0fdf4;color:#16a34a;"><i class="bi bi-collection"></i></div>
+            <div><div class="ql-label">Master Data</div><div class="ql-desc">Products, parties & rates</div></div>
+        </a>
+        }
+    </div>
+
+    <div class="row">
+        <!-- Sticky Table of Contents (Left) -->
+        <div class="col-lg-3 d-none d-lg-block">
+            <div class="help-toc" id="helpToc">
+                <div class="toc-title">Table of Contents</div>
+                @if (!isCrmOnly)
+                {
+                <a href="#module-dashboard"><i class="bi bi-speedometer2"></i> Dashboard</a>
+                <a href="#module-licences"><i class="bi bi-card-checklist"></i> Licence Management</a>
+                <a href="#module-expenses"><i class="bi bi-wallet2"></i> Expenses & Advance</a>
+                <a href="#module-quotation-invoice"><i class="bi bi-receipt-cutoff"></i> Quotations & Invoices</a>
+                }
+                <a href="#module-crm"><i class="bi bi-headset"></i> Help Desk / CRM</a>
+                @if (!isCrmOnly)
+                {
+                <a href="#module-reports"><i class="bi bi-bar-chart-line"></i> Reports</a>
+                }
+                @if (isAdmin)
+                {
+                <a href="#module-admin"><i class="bi bi-gear"></i> Administration</a>
+                <a href="#module-masters"><i class="bi bi-collection"></i> Master Data</a>
+                <a href="#module-email"><i class="bi bi-send-check"></i> Email Engine</a>
+                }
+                <div style="margin-top:1rem;border-top:1px solid #f1f5f9;padding-top:.75rem;">
+                    <a href="#module-tips"><i class="bi bi-lightbulb"></i> Tips & Shortcuts</a>
+                    <a href="#module-roles"><i class="bi bi-shield-check"></i> Roles & Permissions</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content (Right) -->
+        <div class="col-lg-9">
+            <div id="helpModulesContainer">
+
+                @* ─── DASHBOARD ──────────────────────────── *@
+                @if (!isCrmOnly)
+                {
+                <div class="help-module" id="module-dashboard" data-keywords="dashboard overview analytics summary chart stats kpi">
+                    <div class="help-module-header">
+                        <div class="help-module-icon" style="background:#eef2ff;color:#6366f1;"><i class="bi bi-speedometer2"></i></div>
+                        <div>
+                            <h3>Dashboard</h3>
+                            <span class="text-muted" style="font-size:.78rem;">Your central command center</span>
+                        </div>
+                        <span class="module-badge">All Users</span>
+                    </div>
+                    <p>The Dashboard provides a real-time overview of your business operations at a glance. It displays key performance indicators (KPIs), summary cards, and visual charts to keep you informed of the current state of licences, invoices, expenses, and more.</p>
+                    <ol class="help-steps">
+                        <li>Navigate to <strong>Dashboard</strong> from the sidebar (it is the default landing page after login).</li>
+                        <li>View summary cards showing <strong>Total Licences</strong>, <strong>Active vs Expired</strong>, <strong>Revenue collected</strong>, and <strong>Pending dues</strong>.</li>
+                        <li>Use the <strong>Product Type</strong> filter dropdown to narrow data by specific product categories (e.g., Healthcare, Hospitality).</li>
+                        <li>Charts visualize trends over time — hover on chart elements for detailed data points.</li>
+                        <li>Sections for <strong>Expiring Licences</strong> and <strong>AMC Renewals</strong> give you upcoming action items.</li>
+                    </ol>
+                    <div class="help-features">
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Real-time KPI Cards</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Visual Charts</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Product Type Filter</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Expiry Alerts</div>
+                    </div>
+                </div>
+
+                @* ─── LICENCE MANAGEMENT ───────────────────── *@
+                <div class="help-module" id="module-licences" data-keywords="licence license client validation audit history key expiry amc maintenance alert">
+                    <div class="help-module-header">
+                        <div class="help-module-icon" style="background:#ecfdf5;color:#059669;"><i class="bi bi-card-checklist"></i></div>
+                        <div>
+                            <h3>Licence Management</h3>
+                            <span class="text-muted" style="font-size:.78rem;">Manage client licences, validation, and auditing</span>
+                        </div>
+                        <span class="module-badge">All Users</span>
+                    </div>
+                    <p>The Licence Management module is the core of this application. It allows you to issue, track, and manage client application licences. Each licence is tied to a Client Code and contains information about the app, expiry dates, AMC status, and licence keys.</p>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Client Licences</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Go to <strong>Licences → Client Licences</strong> in the sidebar.</li>
+                        <li>Browse licenses with <strong>Search</strong>, <strong>Status filter</strong> (Active/Expired), and <strong>Product Type</strong> filter.</li>
+                        <li>Click the <i class="bi bi-eye"></i> <strong>Details</strong> icon to view complete licence information.</li>
+                        <li>Click the <i class="bi bi-pencil"></i> <strong>Edit</strong> icon (Admin only) to modify client name, expiry date, AMC date, contact, email, app URL, and connection string.</li>
+                        <li>Click the <i class="bi bi-person-lines-fill"></i> icon to add or edit <strong>Client Details</strong> (company information, address, etc.).</li>
+                        <li>Click the <i class="bi bi-bell"></i> <strong>Maintenance Alert</strong> icon (Admin only) to set up a maintenance alert with start/end date-time and a custom message that will be displayed to the client application.</li>
+                        <li>View the generated <strong>License Key</strong> by clicking the key icon — you can copy it to clipboard easily.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Validation History</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Navigate to <strong>Licences → Validation History</strong>.</li>
+                        <li>View a log of all licence validation attempts made by client applications against your server.</li>
+                        <li>Each entry shows the client code, status (Valid/Invalid), IP address, and timestamp.</li>
+                        <li>Use this page to investigate client connectivity or unauthorized usage attempts.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Audit Log</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Navigate to <strong>Licences → Audit Log</strong>.</li>
+                        <li>Every field-level change to licence records is logged with <strong>old value</strong>, <strong>new value</strong>, <strong>modified by</strong>, and <strong>timestamp</strong>.</li>
+                        <li>Use this to track who changed what and when — essential for compliance and security.</li>
+                    </ol>
+
+                    <div class="help-features">
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Licence Key Generation</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Expiry Tracking</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> AMC Management</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Maintenance Alerts</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Validation History</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Field-level Audit</div>
+                    </div>
+
+                    <div class="help-tip">
+                        <i class="bi bi-lightbulb-fill"></i>
+                        <div><strong>Tip:</strong> Use Maintenance Alerts when performing scheduled server maintenance. Enabling an alert with date/time range and a message will notify client applications during that window.</div>
+                    </div>
+                </div>
+
+                @* ─── EXPENSES & ADVANCE ─────────────────── *@
+                <div class="help-module" id="module-expenses" data-keywords="expense advance approval reimbursement claim category budget finance">
+                    <div class="help-module-header">
+                        <div class="help-module-icon" style="background:#fef3c7;color:#d97706;"><i class="bi bi-wallet2"></i></div>
+                        <div>
+                            <h3>Expenses & Advance</h3>
+                            <span class="text-muted" style="font-size:.78rem;">Expense claim workflow with multi-level approvals</span>
+                        </div>
+                        <span class="module-badge">All Users</span>
+                    </div>
+                    <p>The Expense module manages the full lifecycle of employee expense requests — from submission to approval and reimbursement. It supports multiple expense line items with file attachments, category-based tracking, and a multi-level approval workflow.</p>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Creating an Expense Request</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Navigate to <strong>Business Unit → Expenses & Advance → Expense Requests</strong>.</li>
+                        <li>Click <strong>New Request</strong> to create a new expense claim.</li>
+                        <li>Fill in the request header: <strong>Title</strong>, <strong>Department</strong>, <strong>Financial Year</strong>, and optional <strong>Notes</strong>.</li>
+                        <li>Add one or more <strong>expense line items</strong> — each with a Category, Description, Amount, Date, and optional file attachment (receipts, bills).</li>
+                        <li><strong>Save as Draft</strong> to continue later, or <strong>Submit</strong> to send it for approval.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Approval Workflow</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Once submitted, the request moves to the <strong>Approval Inbox</strong> of the designated approver.</li>
+                        <li>Approvers see pending requests under <strong>Expenses & Advance → Approval Inbox</strong>.</li>
+                        <li>Approvers can <strong>Approve</strong>, <strong>Reject</strong>, or <strong>Send Back</strong> the request with comments.</li>
+                        <li>Browser notifications are sent to the requestor when their expense status changes.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Reimbursement</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Approved expenses appear in <strong>Expenses & Advance → Reimbursement Desk</strong> (Finance role only).</li>
+                        <li>The Finance team can process settlements — marking expenses as reimbursed with payment details.</li>
+                    </ol>
+
+                    <div class="help-features">
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Multi-line Items</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> File Attachments</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Multi-level Approval</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Browser Notifications</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Draft & Submit</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Financial Year Tracking</div>
+                    </div>
+                </div>
+
+                @* ─── QUOTATIONS & INVOICES ────────────────── *@
+                <div class="help-module" id="module-quotation-invoice" data-keywords="quotation invoice payment credit note billing pdf email terms party product rate">
+                    <div class="help-module-header">
+                        <div class="help-module-icon" style="background:#fce7f3;color:#db2777;"><i class="bi bi-receipt-cutoff"></i></div>
+                        <div>
+                            <h3>Quotations & Invoices</h3>
+                            <span class="text-muted" style="font-size:.78rem;">End-to-end billing, payments, and credit management</span>
+                        </div>
+                        <span class="module-badge">All Users</span>
+                    </div>
+                    <p>This module covers the entire billing lifecycle — from creating quotations/proposals to generating invoices, recording payments, and issuing credit notes. All documents can be exported as PDF and emailed directly to clients.</p>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Quotations</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Go to <strong>Business Unit → Quotation & Invoices → Quotations</strong>.</li>
+                        <li>Click <strong>Create Quotation</strong> — select the Party (client), add product line items with quantities and rates.</li>
+                        <li>Rates are auto-populated from the <strong>Product Rate List</strong> based on the pricing model (Subscription / One-Time) and billing frequency.</li>
+                        <li>Optionally apply <strong>Discount offers</strong> and include <strong>Terms & Conditions</strong> templates.</li>
+                        <li>Generate a <strong>PDF</strong> of the quotation and <strong>Email</strong> it directly to the client.</li>
+                        <li>When a quotation is accepted, convert it into an <strong>Invoice</strong> with one click.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Invoices</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Go to <strong>Business Unit → Quotation & Invoices → Invoices</strong>.</li>
+                        <li>Create invoices manually or from an existing quotation.</li>
+                        <li>Each invoice is assigned a unique number and tied to the current <strong>Financial Year</strong>.</li>
+                        <li>Generate and download <strong>PDF invoices</strong> for records.</li>
+                        <li>Track the payment status: <strong>Unpaid</strong>, <strong>Partially Paid</strong>, or <strong>Paid</strong>.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Payment Processing</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Navigate to <strong>Business Unit → Quotation & Invoices → Payment Process</strong>.</li>
+                        <li>Record payments against invoices — select payment mode (Cash, Bank Transfer, UPI, etc.).</li>
+                        <li>Partial payments are supported — the system tracks the remaining balance automatically.</li>
+                        <li>View full payment history for each invoice.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Credit Notes</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Credit notes can be issued for adjustments, returns, or refunds.</li>
+                        <li>They are linked to the original invoice and reduce the outstanding amount accordingly.</li>
+                    </ol>
+
+                    <div class="help-features">
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> PDF Generation</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Email to Client</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Quotation → Invoice</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Partial Payments</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Credit Notes</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> T&C Templates</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Financial Year Linked</div>
+                    </div>
+
+                    <div class="help-tip">
+                        <i class="bi bi-lightbulb-fill"></i>
+                        <div><strong>Tip:</strong> Set up your Product Rate List and Terms & Conditions templates first (under Master Data). This will speed up quotation and invoice creation significantly.</div>
+                    </div>
+                </div>
+                }
+
+                @* ─── CRM / HELP DESK ─────────────────────── *@
+                <div class="help-module" id="module-crm" data-keywords="crm help desk ticket support agent priority category sla status note notification">
+                    <div class="help-module-header">
+                        <div class="help-module-icon" style="background:#e0f2fe;color:#0284c7;"><i class="bi bi-headset"></i></div>
+                        <div>
+                            <h3>Help Desk / CRM</h3>
+                            <span class="text-muted" style="font-size:.78rem;">Support ticketing system with SLA tracking</span>
+                        </div>
+                        <span class="module-badge">All Users</span>
+                    </div>
+                    <p>The Help Desk module provides a comprehensive support ticketing system. Users can raise tickets for issues or requests, and agents/admins can manage, prioritize, and resolve them. The system supports SLA tracking, priority levels, and real-time notifications.</p>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Raising a Ticket</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Navigate to <strong>CRM → My Tickets</strong>.</li>
+                        <li>Click <strong>Create Ticket</strong> — provide a <strong>Subject</strong>, select <strong>Category</strong> and <strong>Sub-Category</strong>, choose a <strong>Priority</strong>, and describe the issue.</li>
+                        <li>Tickets are assigned a unique Ticket Number automatically.</li>
+                        <li>Track your ticket's status: <strong>Open</strong>, <strong>In Progress</strong>, <strong>Resolved</strong>, <strong>Closed</strong>, etc.</li>
+                        <li>You will receive <strong>browser notifications</strong> when your ticket status is updated.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Managing Tickets (Admin / Agent)</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Navigate to <strong>CRM → Ticket Management</strong> to see all tickets.</li>
+                        <li>Assign tickets to agents, update status, change priority, and add internal notes.</li>
+                        <li>Use the <strong>Status Note modal</strong> to add timestamped notes tracking progress on each ticket.</li>
+                        <li>Email notifications are sent to clients when ticket status changes.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">CRM Reports</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li><strong>Analytics Dashboard</strong> — Overview KPIs: open tickets, resolution times, category distribution.</li>
+                        <li><strong>Agent Performance</strong> — Metrics per agent: tickets handled, average resolution time, ratings.</li>
+                        <li><strong>SLA Compliance</strong> — Track whether tickets are resolved within the defined SLA timeframes.</li>
+                    </ol>
+
+                    <div class="help-features">
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Auto Ticket Numbers</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Category / Sub-Category</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Priority / SLA Levels</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Status Notes</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Email Notifications</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Browser Notifications</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Analytics & SLA Reports</div>
+                    </div>
+                </div>
+
+                @* ─── REPORTS ────────────────────────────── *@
+                @if (!isCrmOnly)
+                {
+                <div class="help-module" id="module-reports" data-keywords="report export excel pdf collection settlement expense client due analytics">
+                    <div class="help-module-header">
+                        <div class="help-module-icon" style="background:#f3e8ff;color:#9333ea;"><i class="bi bi-bar-chart-line"></i></div>
+                        <div>
+                            <h3>Reports</h3>
+                            <span class="text-muted" style="font-size:.78rem;">Business intelligence with Excel & PDF exports</span>
+                        </div>
+                        <span class="module-badge">All Users</span>
+                    </div>
+                    <p>The Reports module offers ready-made analytical reports for various business functions. All reports support date-range filtering and can be exported to <strong>Excel</strong> or <strong>PDF</strong> formats for offline analysis and sharing.</p>
+                    <ol class="help-steps">
+                        <li><strong>Client Details Report</strong> — A comprehensive listing of all client information and licence details.</li>
+                        <li><strong>Expense Report</strong> — Analyze expense spending by category, department, or date range.</li>
+                        <li><strong>Settlement Report</strong> — View details of reimbursement settlements processed by Finance.</li>
+                        <li><strong>Daily Collection Register</strong> — Track daily revenue collections against invoices. Non-admin users see only their own collections; Admins can filter by collector.</li>
+                        <li><strong>Client Due Report</strong> — View outstanding balances and overdue invoices across all clients.</li>
+                    </ol>
+
+                    <div class="help-features">
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Date Range Filters</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Excel Export</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> PDF Export</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> User-scoped Access</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Server-side Paging</div>
+                    </div>
+
+                    <div class="help-tip">
+                        <i class="bi bi-lightbulb-fill"></i>
+                        <div><strong>Tip:</strong> In the Daily Collection Register, non-admin users see only their own data. Admins get a "Collected By" dropdown to filter by any user.</div>
+                    </div>
+                </div>
+                }
+
+                @* ─── ADMINISTRATION ──────────────────────── *@
+                @if (isAdmin)
+                {
+                <div class="help-module" id="module-admin" data-keywords="admin user role company settings password profile logo branding">
+                    <div class="help-module-header">
+                        <div class="help-module-icon" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-gear"></i></div>
+                        <div>
+                            <h3>Administration</h3>
+                            <span class="text-muted" style="font-size:.78rem;">User management, roles, and system configuration</span>
+                        </div>
+                        <span class="module-badge">Admin Only</span>
+                    </div>
+                    <p>The Administration section is accessible only to Administrators and Super Admins. It controls users, roles, company branding, and system-level settings.</p>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">User Management</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Go to <strong>Administration → User Management</strong>.</li>
+                        <li>Create new users with <strong>Username</strong>, <strong>Full Name</strong>, <strong>Email</strong>, <strong>Department</strong>, <strong>Designation</strong>, and <strong>Employee Type</strong>.</li>
+                        <li>Assign one or more <strong>Roles</strong> to each user (e.g., Administrator, Finance, Ticket Agent).</li>
+                        <li>Upload a <strong>Profile Image</strong> for the user avatar displayed in the topbar.</li>
+                        <li>Activate or deactivate users as needed.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Role Management</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Navigate to <strong>Administration → Role Management</strong>.</li>
+                        <li>Create and manage roles that define what each user can access.</li>
+                        <li>Roles are used across the application for menu visibility, action permissions, and data scoping.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Company Settings</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Navigate to <strong>Administration → Company Settings</strong>.</li>
+                        <li>Set the <strong>Company Name</strong> (displayed in the sidebar branding and footer).</li>
+                        <li>Upload a <strong>Company Logo</strong> for sidebar branding.</li>
+                        <li>Configure address, GST, and other company information used in documents.</li>
+                    </ol>
+
+                    <div class="help-features">
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> User CRUD</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Multi-role Assignment</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Profile Images</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Company Branding</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Role-based Access</div>
+                    </div>
+                </div>
+
+                @* ─── MASTER DATA ─────────────────────────── *@
+                <div class="help-module" id="module-masters" data-keywords="master product rate party bank payment mode terms conditions expense category department designation financial year discount">
+                    <div class="help-module-header">
+                        <div class="help-module-icon" style="background:#f0fdf4;color:#16a34a;"><i class="bi bi-collection"></i></div>
+                        <div>
+                            <h3>Master Data</h3>
+                            <span class="text-muted" style="font-size:.78rem;">Configure foundational data for the application</span>
+                        </div>
+                        <span class="module-badge">Admin Only</span>
+                    </div>
+                    <p>Master Data pages are where you configure the foundational data that powers the rest of the application. Set up products, rates, parties, bank accounts, payment modes, and more before using the transactional modules.</p>
+                    <ol class="help-steps">
+                        <li><strong>Employee Department</strong> — Define organizational departments (used for user management and expense routing).</li>
+                        <li><strong>Employee Designation</strong> — Manage job titles and positions.</li>
+                        <li><strong>Financial Year</strong> — Configure financial year periods (e.g., 2025-26). The system auto-detects and marks the current FY as active.</li>
+                        <li><strong>Expense Category</strong> — Set up categories like Travel, Food, Office Supplies, etc. for expense classification.</li>
+                        <li><strong>Product Master</strong> — Manage your product catalog with product types (Healthcare, Hospitality) and descriptions.</li>
+                        <li><strong>Product Rate List</strong> — Define pricing for each product: pricing model (Subscription / One-Time), billing frequency (Monthly, Quarterly, Half-Yearly, Annual), and amount.</li>
+                        <li><strong>Product Rate Discounts</strong> — Configure discount offers: percentage-based or flat amount discounts for promotions.</li>
+                        <li><strong>Party Master</strong> — Manage client/vendor party records used in quotations and invoices.</li>
+                        <li><strong>Bank Master</strong> — Record your bank account details for payment processing.</li>
+                        <li><strong>Payment Modes</strong> — Configure accepted payment methods (Cash, Bank Transfer, UPI, Cheque, etc.).</li>
+                        <li><strong>Terms & Conditions Templates</strong> — Create reusable T&C text blocks that can be attached to quotations and invoices.</li>
+                    </ol>
+
+                    <div class="help-tip">
+                        <i class="bi bi-lightbulb-fill"></i>
+                        <div><strong>Tip:</strong> Set up Master Data in this order for the best experience: Financial Year → Departments → Products → Rates → Parties → Bank → Payment Modes → T&C Templates.</div>
+                    </div>
+                </div>
+
+                @* ─── EMAIL ENGINE ───────────────────────── *@
+                <div class="help-module" id="module-email" data-keywords="email smtp configuration template log notification send engine">
+                    <div class="help-module-header">
+                        <div class="help-module-icon" style="background:#ecfeff;color:#0891b2;"><i class="bi bi-send-check"></i></div>
+                        <div>
+                            <h3>Email Engine</h3>
+                            <span class="text-muted" style="font-size:.78rem;">SMTP configuration, templates, and delivery logs</span>
+                        </div>
+                        <span class="module-badge">Admin Only</span>
+                    </div>
+                    <p>The Email Engine manages all outbound email communications from the application — licence notifications, invoice emails, ticket updates, and more.</p>
+                    <ol class="help-steps">
+                        <li><strong>Email Configuration</strong> — Set up SMTP server details (Host, Port, Username, Password, SSL/TLS). Navigate to <strong>Administration → Email Engine</strong>.</li>
+                        <li><strong>Email Templates</strong> — Create and manage dynamic email templates with placeholder variables. Templates are used automatically by various modules (e.g., licence expiry notification, invoice email).</li>
+                        <li><strong>Email Logs</strong> — View a complete audit trail of all sent emails. Filter by date range and email type. Useful for debugging delivery issues.</li>
+                    </ol>
+
+                    <div class="help-features">
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> SMTP Configuration</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Dynamic Templates</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Delivery Audit Logs</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Date/Type Filtering</div>
+                    </div>
+                </div>
+                }
+
+                @* ─── TIPS & SHORTCUTS ───────────────────── *@
+                <div class="help-module" id="module-tips" data-keywords="tip shortcut keyboard navigation best practice">
+                    <div class="help-module-header">
+                        <div class="help-module-icon" style="background:#fffbeb;color:#d97706;"><i class="bi bi-lightbulb"></i></div>
+                        <div>
+                            <h3>Tips & Shortcuts</h3>
+                            <span class="text-muted" style="font-size:.78rem;">Get the most out of the application</span>
+                        </div>
+                    </div>
+                    <ol class="help-steps">
+                        <li><strong>Browser Notifications</strong> — Click the <i class="bi bi-bell"></i> "Enable Alerts" button in the topbar to receive real-time browser push notifications for expense approvals, ticket updates, and more.</li>
+                        <li><strong>Sidebar Collapse</strong> — Click the <i class="bi bi-list"></i> hamburger menu to collapse/expand the sidebar for more workspace.</li>
+                        <li><strong>Role Switching</strong> — If you have multiple roles, use the "Switch Role" dropdown in the topbar to change your active role without logging out.</li>
+                        <li><strong>Search & Filter</strong> — Most list pages support real-time search and status filtering. Use these to quickly find records.</li>
+                        <li><strong>PDF & Excel Exports</strong> — Look for the <i class="bi bi-filetype-pdf"></i> / <i class="bi bi-filetype-xlsx"></i> icons on report pages to export data.</li>
+                        <li><strong>Change Password</strong> — Click the <i class="bi bi-shield-lock"></i> icon in the topbar next to your profile to update your password at any time.</li>
+                        <li><strong>Financial Year</strong> — The system automatically syncs to the current financial year. Transactions are tagged with the active FY for accurate period-wise reporting.</li>
+                    </ol>
+                </div>
+
+                @* ─── ROLES & PERMISSIONS ────────────────── *@
+                <div class="help-module" id="module-roles" data-keywords="role permission access administrator admin finance ticket agent client crm">
+                    <div class="help-module-header">
+                        <div class="help-module-icon" style="background:#f1f5f9;color:#475569;"><i class="bi bi-shield-check"></i></div>
+                        <div>
+                            <h3>Roles & Permissions</h3>
+                            <span class="text-muted" style="font-size:.78rem;">Understanding access levels in the system</span>
+                        </div>
+                    </div>
+                    <p>The application uses role-based access control. Each user can have one or more roles, and the active role determines what modules and actions are visible.</p>
+                    <div class="table-responsive mt-3">
+                        <table class="table table-sm" style="font-size:.82rem;">
+                            <thead style="background:#f8fafc;">
+                                <tr>
+                                    <th style="width:180px;">Role</th>
+                                    <th>Access Level</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="badge bg-danger bg-opacity-10 text-danger px-2 py-1">Administrator</span></td>
+                                    <td>Full access to all modules: user management, master data, all transactions, reports, CRM, and system settings.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-warning bg-opacity-10 text-warning px-2 py-1">Super Admin</span></td>
+                                    <td>Same as Administrator with additional system-level privileges. Identified by the golden "Super Admin" badge.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-success bg-opacity-10 text-success px-2 py-1">Finance</span></td>
+                                    <td>Access to expense reimbursement desk, invoices, payments, and financial reports. Can process settlements.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1">Ticket Admin</span></td>
+                                    <td>Full CRM access: manage all tickets, configure categories/priorities, view analytics & SLA reports.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-info bg-opacity-10 text-info px-2 py-1">Ticket Agent</span></td>
+                                    <td>CRM ticket management — handle assigned tickets, update statuses, view performance reports.</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-secondary bg-opacity-10 text-secondary px-2 py-1">ClientTicket</span></td>
+                                    <td>Limited access: can only create and view their own support tickets under "My Tickets".</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-dark bg-opacity-10 text-dark px-2 py-1">General User</span></td>
+                                    <td>Dashboard, licence viewing, expense submission, quotation/invoice listing, and own-data reports.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="help-tip">
+                        <i class="bi bi-lightbulb-fill"></i>
+                        <div><strong>Note:</strong> Users with multiple roles can switch between them using the "Switch Role" dropdown in the topbar. Each role change updates the visible menus and available actions.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // ── Search / Filter ────────────────────────────────
+    (function () {
+        var searchInput = document.getElementById('helpSearchInput');
+        var modules = document.querySelectorAll('.help-module');
+        var quickLinks = document.querySelectorAll('.quick-link-card');
+        var tocLinks = document.querySelectorAll('#helpToc a');
+
+        searchInput.addEventListener('input', function () {
+            var q = this.value.trim().toLowerCase();
+            modules.forEach(function (m) {
+                var text = (m.textContent + ' ' + (m.dataset.keywords || '')).toLowerCase();
+                m.style.display = !q || text.includes(q) ? '' : 'none';
+            });
+            quickLinks.forEach(function (card) {
+                var href = card.getAttribute('href');
+                if (!href) return;
+                var target = document.querySelector(href);
+                if (target) card.style.display = target.style.display;
+            });
+        });
+    })();
+
+    // ── Smooth scroll ──────────────────────────────────
+    document.querySelectorAll('a[href^="#module-"]').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+            e.preventDefault();
+            var target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Flash highlight
+                target.style.borderColor = '#c7d2fe';
+                target.style.boxShadow = '0 0 0 3px rgba(99,102,241,.12)';
+                setTimeout(function () {
+                    target.style.borderColor = '';
+                    target.style.boxShadow = '';
+                }, 1500);
+            }
+        });
+    });
+
+    // ── Active TOC tracking ────────────────────────────
+    (function () {
+        var tocLinks = document.querySelectorAll('#helpToc a');
+        var modules = document.querySelectorAll('.help-module[id]');
+        if (!tocLinks.length || !modules.length) return;
+
+        function updateActive() {
+            var scrollY = window.scrollY + 120;
+            var current = '';
+            modules.forEach(function (m) {
+                if (m.offsetTop <= scrollY) current = '#' + m.id;
+            });
+            tocLinks.forEach(function (a) {
+                a.classList.toggle('active', a.getAttribute('href') === current);
+            });
+        }
+        window.addEventListener('scroll', updateActive, { passive: true });
+        updateActive();
+    })();
+</script>
+}
