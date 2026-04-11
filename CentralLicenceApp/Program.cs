@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -73,6 +74,13 @@ builder.Services.AddScoped<IViewRenderService, ViewRenderService>();
 builder.Services.AddSingleton<IBrowserProvider, BrowserProvider>();
 builder.Services.AddScoped<IDocumentPdfService, DocumentPdfService>();
 builder.Services.AddScoped<IExpenseBrowserNotificationService, ExpenseBrowserNotificationService>();
+builder.Services.AddScoped<ITicketBrowserNotificationService>(sp =>
+    new TicketBrowserNotificationService(
+        sp.GetRequiredService<IUserPushSubscriptionRepository>(),
+        sp.GetRequiredService<IHubContext<TicketNotificationHub>>(),
+        sp.GetRequiredService<IOptions<PushNotificationSettings>>(),
+        connStr,
+        sp.GetRequiredService<ILogger<TicketBrowserNotificationService>>()));
 builder.Services.AddTransient<IClaimsTransformation, AdminClaimsTransformation>();
 builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, AdminAuthorizationMiddlewareResultHandler>();
 builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
@@ -149,6 +157,7 @@ app.MapControllerRoute(
     pattern: "{controller=Dashboard}/{action=Index}/{id?}");
 
 app.MapHub<ExpenseNotificationHub>("/hubs/expense-notifications");
+app.MapHub<TicketNotificationHub>("/hubs/ticket-notifications");
 
 // Warm up Chromium in the background so the first PDF request is fast.
 _ = app.Services.GetRequiredService<IBrowserProvider>().WarmUpAsync();

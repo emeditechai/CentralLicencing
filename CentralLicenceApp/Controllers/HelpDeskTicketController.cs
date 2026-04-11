@@ -16,6 +16,7 @@ namespace CentralLicenceApp.Controllers
         private readonly ITicketSubCategoryRepository _subCategoryRepo;
         private readonly ITicketPriorityRepository _priorityRepo;
         private readonly ITicketEmailService _ticketEmailService;
+        private readonly ITicketBrowserNotificationService _ticketNotificationService;
         private readonly IUserRepository _userRepo;
         private readonly IWebHostEnvironment _env;
 
@@ -25,6 +26,7 @@ namespace CentralLicenceApp.Controllers
             ITicketSubCategoryRepository subCategoryRepo,
             ITicketPriorityRepository priorityRepo,
             ITicketEmailService ticketEmailService,
+            ITicketBrowserNotificationService ticketNotificationService,
             IUserRepository userRepo,
             IWebHostEnvironment env)
         {
@@ -33,6 +35,7 @@ namespace CentralLicenceApp.Controllers
             _subCategoryRepo = subCategoryRepo;
             _priorityRepo = priorityRepo;
             _ticketEmailService = ticketEmailService;
+            _ticketNotificationService = ticketNotificationService;
             _userRepo = userRepo;
             _env = env;
         }
@@ -189,7 +192,10 @@ namespace CentralLicenceApp.Controllers
             // Send email notification to Ticket Admins
             var createdTicket = await _ticketRepo.GetByIdAsync(ticketId);
             if (createdTicket != null)
+            {
                 _ = _ticketEmailService.NotifyTicketCreatedAsync(createdTicket);
+                _ = _ticketNotificationService.NotifyTicketCreatedAsync(createdTicket);
+            }
 
             TempData["Success"] = $"Ticket <strong>{ticketNumber}</strong> created successfully.";
             return RedirectToAction(nameof(Details), new { id = ticketId });
@@ -276,6 +282,7 @@ namespace CentralLicenceApp.Controllers
             // Send email notification for reply
             var senderName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "Unknown";
             _ = _ticketEmailService.NotifyNewReplyAsync(ticket, senderName, replyMessage.Trim(), message.IsInternal);
+            _ = _ticketNotificationService.NotifyNewReplyAsync(ticket, senderName, replyMessage.Trim(), message.IsInternal);
 
             // Client marked ticket as closed
             if (markAsClosed && !IsAgentOrAdmin && ticket.CreatedById == userId)
@@ -293,6 +300,7 @@ namespace CentralLicenceApp.Controllers
                 });
 
                 _ = _ticketEmailService.NotifyStatusChangedAsync(ticket, oldStatus, "Closed");
+                _ = _ticketNotificationService.NotifyStatusChangedAsync(ticket, oldStatus, "Closed");
 
                 TempData["Success"] = "Reply posted and ticket has been <strong>closed</strong>.";
                 return RedirectToAction(nameof(Details), new { id = ticketId });
@@ -344,6 +352,7 @@ namespace CentralLicenceApp.Controllers
 
             // Send email notification for status change
             _ = _ticketEmailService.NotifyStatusChangedAsync(ticket, oldStatus, newStatus);
+            _ = _ticketNotificationService.NotifyStatusChangedAsync(ticket, oldStatus, newStatus);
 
             TempData["Success"] = $"Ticket status changed to <strong>{newStatus}</strong>.";
             return RedirectToAction(nameof(Details), new { id = ticketId });
@@ -379,6 +388,7 @@ namespace CentralLicenceApp.Controllers
             var agentUser = await _userRepo.GetByIdAsync(agentId);
             if (agentUser != null && !string.IsNullOrWhiteSpace(agentUser.Email))
                 _ = _ticketEmailService.NotifyTicketAssignedAsync(ticket, agentName, agentUser.Email);
+            _ = _ticketNotificationService.NotifyTicketAssignedAsync(ticket, agentName, agentId);
 
             TempData["Success"] = $"Ticket assigned to <strong>{agentName}</strong>.";
             return RedirectToAction(nameof(Details), new { id = ticketId });

@@ -15,16 +15,19 @@ self.addEventListener('push', function (event) {
         });
 
         if (payload.requireDocumentHidden !== false && hasVisibleClient) {
+            var messageType = (payload.category && payload.category.indexOf('ticket-') === 0)
+                ? 'ticket-notification'
+                : 'expense-notification';
             await Promise.all(windowClients.map(function (client) {
                 return client.postMessage({
-                    type: 'expense-notification',
+                    type: messageType,
                     payload: payload
                 });
             }));
             return;
         }
 
-        await self.registration.showNotification(payload.title || 'Expense notification', {
+        await self.registration.showNotification(payload.title || 'Notification', {
             body: payload.message || 'A workflow update is available.',
             tag: payload.id || payload.category || 'expense-notification',
             renotify: true,
