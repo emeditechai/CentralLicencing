@@ -30,6 +30,9 @@ namespace CentralLicenceApp.Models
         /// <summary>Populated from JOIN with Invoice.Status</summary>
         public string InvoiceStatus { get; set; } = string.Empty;
 
+        public int? FinancialYearId { get; set; }
+        public string? FYCode { get; set; }
+
         public List<InvoicePaymentLine> Lines { get; set; } = new();
 
         /// <summary>Populated by repository — refunds issued against this payment.</summary>
@@ -56,6 +59,9 @@ namespace CentralLicenceApp.Models
         public string? Remarks { get; set; }
         public string? CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
+
+        public int? FinancialYearId { get; set; }
+        public string? FYCode { get; set; }
 
         /// <summary>Populated via LEFT JOIN with CreditNote table — null if no credit note issued yet.</summary>
         public int? CreditNoteId { get; set; }

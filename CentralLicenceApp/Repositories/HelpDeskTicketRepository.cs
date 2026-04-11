@@ -24,13 +24,15 @@ namespace CentralLicenceApp.Repositories
                    p.PriorityName,
                    p.ColorCode AS PriorityColor,
                    cr.FullName AS CreatedByName,
-                   ag.FullName AS AssignedToName
+                   ag.FullName AS AssignedToName,
+                   fy.FYCode
             FROM HelpDeskTicket t
             INNER JOIN TicketCategoryMaster c ON c.Id = t.CategoryId
             INNER JOIN TicketPriorityMaster p ON p.Id = t.PriorityId
             INNER JOIN UserMaster cr ON cr.Id = t.CreatedById
             LEFT  JOIN TicketSubCategoryMaster sc ON sc.Id = t.SubCategoryId
-            LEFT  JOIN UserMaster ag ON ag.Id = t.AssignedToId";
+            LEFT  JOIN UserMaster ag ON ag.Id = t.AssignedToId
+            LEFT  JOIN FinancialYearMaster fy ON fy.Id = t.FinancialYearId";
 
         // ── Ticket CRUD ──
 
@@ -70,9 +72,9 @@ namespace CentralLicenceApp.Repositories
             ticket.CreatedAt = DateTime.Now;
             var sql = @"
                 INSERT INTO HelpDeskTicket
-                    (TicketNumber, Subject, Description, CategoryId, SubCategoryId, PriorityId, Status, CreatedById, AssignedToId, CreatedAt)
+                    (TicketNumber, Subject, Description, CategoryId, SubCategoryId, PriorityId, Status, CreatedById, AssignedToId, CreatedAt, FinancialYearId)
                 VALUES
-                    (@TicketNumber, @Subject, @Description, @CategoryId, @SubCategoryId, @PriorityId, @Status, @CreatedById, @AssignedToId, @CreatedAt);
+                    (@TicketNumber, @Subject, @Description, @CategoryId, @SubCategoryId, @PriorityId, @Status, @CreatedById, @AssignedToId, @CreatedAt, @FinancialYearId);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);";
             return await conn.ExecuteScalarAsync<int>(sql, ticket);
         }

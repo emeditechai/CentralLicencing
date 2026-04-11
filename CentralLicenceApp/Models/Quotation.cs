@@ -42,6 +42,9 @@ namespace CentralLicenceApp.Models
         public string? CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
 
+        public int? FinancialYearId { get; set; }
+        public string? FYCode { get; set; }
+
         public List<QuotationLine> Lines { get; set; } = new();
 
         /// <summary>Up to 3 selected authorised signatories (user IDs).</summary>

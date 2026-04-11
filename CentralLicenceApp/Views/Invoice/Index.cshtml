@@ -163,6 +163,7 @@
                 <thead>
                     <tr>
                         <th class="ps-3">Invoice No</th>
+                        <th>FY</th>
                         <th>Party</th>
                         <th>Invoice Date</th>
                         <th>Due Date</th>
@@ -176,7 +177,7 @@
                     @if (!Model.Any())
                     {
                         <tr>
-                            <td colspan="8" class="text-center py-5 text-muted">
+                            <td colspan="9" class="text-center py-5 text-muted">
                                 <i class="bi bi-receipt fs-1 d-block mb-2"></i>No invoices yet
                             </td>
                         </tr>
@@ -200,6 +201,7 @@
                                         <div class="text-muted" style="font-size:.74rem;"><i class="bi bi-arrow-return-left me-1"></i>From @item.QuotationNo</div>
                                     }
                                 </td>
+                                <td><span class="badge" style="font-size:.71rem;background:#ede9fe;color:#6d28d9;">@(item.FYCode ?? "—")</span></td>
                                 <td class="fw-semibold" style="font-size:.875rem;">@item.PartyName</td>
                                 <td style="font-size:.85rem;">@item.InvoiceDate.ToString("dd MMM yyyy")</td>
                                 <td style="font-size:.85rem;">@(item.DueDate.HasValue ? item.DueDate.Value.ToString("dd MMM yyyy") : "—")</td>

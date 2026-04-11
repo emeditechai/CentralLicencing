@@ -171,6 +171,7 @@
                 <thead>
                     <tr>
                         <th class="ps-3">Ticket No</th>
+                        <th>FY</th>
                         <th>Subject</th>
                         <th>Category</th>
                         <th>Sub Category</th>
@@ -189,7 +190,7 @@
                     @if (!Model.Tickets.Any())
                     {
                         <tr>
-                            <td colspan="@(isTicketAgentOnly ? 9 : 10)" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No tickets found</td>
+                            <td colspan="@(isTicketAgentOnly ? 10 : 11)" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No tickets found</td>
                         </tr>
                     }
                     else
@@ -209,6 +210,7 @@
                                 <td class="ps-3">
                                     <a asp-action="Details" asp-route-id="@t.Id" class="fw-semibold text-decoration-none" style="color:#4f46e5;font-size:.85rem;">@t.TicketNumber</a>
                                 </td>
+                                <td><span class="badge" style="font-size:.71rem;background:#ede9fe;color:#6d28d9;">@(t.FYCode ?? "—")</span></td>
                                 <td>
                                     <div style="max-width:250px;">
                                         <a asp-action="Details" asp-route-id="@t.Id" class="text-decoration-none text-dark fw-semibold" style="font-size:.875rem;">@t.Subject</a>

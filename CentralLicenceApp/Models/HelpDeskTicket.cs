@@ -25,5 +25,8 @@ namespace CentralLicenceApp.Models
         public string? PriorityColor { get; set; }
         public string CreatedByName { get; set; } = string.Empty;
         public string? AssignedToName { get; set; }
+
+        public int? FinancialYearId { get; set; }
+        public string? FYCode { get; set; }
     }
 }

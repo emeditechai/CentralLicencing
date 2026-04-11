@@ -26,6 +26,7 @@ namespace CentralLicenceApp.Controllers
         private readonly IDocumentPdfService       _pdfService;
         private readonly IServiceScopeFactory      _scopeFactory;
         private readonly ITermsConditionTemplateRepository _termsRepo;
+    private readonly IFinancialYearMasterRepository _fyRepo;
 
         public InvoiceController(
             IInvoiceRepository        invoiceRepo,
@@ -39,20 +40,22 @@ namespace CentralLicenceApp.Controllers
             IEmailService             emailService,
             IDocumentPdfService       pdfService,
             IServiceScopeFactory      scopeFactory,
-            ITermsConditionTemplateRepository termsRepo)
-        {
-            _invoiceRepo     = invoiceRepo;
-            _quotationRepo   = quotationRepo;
-            _partyRepo       = partyRepo;
-            _productRateRepo = productRateRepo;
-            _userRepo        = userRepo;
-            _paymentRepo     = paymentRepo;
-            _modeRepo        = modeRepo;
-            _bankRepo        = bankRepo;
-            _emailService    = emailService;
-            _pdfService      = pdfService;
-            _scopeFactory    = scopeFactory;
-            _termsRepo       = termsRepo;
+ITermsConditionTemplateRepository termsRepo,
+        IFinancialYearMasterRepository fyRepo)
+    {
+        _invoiceRepo     = invoiceRepo;
+        _quotationRepo   = quotationRepo;
+        _partyRepo       = partyRepo;
+        _productRateRepo = productRateRepo;
+        _userRepo        = userRepo;
+        _paymentRepo     = paymentRepo;
+        _modeRepo        = modeRepo;
+        _bankRepo        = bankRepo;
+        _emailService    = emailService;
+        _pdfService      = pdfService;
+        _scopeFactory    = scopeFactory;
+        _termsRepo       = termsRepo;
+        _fyRepo          = fyRepo;
         }
 
         // GET /Invoice
@@ -199,8 +202,7 @@ namespace CentralLicenceApp.Controllers
             var companyGstin = (await GetCompanySettingsAsync())?.GSTCode ?? string.Empty;
             var invoice = BuildInvoice(vm, party, companyGstin);
             invoice.SignatoryUserIds = vm.SignatoryUserIds.Distinct().Take(3).ToList();
-
-            // If advance payment lines are provided, the payment repo's UPDATE will set
+    invoice.FinancialYearId = await _fyRepo.GetCurrentFYIdAsync();
             // ReceivedAmount via "ReceivedAmount + @Paid". Start at 0 to avoid double-counting.
             if (vm.AdvancePaymentLines?.Any(l => l.Amount > 0) == true)
                 invoice.ReceivedAmount = 0;
@@ -234,6 +236,7 @@ namespace CentralLicenceApp.Controllers
                     TotalAmountPaid = totalPaid,
                     Notes           = "Advance payment recorded at invoice creation.",
                     CreatedBy       = User.Identity?.Name,
+                    FinancialYearId = invoice.FinancialYearId,
                     Lines           = advanceLines.Select(l => new InvoicePaymentLine
                     {
                         PaymentModeId   = l.PaymentModeId,

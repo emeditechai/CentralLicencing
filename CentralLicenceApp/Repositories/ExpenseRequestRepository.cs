@@ -276,9 +276,9 @@ namespace CentralLicenceApp.Repositories
             await ((SqlConnection)conn).OpenAsync();
             var sql = @"
                 INSERT INTO ExpenseRequest
-                    (RequestNumber, EmployeeId, ApproverId, PurposeOfTravel, EmployeeRemarks, Status, TotalAmount, ItemCount, CreatedAt)
+                    (RequestNumber, EmployeeId, ApproverId, PurposeOfTravel, EmployeeRemarks, Status, TotalAmount, ItemCount, CreatedAt, FinancialYearId)
                 VALUES
-                    ('', @EmployeeId, @ApproverId, @PurposeOfTravel, @EmployeeRemarks, @Status, 0, 0, @CreatedAt);
+                    ('', @EmployeeId, @ApproverId, @PurposeOfTravel, @EmployeeRemarks, @Status, 0, 0, @CreatedAt, @FinancialYearId);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
             request.CreatedAt = DateTime.Now;
@@ -645,12 +645,14 @@ namespace CentralLicenceApp.Repositories
                    e.EmployeeCode,
                  ISNULL(a.FullName, a.Username) AS ApproverName,
                  ISNULL(rs.FullName, rs.Username) AS ReimbursementStartedByName,
-                 ISNULL(st.FullName, st.Username) AS SettledByName
+                 ISNULL(st.FullName, st.Username) AS SettledByName,
+                 fy.FYCode
             FROM ExpenseRequest r
             INNER JOIN UserMaster e ON r.EmployeeId = e.Id
              LEFT JOIN UserMaster a ON r.ApproverId = a.Id
              LEFT JOIN UserMaster rs ON r.ReimbursementStartedById = rs.Id
-             LEFT JOIN UserMaster st ON r.SettledById = st.Id";
+             LEFT JOIN UserMaster st ON r.SettledById = st.Id
+             LEFT JOIN FinancialYearMaster fy ON fy.Id = r.FinancialYearId";
 
         private sealed class RequestSummary
         {

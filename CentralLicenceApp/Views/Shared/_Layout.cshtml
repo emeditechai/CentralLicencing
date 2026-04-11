@@ -67,7 +67,7 @@
             <!-- Licences section -->
             @{
                 var licencesOpen = ctrl == "ClientLicense" || ctrl == "LicenseHistory" || ctrl == "LicenseAuditLog";
-                var masterOpen   = ctrl == "EmployeeDepartment" || ctrl == "EmployeeDesignation";
+                var masterOpen   = ctrl == "EmployeeDepartment" || ctrl == "EmployeeDesignation" || ctrl == "FinancialYearMaster";
                 var businessUnitMasterOpen = ctrl == "ExpenseCategory" || ctrl == "ProductMaster" || ctrl == "ProductRate" || ctrl == "PartyMaster" || ctrl == "BankMaster" || ctrl == "PaymentMode" || ctrl == "TermsConditionTemplate";
                 var businessUnitTransactionOpen = ctrl == "ExpenseRequest";
                 var quotationInvoiceOpen = ctrl == "Quotation" || ctrl == "Invoice" || ctrl == "InvoicePayment";
@@ -117,6 +117,7 @@
                 <div class="collapse @(masterOpen ? "show" : "")" id="section-master">
                     <div class="nav-sub-item"><a asp-controller="EmployeeDepartment" asp-action="Index" class="@Act("EmployeeDepartment")"><i class="bi bi-building"></i> Employee Department</a></div>
                     <div class="nav-sub-item"><a asp-controller="EmployeeDesignation" asp-action="Index" class="@Act("EmployeeDesignation")"><i class="bi bi-person-workspace"></i> Employee Designation</a></div>
+                    <div class="nav-sub-item"><a asp-controller="FinancialYearMaster" asp-action="Index" class="@Act("FinancialYearMaster")"><i class="bi bi-calendar-range"></i> Financial Year</a></div>
                 </div>
                 <div class="nav-item"><a asp-controller="EmailConfig" asp-action="Index" class="@Act("EmailConfig")"><i class="bi bi-send-check"></i> Email Engine</a></div>
                 <div class="nav-item"><a asp-controller="EmailTemplate" asp-action="Index" class="@Act("EmailTemplate")"><i class="bi bi-file-earmark-text"></i> Email Templates</a></div>

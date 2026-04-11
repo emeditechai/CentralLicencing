@@ -27,17 +27,19 @@ namespace CentralLicenceApp.Controllers
         private readonly IExpenseBrowserNotificationService _expenseBrowserNotificationService;
         private readonly ILogger<ExpenseRequestController> _logger;
         private readonly IWebHostEnvironment _environment;
+    private readonly IFinancialYearMasterRepository _fyRepo;
 
-        public ExpenseRequestController(IExpenseRequestRepository requestRepo, IUserRepository userRepo, IExpenseCategoryRepository expenseCategoryRepo, ICompanySettingsRepository companySettingsRepo, IEmailService emailService, IExpenseBrowserNotificationService expenseBrowserNotificationService, ILogger<ExpenseRequestController> logger, IWebHostEnvironment environment)
-        {
-            _requestRepo = requestRepo;
-            _userRepo = userRepo;
-            _expenseCategoryRepo = expenseCategoryRepo;
-            _companySettingsRepo = companySettingsRepo;
-            _emailService = emailService;
-            _expenseBrowserNotificationService = expenseBrowserNotificationService;
-            _logger = logger;
-            _environment = environment;
+public ExpenseRequestController(IExpenseRequestRepository requestRepo, IUserRepository userRepo, IExpenseCategoryRepository expenseCategoryRepo, ICompanySettingsRepository companySettingsRepo, IEmailService emailService, IExpenseBrowserNotificationService expenseBrowserNotificationService, ILogger<ExpenseRequestController> logger, IWebHostEnvironment environment, IFinancialYearMasterRepository fyRepo)
+    {
+        _requestRepo = requestRepo;
+        _userRepo = userRepo;
+        _expenseCategoryRepo = expenseCategoryRepo;
+        _companySettingsRepo = companySettingsRepo;
+        _emailService = emailService;
+        _expenseBrowserNotificationService = expenseBrowserNotificationService;
+        _logger = logger;
+        _environment = environment;
+        _fyRepo = fyRepo;
         }
 
         public async Task<IActionResult> Index()
@@ -121,7 +123,8 @@ namespace CentralLicenceApp.Controllers
                 EmployeeId = currentUser!.Id,
                 ApproverId = currentUser.IsCoreMember ? currentUser.Id : currentUser.ManagerId,
                 PurposeOfTravel = vm.PurposeOfTravel.Trim(),
-                EmployeeRemarks = string.IsNullOrWhiteSpace(vm.EmployeeRemarks) ? null : vm.EmployeeRemarks.Trim()
+                EmployeeRemarks = string.IsNullOrWhiteSpace(vm.EmployeeRemarks) ? null : vm.EmployeeRemarks.Trim(),
+                FinancialYearId = await _fyRepo.GetCurrentFYIdAsync()
             };
 
             var requestId = await _requestRepo.CreateDraftAsync(request);

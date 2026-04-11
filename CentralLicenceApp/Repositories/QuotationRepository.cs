@@ -24,7 +24,10 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             var quotations = (await conn.QueryAsync<Quotation>(@"
-                SELECT * FROM Quotation ORDER BY CreatedAt DESC")).ToList();
+                SELECT q.*, fy.FYCode
+                FROM Quotation q
+                LEFT JOIN FinancialYearMaster fy ON fy.Id = q.FinancialYearId
+                ORDER BY q.CreatedAt DESC")).ToList();
 
             if (quotations.Any())
             {
@@ -113,11 +116,11 @@ namespace CentralLicenceApp.Repositories
                 INSERT INTO Quotation
                     (QuotationNo, QuotationDate, ValidUntilDate, PartyId, PartyName, PartyAddress, PartyGSTINNo, PartyPANNo,
                      PartyContactPerson, PartyMobile, Notes, TermsConditionTemplateId,
-                     SubTotal, TotalCgst, TotalSgst, TotalIgst, EnableRoundOff, RoundOff, TotalAmount, Status, CreatedBy, CreatedAt)
+                     SubTotal, TotalCgst, TotalSgst, TotalIgst, EnableRoundOff, RoundOff, TotalAmount, Status, CreatedBy, CreatedAt, FinancialYearId)
                 VALUES
                     (@QuotationNo, @QuotationDate, @ValidUntilDate, @PartyId, @PartyName, @PartyAddress, @PartyGSTINNo, @PartyPANNo,
                      @PartyContactPerson, @PartyMobile, @Notes, @TermsConditionTemplateId,
-                     @SubTotal, @TotalCgst, @TotalSgst, @TotalIgst, @EnableRoundOff, @RoundOff, @TotalAmount, @Status, @CreatedBy, @CreatedAt);
+                     @SubTotal, @TotalCgst, @TotalSgst, @TotalIgst, @EnableRoundOff, @RoundOff, @TotalAmount, @Status, @CreatedBy, @CreatedAt, @FinancialYearId);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);",
                 quotation, tx);
 

@@ -35,5 +35,8 @@ namespace CentralLicenceApp.Models
         public string? SettlementReferenceNo { get; set; }
         public string? SettlementRemarks { get; set; }
         public string? SettlementReceiptNumber { get; set; }
+
+        public int? FinancialYearId { get; set; }
+        public string? FYCode { get; set; }
     }
 }

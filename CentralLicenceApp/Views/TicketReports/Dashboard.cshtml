@@ -3,31 +3,88 @@
     ViewData["Title"] = "Ticket Analytics Dashboard";
     var fromVal = Model.FromDate?.ToString("yyyy-MM-dd") ?? "";
     var toVal = Model.ToDate?.ToString("yyyy-MM-dd") ?? "";
+    var resolveRate = Model.TotalTickets > 0 ? (Model.ResolvedTickets * 100.0 / Model.TotalTickets) : 0;
 }
 
+<style>
+    .tad-hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 28px 32px; color: #fff; position: relative; overflow: hidden; }
+    .tad-hero::before { content: ''; position: absolute; top: -40px; right: -40px; width: 180px; height: 180px; background: rgba(255,255,255,.08); border-radius: 50%; }
+    .tad-hero::after  { content: ''; position: absolute; bottom: -60px; left: 30%; width: 240px; height: 240px; background: rgba(255,255,255,.05); border-radius: 50%; }
+    .tad-hero h4 { position: relative; z-index: 1; }
+    .tad-hero small { position: relative; z-index: 1; opacity: .85; }
+
+    .tad-kpi { border-radius: 14px; border: none; position: relative; overflow: hidden; transition: transform .2s, box-shadow .2s; }
+    .tad-kpi:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,.12)!important; }
+    .tad-kpi .kpi-stripe { position: absolute; top: 0; left: 0; width: 100%; height: 4px; }
+    .tad-kpi .kpi-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+    .tad-kpi .kpi-value { font-size: 1.75rem; font-weight: 800; line-height: 1.1; }
+    .tad-kpi .kpi-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+
+    .tad-status-pill { border-radius: 12px; padding: 14px 18px; text-align: center; position: relative; overflow: hidden; transition: transform .2s, box-shadow .2s; }
+    .tad-status-pill:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.1)!important; }
+    .tad-status-pill .pill-count { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+    .tad-status-pill .pill-label { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
+    .tad-status-pill .pill-ring { width: 38px; height: 38px; border-radius: 50%; border: 3px solid; display: inline-flex; align-items: center; justify-content: center; font-size: .85rem; margin-bottom: 6px; }
+
+    .tad-chart-card { border-radius: 14px; border: none; overflow: hidden; }
+    .tad-chart-card .card-header { background: transparent; border-bottom: 1px solid #f1f5f9; padding: 18px 24px 14px; }
+    .tad-chart-card .card-header h6 { font-size: .88rem; }
+    .tad-chart-card .card-header .chart-icon { width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; margin-right: 10px; font-size: .9rem; }
+
+    .tad-dist-card { border-radius: 14px; border: none; overflow: hidden; }
+    .tad-dist-card .card-header { background: transparent; border-bottom: 1px solid #f1f5f9; padding: 18px 24px 14px; }
+    .tad-dist-card .card-header .dist-icon { width: 32px; height: 32px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; margin-right: 10px; font-size: .85rem; }
+    .tad-dist-card .table th { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #94a3b8; border-top: none; background: #fafbfc; }
+    .tad-dist-card .table td { vertical-align: middle; font-size: .84rem; border-color: #f1f5f9; }
+    .tad-dist-card .progress { height: 10px; border-radius: 5px; background: #f1f5f9; }
+    .tad-dist-card .progress-bar { border-radius: 5px; transition: width .8s ease; }
+
+    .tad-resolve-ring { position: relative; width: 68px; height: 68px; }
+    .tad-resolve-ring canvas { position: absolute; top: 0; left: 0; }
+    .tad-resolve-ring .ring-pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: .82rem; color: #1e293b; }
+
+    .tad-filter { border-radius: 14px; border: none; background: #fff; }
+    .tad-filter input[type="date"] { border-radius: 8px; border: 1.5px solid #e2e8f0; padding: 6px 12px; font-size: .82rem; transition: border-color .2s; }
+    .tad-filter input[type="date"]:focus { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129,140,248,.15); }
+    .tad-filter .btn-filter { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 8px; padding: 7px 22px; font-size: .82rem; font-weight: 600; transition: opacity .2s; }
+    .tad-filter .btn-filter:hover { opacity: .9; }
+</style>
+
 <div class="container-fluid px-4 py-3">
-    <!-- Header -->
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-        <div>
-            <h4 class="fw-bold mb-0" style="color:#1e293b;">Ticket Analytics Dashboard</h4>
-            <small class="text-muted">Overview of help desk ticket metrics and trends</small>
+    <!-- Hero Header -->
+    <div class="tad-hero mb-4 shadow">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+                <h4 class="fw-bold mb-1"><i class="bi bi-bar-chart-line me-2"></i>Ticket Analytics Dashboard</h4>
+                <small>Real-time overview of help desk metrics, performance &amp; trends</small>
+            </div>
+            <div class="d-flex align-items-center gap-3" style="position:relative;z-index:1;">
+                <div class="tad-resolve-ring">
+                    <canvas id="resolveRing" width="68" height="68"></canvas>
+                    <div class="ring-pct" style="color:#fff;">@resolveRate.ToString("0")%</div>
+                </div>
+                <div>
+                    <div style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;opacity:.8;">Resolution Rate</div>
+                    <div style="font-size:1.1rem;font-weight:700;">@Model.ResolvedTickets / @Model.TotalTickets</div>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Date Filter -->
-    <form method="get" class="card border-0 shadow-sm mb-4" style="border-radius:12px;">
+    <form method="get" class="card tad-filter shadow-sm mb-4">
         <div class="card-body py-3 px-4">
             <div class="row g-3 align-items-end">
                 <div class="col-auto">
                     <label class="form-label small fw-semibold text-muted mb-1">From Date</label>
-                    <input type="date" name="fromDate" value="@fromVal" class="form-control form-control-sm" style="border-radius:8px;border-color:#e2e8f0;" />
+                    <input type="date" name="fromDate" value="@fromVal" class="form-control form-control-sm" />
                 </div>
                 <div class="col-auto">
                     <label class="form-label small fw-semibold text-muted mb-1">To Date</label>
-                    <input type="date" name="toDate" value="@toVal" class="form-control form-control-sm" style="border-radius:8px;border-color:#e2e8f0;" />
+                    <input type="date" name="toDate" value="@toVal" class="form-control form-control-sm" />
                 </div>
                 <div class="col-auto">
-                    <button type="submit" class="btn btn-sm text-white" style="background:#4f46e5;border-radius:8px;padding:6px 20px;">
+                    <button type="submit" class="btn btn-sm btn-filter">
                         <i class="bi bi-funnel me-1"></i> Filter
                     </button>
                     <a asp-action="Dashboard" class="btn btn-sm btn-outline-secondary ms-1" style="border-radius:8px;">Reset</a>
@@ -36,102 +93,101 @@
         </div>
     </form>
 
-    <!-- KPI Cards Row 1 -->
+    <!-- KPI Cards -->
     <div class="row g-3 mb-4">
         <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm h-100" style="border-radius:12px;">
-                <div class="card-body d-flex align-items-center gap-3 py-3">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:48px;height:48px;background:#ede9fe;">
-                        <i class="bi bi-ticket-perforated fs-5" style="color:#7c3aed;"></i>
+            <div class="card tad-kpi shadow-sm h-100">
+                <div class="kpi-stripe" style="background:linear-gradient(90deg,#667eea,#764ba2);"></div>
+                <div class="card-body d-flex align-items-center gap-3 py-3 pt-4">
+                    <div class="kpi-icon" style="background:linear-gradient(135deg,#ede9fe,#e0e7ff);color:#7c3aed;">
+                        <i class="bi bi-ticket-perforated"></i>
                     </div>
                     <div>
-                        <div class="text-muted" style="font-size:.72rem;font-weight:600;">TOTAL TICKETS</div>
-                        <div class="fw-bold fs-4" style="color:#1e293b;">@Model.TotalTickets</div>
+                        <div class="kpi-label text-muted">Total Tickets</div>
+                        <div class="kpi-value" style="color:#7c3aed;">@Model.TotalTickets</div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm h-100" style="border-radius:12px;">
-                <div class="card-body d-flex align-items-center gap-3 py-3">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:48px;height:48px;background:#dcfce7;">
-                        <i class="bi bi-check-circle fs-5" style="color:#16a34a;"></i>
+            <div class="card tad-kpi shadow-sm h-100">
+                <div class="kpi-stripe" style="background:linear-gradient(90deg,#34d399,#059669);"></div>
+                <div class="card-body d-flex align-items-center gap-3 py-3 pt-4">
+                    <div class="kpi-icon" style="background:linear-gradient(135deg,#dcfce7,#d1fae5);color:#059669;">
+                        <i class="bi bi-check-circle"></i>
                     </div>
                     <div>
-                        <div class="text-muted" style="font-size:.72rem;font-weight:600;">RESOLVED</div>
-                        <div class="fw-bold fs-4" style="color:#1e293b;">@Model.ResolvedTickets</div>
+                        <div class="kpi-label text-muted">Resolved</div>
+                        <div class="kpi-value" style="color:#059669;">@Model.ResolvedTickets</div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm h-100" style="border-radius:12px;">
-                <div class="card-body d-flex align-items-center gap-3 py-3">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:48px;height:48px;background:#dbeafe;">
-                        <i class="bi bi-clock-history fs-5" style="color:#2563eb;"></i>
+            <div class="card tad-kpi shadow-sm h-100">
+                <div class="kpi-stripe" style="background:linear-gradient(90deg,#60a5fa,#3b82f6);"></div>
+                <div class="card-body d-flex align-items-center gap-3 py-3 pt-4">
+                    <div class="kpi-icon" style="background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#2563eb;">
+                        <i class="bi bi-clock-history"></i>
                     </div>
                     <div>
-                        <div class="text-muted" style="font-size:.72rem;font-weight:600;">AVG RESPONSE TIME</div>
-                        <div class="fw-bold fs-4" style="color:#1e293b;">@Model.AvgResponseTimeHours.ToString("0.#")h</div>
+                        <div class="kpi-label text-muted">Avg Response Time</div>
+                        <div class="kpi-value" style="color:#2563eb;">@Model.AvgResponseTimeHours.ToString("0.#")<span style="font-size:.85rem;font-weight:600;">h</span></div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="card border-0 shadow-sm h-100" style="border-radius:12px;">
-                <div class="card-body d-flex align-items-center gap-3 py-3">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:48px;height:48px;background:#fef3c7;">
-                        <i class="bi bi-hourglass-split fs-5" style="color:#d97706;"></i>
+            <div class="card tad-kpi shadow-sm h-100">
+                <div class="kpi-stripe" style="background:linear-gradient(90deg,#fbbf24,#f59e0b);"></div>
+                <div class="card-body d-flex align-items-center gap-3 py-3 pt-4">
+                    <div class="kpi-icon" style="background:linear-gradient(135deg,#fef3c7,#fde68a);color:#d97706;">
+                        <i class="bi bi-hourglass-split"></i>
                     </div>
                     <div>
-                        <div class="text-muted" style="font-size:.72rem;font-weight:600;">AVG RESOLUTION TIME</div>
-                        <div class="fw-bold fs-4" style="color:#1e293b;">@Model.AvgResolutionTimeHours.ToString("0.#")h</div>
+                        <div class="kpi-label text-muted">Avg Resolution Time</div>
+                        <div class="kpi-value" style="color:#d97706;">@Model.AvgResolutionTimeHours.ToString("0.#")<span style="font-size:.85rem;font-weight:600;">h</span></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- KPI Cards Row 2 (Status breakdown) -->
+    <!-- Status Breakdown Pills -->
     <div class="row g-3 mb-4">
-        <div class="col-xl col-md-4">
-            <div class="card border-0 shadow-sm" style="border-radius:10px;border-left:4px solid #2563eb!important;">
-                <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="text-muted" style="font-size:.78rem;">Open</span>
-                    <span class="fw-bold" style="color:#2563eb;">@Model.OpenTickets</span>
-                </div>
+        <div class="col">
+            <div class="card tad-status-pill shadow-sm" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);">
+                <div class="pill-ring" style="border-color:#3b82f6;color:#3b82f6;"><i class="bi bi-envelope-open"></i></div>
+                <div class="pill-count" style="color:#2563eb;">@Model.OpenTickets</div>
+                <div class="pill-label" style="color:#3b82f6;">Open</div>
             </div>
         </div>
-        <div class="col-xl col-md-4">
-            <div class="card border-0 shadow-sm" style="border-radius:10px;border-left:4px solid #d97706!important;">
-                <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="text-muted" style="font-size:.78rem;">In Progress</span>
-                    <span class="fw-bold" style="color:#d97706;">@Model.InProgressTickets</span>
-                </div>
+        <div class="col">
+            <div class="card tad-status-pill shadow-sm" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);">
+                <div class="pill-ring" style="border-color:#f59e0b;color:#f59e0b;"><i class="bi bi-arrow-repeat"></i></div>
+                <div class="pill-count" style="color:#d97706;">@Model.InProgressTickets</div>
+                <div class="pill-label" style="color:#d97706;">In Progress</div>
             </div>
         </div>
-        <div class="col-xl col-md-4">
-            <div class="card border-0 shadow-sm" style="border-radius:10px;border-left:4px solid #0891b2!important;">
-                <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="text-muted" style="font-size:.78rem;">Waiting</span>
-                    <span class="fw-bold" style="color:#0891b2;">@Model.WaitingTickets</span>
-                </div>
+        <div class="col">
+            <div class="card tad-status-pill shadow-sm" style="background:linear-gradient(135deg,#ecfeff,#cffafe);">
+                <div class="pill-ring" style="border-color:#06b6d4;color:#06b6d4;"><i class="bi bi-hourglass"></i></div>
+                <div class="pill-count" style="color:#0891b2;">@Model.WaitingTickets</div>
+                <div class="pill-label" style="color:#0891b2;">Waiting</div>
             </div>
         </div>
-        <div class="col-xl col-md-4">
-            <div class="card border-0 shadow-sm" style="border-radius:10px;border-left:4px solid #16a34a!important;">
-                <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="text-muted" style="font-size:.78rem;">Resolved</span>
-                    <span class="fw-bold" style="color:#16a34a;">@Model.ResolvedTickets</span>
-                </div>
+        <div class="col">
+            <div class="card tad-status-pill shadow-sm" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);">
+                <div class="pill-ring" style="border-color:#22c55e;color:#22c55e;"><i class="bi bi-check-lg"></i></div>
+                <div class="pill-count" style="color:#16a34a;">@Model.ResolvedTickets</div>
+                <div class="pill-label" style="color:#16a34a;">Resolved</div>
             </div>
         </div>
-        <div class="col-xl col-md-4">
-            <div class="card border-0 shadow-sm" style="border-radius:10px;border-left:4px solid #64748b!important;">
-                <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
-                    <span class="text-muted" style="font-size:.78rem;">Closed</span>
-                    <span class="fw-bold" style="color:#64748b;">@Model.ClosedTickets</span>
-                </div>
+        <div class="col">
+            <div class="card tad-status-pill shadow-sm" style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);">
+                <div class="pill-ring" style="border-color:#64748b;color:#64748b;"><i class="bi bi-lock"></i></div>
+                <div class="pill-count" style="color:#475569;">@Model.ClosedTickets</div>
+                <div class="pill-label" style="color:#64748b;">Closed</div>
             </div>
         </div>
     </div>
@@ -140,22 +196,24 @@
     <div class="row g-4 mb-4">
         <!-- Daily Trend Chart -->
         <div class="col-xl-8">
-            <div class="card border-0 shadow-sm" style="border-radius:12px;">
-                <div class="card-header bg-white border-0 py-3 px-4">
-                    <h6 class="fw-bold mb-0" style="color:#1e293b;"><i class="bi bi-graph-up me-2"></i>Ticket Trend (Created vs Resolved)</h6>
+            <div class="card tad-chart-card shadow-sm">
+                <div class="card-header d-flex align-items-center">
+                    <span class="chart-icon" style="background:linear-gradient(135deg,#ede9fe,#e0e7ff);color:#7c3aed;"><i class="bi bi-graph-up"></i></span>
+                    <h6 class="fw-bold mb-0" style="color:#1e293b;">Ticket Trend <span class="fw-normal text-muted" style="font-size:.78rem;">(Created vs Resolved)</span></h6>
                 </div>
-                <div class="card-body pt-0 px-4 pb-3">
-                    <canvas id="trendChart" height="120"></canvas>
+                <div class="card-body px-4 pb-3 pt-2">
+                    <canvas id="trendChart" height="115"></canvas>
                 </div>
             </div>
         </div>
-        <!-- Status Pie -->
+        <!-- Status Doughnut -->
         <div class="col-xl-4">
-            <div class="card border-0 shadow-sm" style="border-radius:12px;">
-                <div class="card-header bg-white border-0 py-3 px-4">
-                    <h6 class="fw-bold mb-0" style="color:#1e293b;"><i class="bi bi-pie-chart me-2"></i>Status Distribution</h6>
+            <div class="card tad-chart-card shadow-sm">
+                <div class="card-header d-flex align-items-center">
+                    <span class="chart-icon" style="background:linear-gradient(135deg,#fce7f3,#fbcfe8);color:#db2777;"><i class="bi bi-pie-chart"></i></span>
+                    <h6 class="fw-bold mb-0" style="color:#1e293b;">Status Distribution</h6>
                 </div>
-                <div class="card-body pt-0 px-4 pb-3">
+                <div class="card-body px-4 pb-3 pt-2">
                     <canvas id="statusChart" height="200"></canvas>
                 </div>
             </div>
@@ -166,31 +224,36 @@
     <div class="row g-4 mb-4">
         <!-- Category Table -->
         <div class="col-xl-6">
-            <div class="card border-0 shadow-sm" style="border-radius:12px;">
-                <div class="card-header bg-white border-0 py-3 px-4">
-                    <h6 class="fw-bold mb-0" style="color:#1e293b;"><i class="bi bi-tags me-2"></i>Tickets by Category</h6>
+            <div class="card tad-dist-card shadow-sm">
+                <div class="card-header d-flex align-items-center">
+                    <span class="dist-icon" style="background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#2563eb;"><i class="bi bi-tags"></i></span>
+                    <h6 class="fw-bold mb-0" style="color:#1e293b;">Tickets by Category</h6>
                 </div>
                 <div class="card-body p-0">
                     <table class="table mb-0">
-                        <thead><tr><th class="ps-4">Category</th><th class="text-end pe-4">Count</th><th style="width:40%;">Distribution</th></tr></thead>
+                        <thead><tr><th class="ps-4 py-2">Category</th><th class="text-end pe-4 py-2">Count</th><th class="py-2" style="width:42%;">Distribution</th></tr></thead>
                         <tbody>
-                        @{ var maxCat = Model.CategoryDistribution.Any() ? Model.CategoryDistribution.Max(c => c.Count) : 1; }
+                        @{ var maxCat = Model.CategoryDistribution.Any() ? Model.CategoryDistribution.Max(c => c.Count) : 1;
+                           var catColors = new[] { "#6366f1", "#8b5cf6", "#a78bfa", "#c084fc", "#d946ef", "#ec4899" };
+                           var catIdx = 0; }
                         @foreach (var c in Model.CategoryDistribution)
                         {
                             var pct = maxCat > 0 ? (c.Count * 100.0 / maxCat) : 0;
+                            var barClr = catColors[catIdx % catColors.Length];
+                            catIdx++;
                             <tr>
-                                <td class="ps-4" style="font-size:.85rem;">@c.CategoryName</td>
-                                <td class="text-end pe-4 fw-bold" style="font-size:.85rem;">@c.Count</td>
+                                <td class="ps-4 fw-semibold">@c.CategoryName</td>
+                                <td class="text-end pe-4 fw-bold" style="color:@barClr;">@c.Count</td>
                                 <td>
-                                    <div class="progress" style="height:8px;border-radius:4px;">
-                                        <div class="progress-bar" role="progressbar" style="width:@pct.ToString("0")%;background:#4f46e5;border-radius:4px;"></div>
+                                    <div class="progress">
+                                        <div class="progress-bar" role="progressbar" style="width:@pct.ToString("0")%;background:linear-gradient(90deg,@barClr,@(barClr)aa);"></div>
                                     </div>
                                 </td>
                             </tr>
                         }
                         @if (!Model.CategoryDistribution.Any())
                         {
-                            <tr><td colspan="3" class="text-center text-muted py-4">No data</td></tr>
+                            <tr><td colspan="3" class="text-center text-muted py-4"><i class="bi bi-inbox me-1"></i> No data</td></tr>
                         }
                         </tbody>
                     </table>
@@ -199,13 +262,14 @@
         </div>
         <!-- Priority Table -->
         <div class="col-xl-6">
-            <div class="card border-0 shadow-sm" style="border-radius:12px;">
-                <div class="card-header bg-white border-0 py-3 px-4">
-                    <h6 class="fw-bold mb-0" style="color:#1e293b;"><i class="bi bi-flag me-2"></i>Tickets by Priority</h6>
+            <div class="card tad-dist-card shadow-sm">
+                <div class="card-header d-flex align-items-center">
+                    <span class="dist-icon" style="background:linear-gradient(135deg,#fef3c7,#fde68a);color:#d97706;"><i class="bi bi-flag"></i></span>
+                    <h6 class="fw-bold mb-0" style="color:#1e293b;">Tickets by Priority</h6>
                 </div>
                 <div class="card-body p-0">
                     <table class="table mb-0">
-                        <thead><tr><th class="ps-4">Priority</th><th class="text-end pe-4">Count</th><th style="width:40%;">Distribution</th></tr></thead>
+                        <thead><tr><th class="ps-4 py-2">Priority</th><th class="text-end pe-4 py-2">Count</th><th class="py-2" style="width:42%;">Distribution</th></tr></thead>
                         <tbody>
                         @{ var maxPri = Model.PriorityDistribution.Any() ? Model.PriorityDistribution.Max(p => p.Count) : 1; }
                         @foreach (var p in Model.PriorityDistribution)
@@ -213,18 +277,18 @@
                             var pct = maxPri > 0 ? (p.Count * 100.0 / maxPri) : 0;
                             var clr = p.ColorCode ?? "#6b7280";
                             <tr>
-                                <td class="ps-4"><span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:@(clr)20;color:@clr;">@p.PriorityName</span></td>
-                                <td class="text-end pe-4 fw-bold" style="font-size:.85rem;">@p.Count</td>
+                                <td class="ps-4"><span class="badge rounded-pill px-3 py-1" style="font-size:.73rem;font-weight:700;background:@(clr)18;color:@clr;border:1.5px solid @(clr)40;">@p.PriorityName</span></td>
+                                <td class="text-end pe-4 fw-bold" style="color:@clr;">@p.Count</td>
                                 <td>
-                                    <div class="progress" style="height:8px;border-radius:4px;">
-                                        <div class="progress-bar" role="progressbar" style="width:@pct.ToString("0")%;background:@clr;border-radius:4px;"></div>
+                                    <div class="progress">
+                                        <div class="progress-bar" role="progressbar" style="width:@pct.ToString("0")%;background:linear-gradient(90deg,@clr,@(clr)88);"></div>
                                     </div>
                                 </td>
                             </tr>
                         }
                         @if (!Model.PriorityDistribution.Any())
                         {
-                            <tr><td colspan="3" class="text-center text-muted py-4">No data</td></tr>
+                            <tr><td colspan="3" class="text-center text-muted py-4"><i class="bi bi-inbox me-1"></i> No data</td></tr>
                         }
                         </tbody>
                     </table>
@@ -238,41 +302,88 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
 (function() {
-    // Trend Chart
+    // ── Resolution Rate Ring (hero) ──
+    (function() {
+        var pct = @resolveRate.ToString("0.#");
+        var cv = document.getElementById('resolveRing');
+        if (!cv) return;
+        var ctx = cv.getContext('2d');
+        var cx = 34, cy = 34, r = 28, lw = 5;
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = lw; ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + (2 * Math.PI * pct / 100)); ctx.strokeStyle = '#fff'; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.stroke();
+    })();
+
+    // ── Trend Chart (gradient fill) ──
     var trendLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailyTrend.Select(d => d.TicketDate.ToString("dd MMM"))));
     var createdData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailyTrend.Select(d => d.CreatedCount)));
     var resolvedData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailyTrend.Select(d => d.ResolvedCount)));
 
-    new Chart(document.getElementById('trendChart'), {
+    var trendCtx = document.getElementById('trendChart').getContext('2d');
+    var gradCreated = trendCtx.createLinearGradient(0, 0, 0, 300);
+    gradCreated.addColorStop(0, 'rgba(99,102,241,.25)');
+    gradCreated.addColorStop(1, 'rgba(99,102,241,.01)');
+    var gradResolved = trendCtx.createLinearGradient(0, 0, 0, 300);
+    gradResolved.addColorStop(0, 'rgba(16,185,129,.25)');
+    gradResolved.addColorStop(1, 'rgba(16,185,129,.01)');
+
+    new Chart(trendCtx, {
         type: 'line',
         data: {
             labels: trendLabels,
             datasets: [
-                { label: 'Created', data: createdData, borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,.1)', fill: true, tension: .4, borderWidth: 2, pointRadius: 2 },
-                { label: 'Resolved', data: resolvedData, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,.1)', fill: true, tension: .4, borderWidth: 2, pointRadius: 2 }
+                { label: 'Created', data: createdData, borderColor: '#6366f1', backgroundColor: gradCreated, fill: true, tension: .4, borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: '#6366f1', pointBorderColor: '#fff', pointBorderWidth: 2, pointHoverRadius: 6 },
+                { label: 'Resolved', data: resolvedData, borderColor: '#10b981', backgroundColor: gradResolved, fill: true, tension: .4, borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: '#10b981', pointBorderColor: '#fff', pointBorderWidth: 2, pointHoverRadius: 6 }
             ]
         },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        options: {
+            responsive: true,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 16, font: { size: 12, weight: '600' } } },
+                tooltip: { backgroundColor: '#1e293b', titleFont: { weight: '700' }, bodyFont: { size: 13 }, padding: 12, cornerRadius: 8, displayColors: true, boxPadding: 4 }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: '#f1f5f9' } },
+                x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+            }
+        }
     });
 
-    // Status Pie
+    // ── Status Doughnut (vibrant) ──
     var statusLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StatusDistribution.Select(s => s.Status)));
     var statusData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StatusDistribution.Select(s => s.Count)));
     var statusColors = statusLabels.map(function(s) {
         switch(s) {
-            case 'Open': return '#2563eb';
-            case 'In Progress': return '#d97706';
-            case 'Waiting for Client': return '#0891b2';
-            case 'Resolved': return '#16a34a';
-            case 'Closed': return '#64748b';
-            default: return '#94a3b8';
+            case 'Open':               return '#3b82f6';
+            case 'In Progress':        return '#f59e0b';
+            case 'Waiting for Client': return '#06b6d4';
+            case 'Resolved':           return '#10b981';
+            case 'Closed':             return '#8b5cf6';
+            default:                   return '#94a3b8';
         }
     });
 
     new Chart(document.getElementById('statusChart'), {
         type: 'doughnut',
-        data: { labels: statusLabels, datasets: [{ data: statusData, backgroundColor: statusColors, borderWidth: 0, hoverOffset: 6 }] },
-        options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { padding: 12, font: { size: 11 } } } }, cutout: '60%' }
+        data: {
+            labels: statusLabels,
+            datasets: [{
+                data: statusData,
+                backgroundColor: statusColors,
+                borderWidth: 3,
+                borderColor: '#fff',
+                hoverOffset: 8,
+                hoverBorderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 14, font: { size: 11, weight: '600' } } },
+                tooltip: { backgroundColor: '#1e293b', titleFont: { weight: '700' }, bodyFont: { size: 13 }, padding: 12, cornerRadius: 8 }
+            },
+            cutout: '65%'
+        }
     });
 })();
 </script>

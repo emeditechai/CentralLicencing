@@ -56,6 +56,7 @@ builder.Services.AddScoped<ITicketSubCategoryRepository>(_ => new TicketSubCateg
 builder.Services.AddScoped<ITicketPriorityRepository>(_ => new TicketPriorityRepository(connStr));
 builder.Services.AddScoped<IHelpDeskTicketRepository>(_ => new HelpDeskTicketRepository(connStr));
 builder.Services.AddScoped<ITicketReportRepository>(_ => new TicketReportRepository(connStr));
+builder.Services.AddScoped<IFinancialYearMasterRepository>(_ => new FinancialYearMasterRepository(connStr));
 builder.Services.AddScoped<IClientDetailsReportExportService, ClientDetailsReportExportService>();
 builder.Services.AddScoped<IExpenseReportExportService, ExpenseReportExportService>();
 builder.Services.AddScoped<ISettlementReportExportService, SettlementReportExportService>();

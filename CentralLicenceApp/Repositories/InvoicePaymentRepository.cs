@@ -24,9 +24,10 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             var payments = (await conn.QueryAsync<InvoicePayment>(@"
-                SELECT p.*, i.Status AS InvoiceStatus
+                SELECT p.*, i.Status AS InvoiceStatus, fy.FYCode
                 FROM   InvoicePayment p
                 INNER  JOIN Invoice i ON i.Id = p.InvoiceId
+                LEFT   JOIN FinancialYearMaster fy ON fy.Id = p.FinancialYearId
                 ORDER  BY p.CreatedAt DESC")).ToList();
 
             if (payments.Any())
@@ -136,10 +137,10 @@ namespace CentralLicenceApp.Repositories
             var paymentId = await conn.ExecuteScalarAsync<int>(@"
                 INSERT INTO InvoicePayment
                     (ReceiptNo, InvoiceId, InvoiceNo, PartyId, PartyName,
-                     PaymentDate, TotalAmountPaid, Notes, CreatedBy, CreatedAt)
+                     PaymentDate, TotalAmountPaid, Notes, CreatedBy, CreatedAt, FinancialYearId)
                 VALUES
                     (@ReceiptNo, @InvoiceId, @InvoiceNo, @PartyId, @PartyName,
-                     @PaymentDate, @TotalAmountPaid, @Notes, @CreatedBy, @CreatedAt);
+                     @PaymentDate, @TotalAmountPaid, @Notes, @CreatedBy, @CreatedAt, @FinancialYearId);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);",
                 payment, tx);
 

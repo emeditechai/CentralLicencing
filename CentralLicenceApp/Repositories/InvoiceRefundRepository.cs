@@ -76,11 +76,11 @@ namespace CentralLicenceApp.Repositories
                 INSERT INTO InvoiceRefund
                     (RefundNo, PaymentId, InvoiceId, InvoiceNo, PartyId, PartyName,
                      RefundDate, Amount, PaymentModeId, PaymentModeName, ReferenceNo,
-                     Remarks, CreatedBy, CreatedAt)
+                     Remarks, CreatedBy, CreatedAt, FinancialYearId)
                 VALUES
                     (@RefundNo, @PaymentId, @InvoiceId, @InvoiceNo, @PartyId, @PartyName,
                      @RefundDate, @Amount, @PaymentModeId, @PaymentModeName, @ReferenceNo,
-                     @Remarks, @CreatedBy, @CreatedAt);
+                     @Remarks, @CreatedBy, @CreatedAt, @FinancialYearId);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);",
                 refund, tx);
 

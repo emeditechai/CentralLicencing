@@ -24,7 +24,10 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             var invoices = (await conn.QueryAsync<Invoice>(@"
-                SELECT * FROM Invoice ORDER BY CreatedAt DESC")).ToList();
+                SELECT i.*, fy.FYCode
+                FROM Invoice i
+                LEFT JOIN FinancialYearMaster fy ON fy.Id = i.FinancialYearId
+                ORDER BY i.CreatedAt DESC")).ToList();
 
             if (invoices.Any())
             {
@@ -141,12 +144,12 @@ namespace CentralLicenceApp.Repositories
                     (InvoiceNo, InvoiceDate, DueDate, QuotationId, QuotationNo, PartyId, PartyName, PartyAddress, PartyGSTINNo, PartyPANNo,
                      PartyContactPerson, PartyMobile, Notes, TermsConditionTemplateId,
                      SubTotal, TotalCgst, TotalSgst, TotalIgst, EnableRoundOff, RoundOff, TotalAmount,
-                     ReceivedAmount, PreviousBalance, Status, CreatedBy, CreatedAt)
+                     ReceivedAmount, PreviousBalance, Status, CreatedBy, CreatedAt, FinancialYearId)
                 VALUES
                     (@InvoiceNo, @InvoiceDate, @DueDate, @QuotationId, @QuotationNo, @PartyId, @PartyName, @PartyAddress, @PartyGSTINNo, @PartyPANNo,
                      @PartyContactPerson, @PartyMobile, @Notes, @TermsConditionTemplateId,
                      @SubTotal, @TotalCgst, @TotalSgst, @TotalIgst, @EnableRoundOff, @RoundOff, @TotalAmount,
-                     @ReceivedAmount, @PreviousBalance, @Status, @CreatedBy, @CreatedAt);
+                     @ReceivedAmount, @PreviousBalance, @Status, @CreatedBy, @CreatedAt, @FinancialYearId);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);",
                 invoice, tx);
 

@@ -51,13 +51,13 @@ namespace CentralLicenceApp.Repositories
                      InvoiceId, InvoiceNo, PartyId, PartyName,
                      PartyAddress, PartyGSTINNo, PartyPANNo, PartyContactPerson, PartyMobile,
                      CreditNoteDate, Amount, PaymentModeId, PaymentModeName,
-                     ReferenceNo, Reason, CreatedBy, CreatedAt)
+                     ReferenceNo, Reason, CreatedBy, CreatedAt, FinancialYearId)
                 VALUES
                     (@CreditNoteNo, @RefundId, @RefundNo, @PaymentId, @ReceiptNo,
                      @InvoiceId, @InvoiceNo, @PartyId, @PartyName,
                      @PartyAddress, @PartyGSTINNo, @PartyPANNo, @PartyContactPerson, @PartyMobile,
                      @CreditNoteDate, @Amount, @PaymentModeId, @PaymentModeName,
-                     @ReferenceNo, @Reason, @CreatedBy, @CreatedAt);
+                     @ReferenceNo, @Reason, @CreatedBy, @CreatedAt, @FinancialYearId);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);",
                 creditNote);
         }

@@ -34,5 +34,8 @@ namespace CentralLicenceApp.Models
 
         public string? CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
+
+        public int? FinancialYearId { get; set; }
+        public string? FYCode { get; set; }
     }
 }

@@ -51,6 +51,9 @@ namespace CentralLicenceApp.Models
         public string? CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
 
+        public int? FinancialYearId { get; set; }
+        public string? FYCode { get; set; }
+
         public List<InvoiceLine> Lines { get; set; } = new();
 
         public bool IsCancelled => Status == "Cancelled";

@@ -17,19 +17,22 @@ namespace CentralLicenceApp.Controllers
         private readonly IPaymentModeRepository    _modeRepo;
         private readonly IBankMasterRepository     _bankRepo;
         private readonly IInvoiceRefundRepository  _refundRepo;
+    private readonly IFinancialYearMasterRepository _fyRepo;
 
         public InvoicePaymentController(
             IInvoicePaymentRepository paymentRepo,
             IInvoiceRepository        invoiceRepo,
             IPaymentModeRepository    modeRepo,
             IBankMasterRepository     bankRepo,
-            IInvoiceRefundRepository  refundRepo)
-        {
-            _paymentRepo = paymentRepo;
-            _invoiceRepo = invoiceRepo;
-            _modeRepo    = modeRepo;
-            _bankRepo    = bankRepo;
-            _refundRepo  = refundRepo;
+IInvoiceRefundRepository  refundRepo,
+        IFinancialYearMasterRepository fyRepo)
+    {
+        _paymentRepo = paymentRepo;
+        _invoiceRepo = invoiceRepo;
+        _modeRepo    = modeRepo;
+        _bankRepo    = bankRepo;
+        _refundRepo  = refundRepo;
+        _fyRepo      = fyRepo;
         }
 
         // GET /InvoicePayment
@@ -194,6 +197,7 @@ namespace CentralLicenceApp.Controllers
                 TotalAmountPaid = totalPaid,
                 Notes           = vm.Notes?.Trim(),
                 CreatedBy       = User.Identity?.Name,
+                FinancialYearId = await _fyRepo.GetCurrentFYIdAsync(),
                 Lines           = validLines.Select(l => new InvoicePaymentLine
                 {
                     PaymentModeId   = l.PaymentModeId,
@@ -367,7 +371,8 @@ namespace CentralLicenceApp.Controllers
                 PaymentModeName = mode.Name,
                 ReferenceNo     = referenceNo?.Trim(),
                 Remarks         = remarks?.Trim(),
-                CreatedBy       = User.Identity?.Name
+                CreatedBy       = User.Identity?.Name,
+                FinancialYearId = await _fyRepo.GetCurrentFYIdAsync()
             };
 
             await _refundRepo.CreateAsync(refund);

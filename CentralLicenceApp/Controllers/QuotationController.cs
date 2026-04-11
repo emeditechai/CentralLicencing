@@ -23,6 +23,7 @@ namespace CentralLicenceApp.Controllers
         private readonly IDocumentPdfService    _pdfService;
         private readonly IServiceScopeFactory   _scopeFactory;
         private readonly ITermsConditionTemplateRepository _termsRepo;
+    private readonly IFinancialYearMasterRepository _fyRepo;
 
         public QuotationController(
             IQuotationRepository quotationRepo,
@@ -33,17 +34,19 @@ namespace CentralLicenceApp.Controllers
             IEmailService          emailService,
             IDocumentPdfService    pdfService,
             IServiceScopeFactory   scopeFactory,
-            ITermsConditionTemplateRepository termsRepo)
-        {
-            _quotationRepo   = quotationRepo;
-            _invoiceRepo     = invoiceRepo;
-            _partyRepo       = partyRepo;
-            _productRateRepo = productRateRepo;
-            _userRepo        = userRepo;
-            _emailService    = emailService;
-            _pdfService      = pdfService;
-            _scopeFactory    = scopeFactory;
-            _termsRepo       = termsRepo;
+ITermsConditionTemplateRepository termsRepo,
+        IFinancialYearMasterRepository fyRepo)
+    {
+        _quotationRepo   = quotationRepo;
+        _invoiceRepo     = invoiceRepo;
+        _partyRepo       = partyRepo;
+        _productRateRepo = productRateRepo;
+        _userRepo        = userRepo;
+        _emailService    = emailService;
+        _pdfService      = pdfService;
+        _scopeFactory    = scopeFactory;
+        _termsRepo       = termsRepo;
+        _fyRepo          = fyRepo;
         }
 
         // GET /Quotation
@@ -151,6 +154,8 @@ namespace CentralLicenceApp.Controllers
                 Lines              = lines,
                 SignatoryUserIds   = vm.SignatoryUserIds.Distinct().Take(3).ToList()
             };
+
+            quotation.FinancialYearId = await _fyRepo.GetCurrentFYIdAsync();
 
             var id = await _quotationRepo.CreateAsync(quotation);
             TempData["Success"] = $"Quotation <strong>{vm.QuotationNo}</strong> created.";

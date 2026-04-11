@@ -197,6 +197,7 @@ else
                 <thead>
                     <tr>
                         <th class="ps-3">Request No.</th>
+                        <th>FY</th>
                         <th>Purpose</th>
                         <th>Approver</th>
                         <th>Items</th>
@@ -210,7 +211,7 @@ else
                     @if (!Model.Requests.Any())
                     {
                         <tr>
-                            <td colspan="8" class="text-center py-5 text-muted">
+                            <td colspan="9" class="text-center py-5 text-muted">
                                 <i class="bi bi-wallet2 fs-1 d-block mb-2"></i>
                                 <div class="fw-semibold mb-1">@Model.EmptyStateTitle</div>
                                 <div style="font-size:.85rem;">@Model.EmptyStateDescription</div>
@@ -249,6 +250,7 @@ else
                                     <div class="fw-semibold" style="font-size:.86rem;">@item.RequestNumber</div>
                                     <div class="text-muted" style="font-size:.73rem;">@item.EmployeeName</div>
                                 </td>
+                                <td data-label="FY"><span class="badge" style="font-size:.71rem;background:#ede9fe;color:#6d28d9;">@(item.FYCode ?? "—")</span></td>
                                 <td data-label="Purpose">
                                     <div class="fw-semibold" style="font-size:.85rem;">@item.PurposeOfTravel</div>
                                     @if (!string.IsNullOrWhiteSpace(item.EmployeeRemarks))

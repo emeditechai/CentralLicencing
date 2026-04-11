@@ -1,0 +1,211 @@
+@model IEnumerable<CentralLicenceApp.Models.FinancialYearMaster>
+@{
+    ViewData["Title"] = "Financial Year Master";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Financial Year Master</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Manage financial years — FY code is auto-generated from start &amp; end dates</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>FY Code</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Current FY</th>
+                        <th>Status</th>
+                        @if (User.IsInRole("Administrator"))
+                        {
+                            <th class="pe-3">Actions</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="bi bi-calendar3 fs-1 d-block mb-2"></i>No financial years found
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        var idx = 0;
+                        foreach (var fy in Model)
+                        {
+                            idx++;
+                            <tr id="row-@fy.Id">
+                                <td class="ps-3 text-muted" style="font-size:.8rem;">@idx</td>
+                                <td>
+                                    <span class="view-fields-@fy.Id fw-semibold">
+                                        <span class="badge rounded-pill px-3 py-1" style="background:#ede9fe;color:#7c3aed;font-size:.82rem;font-weight:700;">
+                                            FY @fy.FYCode
+                                        </span>
+                                    </span>
+                                    @if (User.IsInRole("Administrator"))
+                                    {
+                                        <form class="edit-form-@fy.Id d-none" asp-action="Edit" asp-route-id="@fy.Id" method="post"
+                                              style="display:inline-flex;gap:6px;align-items:center;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="date" name="startDate" value="@fy.StartDate.ToString("yyyy-MM-dd")"
+                                                   class="form-control form-control-sm" style="width:150px;" required
+                                                   onchange="updateFYPreview(this, @fy.Id)" />
+                                            <input type="date" name="endDate" value="@fy.EndDate.ToString("yyyy-MM-dd")"
+                                                   class="form-control form-control-sm" style="width:150px;" required
+                                                   onchange="updateFYPreview(this, @fy.Id)" />
+                                            <span class="badge bg-secondary fy-preview-@fy.Id" style="font-size:.76rem;">FY @fy.FYCode</span>
+                                            <button type="submit" class="btn btn-sm btn-success py-0 px-2">Save</button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="cancelEdit(@fy.Id)">Cancel</button>
+                                        </form>
+                                    }
+                                </td>
+                                <td class="view-fields-@fy.Id" style="font-size:.85rem;">@fy.StartDate.ToString("dd MMM yyyy")</td>
+                                <td class="view-fields-@fy.Id" style="font-size:.85rem;">@fy.EndDate.ToString("dd MMM yyyy")</td>
+                                <td>
+                                    @if (fy.IsCurrentFY)
+                                    {
+                                        <span class="badge px-2 py-1" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.74rem;font-weight:700;border-radius:6px;">
+                                            <i class="bi bi-star-fill me-1" style="font-size:.65rem;"></i> Current FY
+                                        </span>
+                                    }
+                                    else if (User.IsInRole("Administrator") && fy.IsActive)
+                                    {
+                                        <form asp-action="SetCurrentFY" asp-route-id="@fy.Id" method="post" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.74rem;"
+                                                    title="Mark as current financial year">
+                                                <i class="bi bi-star me-1"></i> Set Current
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted" style="font-size:.78rem;">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (fy.IsActive)
+                                    {
+                                        <span class="badge" style="background:#dcfce7;color:#166534;font-size:.76rem;">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge" style="background:#f1f5f9;color:#64748b;font-size:.76rem;">Inactive</span>
+                                    }
+                                </td>
+                                @if (User.IsInRole("Administrator"))
+                                {
+                                    <td class="pe-3">
+                                        <div class="d-flex gap-2 flex-wrap">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                                    onclick="startEdit(@fy.Id)" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <form asp-action="ToggleActive" asp-route-id="@fy.Id" method="post" style="display:inline;">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm py-0 px-2 @(fy.IsActive ? "btn-outline-danger" : "btn-outline-success")"
+                                                        title="@(fy.IsActive ? "Deactivate" : "Activate")">
+                                                    <i class="bi bi-@(fy.IsActive ? "toggle-on" : "toggle-off")"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@if (User.IsInRole("Administrator"))
+{
+    <div class="card mt-4" style="max-width:620px;">
+        <div class="card-header fw-semibold" style="background:#f8fafc;font-size:.9rem;">
+            <i class="bi bi-plus-circle me-1"></i> Add New Financial Year
+        </div>
+        <div class="card-body">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label form-label-sm">Start Date</label>
+                        <input type="date" name="startDate" id="newStartDate" class="form-control form-control-sm" required />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label form-label-sm">End Date</label>
+                        <input type="date" name="endDate" id="newEndDate" class="form-control form-control-sm" required />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label form-label-sm">FY Code (auto)</label>
+                        <input type="text" id="newFYCodePreview" class="form-control form-control-sm" disabled
+                               style="background:#f8fafc;font-weight:700;color:#7c3aed;" placeholder="--" />
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-sm w-100 text-white" style="background:#180a3c;border:none;border-radius:8px;">
+                            <i class="bi bi-plus-lg"></i> Add
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@section Scripts {
+<script>
+    function generateFYCode(startDateStr, endDateStr) {
+        if (!startDateStr || !endDateStr) return '--';
+        var s = new Date(startDateStr);
+        var e = new Date(endDateStr);
+        if (isNaN(s) || isNaN(e)) return '--';
+        var sy = s.getFullYear() % 100;
+        var ey = e.getFullYear() % 100;
+        return (sy < 10 ? '0' + sy : sy) + '-' + (ey < 10 ? '0' + ey : ey);
+    }
+
+    // Auto-detect FY code on new form
+    document.getElementById('newStartDate')?.addEventListener('change', updateNewPreview);
+    document.getElementById('newEndDate')?.addEventListener('change', updateNewPreview);
+
+    function updateNewPreview() {
+        var sd = document.getElementById('newStartDate').value;
+        var ed = document.getElementById('newEndDate').value;
+        document.getElementById('newFYCodePreview').value = 'FY ' + generateFYCode(sd, ed);
+    }
+
+    // Inline edit FY code preview
+    function updateFYPreview(el, id) {
+        var form = document.querySelector('.edit-form-' + id);
+        var sd = form.querySelector('input[name="startDate"]').value;
+        var ed = form.querySelector('input[name="endDate"]').value;
+        var badge = document.querySelector('.fy-preview-' + id);
+        if (badge) badge.textContent = 'FY ' + generateFYCode(sd, ed);
+    }
+
+    function startEdit(id) {
+        document.querySelectorAll('.view-fields-' + id).forEach(function(e) { e.classList.add('d-none'); });
+        var form = document.querySelector('.edit-form-' + id);
+        form.classList.remove('d-none');
+        form.classList.add('d-flex');
+    }
+
+    function cancelEdit(id) {
+        document.querySelectorAll('.view-fields-' + id).forEach(function(e) { e.classList.remove('d-none'); });
+        var form = document.querySelector('.edit-form-' + id);
+        form.classList.add('d-none');
+        form.classList.remove('d-flex');
+    }
+</script>
+}

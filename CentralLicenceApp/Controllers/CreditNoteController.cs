@@ -16,6 +16,7 @@ namespace CentralLicenceApp.Controllers
         private readonly IPartyMasterRepository    _partyRepo;
         private readonly IPaymentModeRepository    _modeRepo;
         private readonly ICompanySettingsRepository _companyRepo;
+    private readonly IFinancialYearMasterRepository _fyRepo;
 
         public CreditNoteController(
             ICreditNoteRepository     creditNoteRepo,
@@ -23,14 +24,16 @@ namespace CentralLicenceApp.Controllers
             IInvoicePaymentRepository paymentRepo,
             IPartyMasterRepository    partyRepo,
             IPaymentModeRepository    modeRepo,
-            ICompanySettingsRepository companyRepo)
-        {
-            _creditNoteRepo = creditNoteRepo;
-            _refundRepo     = refundRepo;
-            _paymentRepo    = paymentRepo;
-            _partyRepo      = partyRepo;
-            _modeRepo       = modeRepo;
-            _companyRepo    = companyRepo;
+ICompanySettingsRepository companyRepo,
+        IFinancialYearMasterRepository fyRepo)
+    {
+        _creditNoteRepo = creditNoteRepo;
+        _refundRepo     = refundRepo;
+        _paymentRepo    = paymentRepo;
+        _partyRepo      = partyRepo;
+        _modeRepo       = modeRepo;
+        _companyRepo    = companyRepo;
+        _fyRepo         = fyRepo;
         }
 
         // GET /CreditNote/Generate/5  (5 = refundId)
@@ -109,6 +112,7 @@ namespace CentralLicenceApp.Controllers
             model.PaymentModeId    = refund.PaymentModeId;
             model.PaymentModeName  = refund.PaymentModeName;
             model.CreatedBy        = User.Identity?.Name;
+    model.FinancialYearId  = await _fyRepo.GetCurrentFYIdAsync();
 
             if (model.CreditNoteDate == default)
                 model.CreditNoteDate = DateTime.Today;

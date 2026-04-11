@@ -19,6 +19,7 @@ namespace CentralLicenceApp.Controllers
         private readonly ITicketBrowserNotificationService _ticketNotificationService;
         private readonly IUserRepository _userRepo;
         private readonly IWebHostEnvironment _env;
+    private readonly IFinancialYearMasterRepository _fyRepo;
 
         public HelpDeskTicketController(
             IHelpDeskTicketRepository ticketRepo,
@@ -28,16 +29,18 @@ namespace CentralLicenceApp.Controllers
             ITicketEmailService ticketEmailService,
             ITicketBrowserNotificationService ticketNotificationService,
             IUserRepository userRepo,
-            IWebHostEnvironment env)
-        {
-            _ticketRepo = ticketRepo;
-            _categoryRepo = categoryRepo;
-            _subCategoryRepo = subCategoryRepo;
-            _priorityRepo = priorityRepo;
-            _ticketEmailService = ticketEmailService;
-            _ticketNotificationService = ticketNotificationService;
-            _userRepo = userRepo;
-            _env = env;
+IWebHostEnvironment env,
+        IFinancialYearMasterRepository fyRepo)
+    {
+        _ticketRepo = ticketRepo;
+        _categoryRepo = categoryRepo;
+        _subCategoryRepo = subCategoryRepo;
+        _priorityRepo = priorityRepo;
+        _ticketEmailService = ticketEmailService;
+        _ticketNotificationService = ticketNotificationService;
+        _userRepo = userRepo;
+        _env = env;
+        _fyRepo = fyRepo;
         }
 
         private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -165,7 +168,8 @@ namespace CentralLicenceApp.Controllers
                 SubCategoryId = vm.SubCategoryId,
                 PriorityId = vm.PriorityId,
                 Status = "Open",
-                CreatedById = userId
+                CreatedById = userId,
+                FinancialYearId = await _fyRepo.GetCurrentFYIdAsync()
             };
 
             var ticketId = await _ticketRepo.CreateAsync(ticket);
