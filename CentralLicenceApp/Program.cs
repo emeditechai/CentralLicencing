@@ -60,6 +60,8 @@ builder.Services.AddScoped<IFinancialYearMasterRepository>(_ => new FinancialYea
 builder.Services.AddScoped<IClientDetailsReportExportService, ClientDetailsReportExportService>();
 builder.Services.AddScoped<IExpenseReportExportService, ExpenseReportExportService>();
 builder.Services.AddScoped<ISettlementReportExportService, SettlementReportExportService>();
+builder.Services.AddScoped<IDailyCollectionExportService, DailyCollectionExportService>();
+builder.Services.AddScoped<IClientDueReportExportService, ClientDueReportExportService>();
 builder.Services.AddScoped<ITicketReportExportService, TicketReportExportService>();
 builder.Services.AddScoped<IUserPushSubscriptionRepository>(_ => new UserPushSubscriptionRepository(connStr));
 

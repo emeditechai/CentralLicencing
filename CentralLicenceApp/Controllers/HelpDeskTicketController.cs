@@ -316,7 +316,7 @@ IWebHostEnvironment env,
 
         // ── Update ticket status ──
         [HttpPost, ValidateAntiForgeryToken]
-        public async Task<IActionResult> UpdateStatus(int ticketId, string newStatus)
+        public async Task<IActionResult> UpdateStatus(int ticketId, string newStatus, string? statusNote)
         {
             var ticket = await _ticketRepo.GetByIdAsync(ticketId);
             if (ticket == null) return NotFound();
@@ -326,6 +326,13 @@ IWebHostEnvironment env,
             if (!validStatuses.Contains(newStatus))
             {
                 TempData["Error"] = "Invalid status.";
+                return RedirectToAction(nameof(Details), new { id = ticketId });
+            }
+
+            // Mandatory note for Resolved / Closed
+            if (newStatus is "Resolved" or "Closed" && string.IsNullOrWhiteSpace(statusNote))
+            {
+                TempData["Error"] = "A note is required when changing status to Resolved or Closed.";
                 return RedirectToAction(nameof(Details), new { id = ticketId });
             }
 
@@ -344,6 +351,18 @@ IWebHostEnvironment env,
             DateTime? closedAt = newStatus == "Closed" ? DateTime.Now : null;
 
             await _ticketRepo.UpdateStatusAsync(ticketId, newStatus, resolvedAt, closedAt);
+
+            // Save the mandatory note as a conversation message
+            if (!string.IsNullOrWhiteSpace(statusNote))
+            {
+                await _ticketRepo.AddMessageAsync(new TicketMessage
+                {
+                    TicketId = ticketId,
+                    SenderId = userId,
+                    Message = statusNote.Trim(),
+                    IsInternal = false
+                });
+            }
 
             await _ticketRepo.AddAuditLogAsync(new TicketAuditLog
             {

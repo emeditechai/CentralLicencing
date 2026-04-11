@@ -81,5 +81,55 @@ namespace CentralLicenceApp.Repositories
 
             return items.ToList();
         }
+
+        // ── Daily Collection Register ─────────────────────────────────────────────
+
+        public async Task<(IReadOnlyList<DailyCollectionRow> Items, int TotalCount)> GetDailyCollectionReportAsync(DateTime? fromDate, DateTime? toDate, string? collectedBy, int page, int pageSize)
+        {
+            using var conn = CreateConnection();
+            var items = (await conn.QueryAsync<DailyCollectionRow>(
+                "dbo.usp_Report_DailyCollectionRegister",
+                new { FromDate = fromDate, ToDate = toDate, CollectedBy = collectedBy, Page = page, PageSize = pageSize },
+                commandType: CommandType.StoredProcedure)).ToList();
+
+            var totalCount = items.FirstOrDefault()?.TotalCount ?? 0;
+            return (items, totalCount);
+        }
+
+        public async Task<IReadOnlyList<DailyCollectionRow>> GetAllDailyCollectionReportAsync(DateTime? fromDate, DateTime? toDate, string? collectedBy)
+        {
+            using var conn = CreateConnection();
+            var items = await conn.QueryAsync<DailyCollectionRow>(
+                "dbo.usp_Report_DailyCollectionRegister",
+                new { FromDate = fromDate, ToDate = toDate, CollectedBy = collectedBy, Page = 1, PageSize = int.MaxValue },
+                commandType: CommandType.StoredProcedure);
+
+            return items.ToList();
+        }
+
+        // ── Client Due Report ─────────────────────────────────────────────────────
+
+        public async Task<(IReadOnlyList<ClientDueRow> Items, int TotalCount)> GetClientDueReportAsync(DateTime? fromDate, DateTime? toDate, int page, int pageSize)
+        {
+            using var conn = CreateConnection();
+            var items = (await conn.QueryAsync<ClientDueRow>(
+                "dbo.usp_Report_ClientDueReport",
+                new { FromDate = fromDate, ToDate = toDate, Page = page, PageSize = pageSize },
+                commandType: CommandType.StoredProcedure)).ToList();
+
+            var totalCount = items.FirstOrDefault()?.TotalCount ?? 0;
+            return (items, totalCount);
+        }
+
+        public async Task<IReadOnlyList<ClientDueRow>> GetAllClientDueReportAsync(DateTime? fromDate, DateTime? toDate)
+        {
+            using var conn = CreateConnection();
+            var items = await conn.QueryAsync<ClientDueRow>(
+                "dbo.usp_Report_ClientDueReport",
+                new { FromDate = fromDate, ToDate = toDate, Page = 1, PageSize = int.MaxValue },
+                commandType: CommandType.StoredProcedure);
+
+            return items.ToList();
+        }
     }
 }

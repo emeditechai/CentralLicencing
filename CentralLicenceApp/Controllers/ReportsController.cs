@@ -20,6 +20,8 @@ namespace CentralLicenceApp.Controllers
         private readonly IUserRepository _userRepository;
         private readonly IExpenseReportExportService _expenseReportExportService;
         private readonly ISettlementReportExportService _settlementReportExportService;
+        private readonly IDailyCollectionExportService _dailyCollectionExportService;
+        private readonly IClientDueReportExportService _clientDueReportExportService;
 
         public ReportsController(
             IReportRepository reportRepository,
@@ -27,7 +29,9 @@ namespace CentralLicenceApp.Controllers
             IClientDetailsReportExportService clientDetailsReportExportService,
             IUserRepository userRepository,
             IExpenseReportExportService expenseReportExportService,
-            ISettlementReportExportService settlementReportExportService)
+            ISettlementReportExportService settlementReportExportService,
+            IDailyCollectionExportService dailyCollectionExportService,
+            IClientDueReportExportService clientDueReportExportService)
         {
             _reportRepository = reportRepository;
             _clientLicenseRepository = clientLicenseRepository;
@@ -35,6 +39,8 @@ namespace CentralLicenceApp.Controllers
             _userRepository = userRepository;
             _expenseReportExportService = expenseReportExportService;
             _settlementReportExportService = settlementReportExportService;
+            _dailyCollectionExportService = dailyCollectionExportService;
+            _clientDueReportExportService = clientDueReportExportService;
         }
 
         public async Task<IActionResult> ClientDetails(DateTime? fromDate, DateTime? toDate, string? productType)
@@ -227,6 +233,153 @@ namespace CentralLicenceApp.Controllers
             var items = await _reportRepository.GetAllSettlementReportAsync(fromDate, toDate, userId);
             var bytes = _settlementReportExportService.GeneratePdf(items, isAdmin, FormatDate(fromDate), FormatDate(toDate));
             return File(bytes, "application/pdf", $"SettlementReport-{DateTime.Now:yyyyMMddHHmmss}.pdf");
+        }
+
+        // ── Daily Collection Register ──────────────────────────────────────────
+
+        public async Task<IActionResult> DailyCollectionRegister(DateTime? fromDate, DateTime? toDate, string? collectedBy, int page = 1)
+        {
+            if (fromDate.HasValue && toDate.HasValue && fromDate.Value.Date > toDate.Value.Date)
+                ModelState.AddModelError(string.Empty, "From Date cannot be later than To Date.");
+
+            const int pageSize = 20;
+            var (isAdmin, _) = await ResolveReportScopeAsync();
+
+            // Non-admin users can only see their own collections
+            string? effectiveCollectedBy;
+            if (isAdmin)
+            {
+                // Admin can optionally filter by a specific user
+                effectiveCollectedBy = string.IsNullOrWhiteSpace(collectedBy) ? null : collectedBy.Trim();
+            }
+            else
+            {
+                // Force current user's username
+                effectiveCollectedBy = User.Identity?.Name;
+            }
+
+            var (items, totalCount) = ModelState.IsValid
+                ? await _reportRepository.GetDailyCollectionReportAsync(fromDate, toDate, effectiveCollectedBy, page, pageSize)
+                : (Array.Empty<CentralLicenceApp.Models.Reports.DailyCollectionRow>(), 0);
+
+            // Build user list for admin dropdown
+            var collectedByUsers = new System.Collections.Generic.List<string>();
+            if (isAdmin)
+            {
+                var allUsers = await _userRepository.GetAllAsync();
+                collectedByUsers = allUsers.Select(u => u.Username).Where(u => !string.IsNullOrWhiteSpace(u)).OrderBy(u => u).ToList();
+            }
+
+            var vm = new DailyCollectionReportViewModel
+            {
+                FromDate = fromDate,
+                ToDate = toDate,
+                Items = items.ToList(),
+                IsAdminView = isAdmin,
+                CollectedByFilter = isAdmin ? collectedBy : effectiveCollectedBy,
+                CollectedByUsers = collectedByUsers,
+                PageNumber = page,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+
+            return View(vm);
+        }
+
+        public async Task<IActionResult> ExportDailyCollectionExcel(DateTime? fromDate, DateTime? toDate, string? collectedBy)
+        {
+            var validationError = ValidateDateRange(fromDate, toDate);
+            if (validationError is not null)
+            {
+                TempData["ReportError"] = validationError;
+                return RedirectToAction(nameof(DailyCollectionRegister), new { fromDate, toDate, collectedBy });
+            }
+
+            var (isAdmin, _) = await ResolveReportScopeAsync();
+            var effectiveCollectedBy = isAdmin
+                ? (string.IsNullOrWhiteSpace(collectedBy) ? null : collectedBy.Trim())
+                : User.Identity?.Name;
+
+            var items = await _reportRepository.GetAllDailyCollectionReportAsync(fromDate, toDate, effectiveCollectedBy);
+            var bytes = _dailyCollectionExportService.GenerateExcel(items, isAdmin, FormatDate(fromDate), FormatDate(toDate));
+            return File(bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"DailyCollectionRegister-{DateTime.Now:yyyyMMddHHmmss}.xlsx");
+        }
+
+        public async Task<IActionResult> ExportDailyCollectionPdf(DateTime? fromDate, DateTime? toDate, string? collectedBy)
+        {
+            var validationError = ValidateDateRange(fromDate, toDate);
+            if (validationError is not null)
+            {
+                TempData["ReportError"] = validationError;
+                return RedirectToAction(nameof(DailyCollectionRegister), new { fromDate, toDate, collectedBy });
+            }
+
+            var (isAdmin, _) = await ResolveReportScopeAsync();
+            var effectiveCollectedBy = isAdmin
+                ? (string.IsNullOrWhiteSpace(collectedBy) ? null : collectedBy.Trim())
+                : User.Identity?.Name;
+
+            var items = await _reportRepository.GetAllDailyCollectionReportAsync(fromDate, toDate, effectiveCollectedBy);
+            var bytes = _dailyCollectionExportService.GeneratePdf(items, isAdmin, FormatDate(fromDate), FormatDate(toDate));
+            return File(bytes, "application/pdf", $"DailyCollectionRegister-{DateTime.Now:yyyyMMddHHmmss}.pdf");
+        }
+
+        // ── Client Due Report ─────────────────────────────────────────────────────
+
+        public async Task<IActionResult> ClientDueReport(DateTime? fromDate, DateTime? toDate, int page = 1)
+        {
+            if (fromDate.HasValue && toDate.HasValue && fromDate.Value.Date > toDate.Value.Date)
+                ModelState.AddModelError(string.Empty, "From Date cannot be later than To Date.");
+
+            const int pageSize = 20;
+
+            var (items, totalCount) = ModelState.IsValid
+                ? await _reportRepository.GetClientDueReportAsync(fromDate, toDate, page, pageSize)
+                : (Array.Empty<CentralLicenceApp.Models.Reports.ClientDueRow>(), 0);
+
+            var vm = new ClientDueReportViewModel
+            {
+                FromDate = fromDate,
+                ToDate = toDate,
+                Items = items.ToList(),
+                PageNumber = page,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+
+            return View(vm);
+        }
+
+        public async Task<IActionResult> ExportClientDueExcel(DateTime? fromDate, DateTime? toDate)
+        {
+            var validationError = ValidateDateRange(fromDate, toDate);
+            if (validationError is not null)
+            {
+                TempData["ReportError"] = validationError;
+                return RedirectToAction(nameof(ClientDueReport), new { fromDate, toDate });
+            }
+
+            var items = await _reportRepository.GetAllClientDueReportAsync(fromDate, toDate);
+            var bytes = _clientDueReportExportService.GenerateExcel(items, FormatDate(fromDate), FormatDate(toDate));
+            return File(bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                $"ClientDueReport-{DateTime.Now:yyyyMMddHHmmss}.xlsx");
+        }
+
+        public async Task<IActionResult> ExportClientDuePdf(DateTime? fromDate, DateTime? toDate)
+        {
+            var validationError = ValidateDateRange(fromDate, toDate);
+            if (validationError is not null)
+            {
+                TempData["ReportError"] = validationError;
+                return RedirectToAction(nameof(ClientDueReport), new { fromDate, toDate });
+            }
+
+            var items = await _reportRepository.GetAllClientDueReportAsync(fromDate, toDate);
+            var bytes = _clientDueReportExportService.GeneratePdf(items, FormatDate(fromDate), FormatDate(toDate));
+            return File(bytes, "application/pdf", $"ClientDueReport-{DateTime.Now:yyyyMMddHHmmss}.pdf");
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────────
