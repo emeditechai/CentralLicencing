@@ -1,0 +1,188 @@
+@model CentralLicenceApp.Models.ViewModels.TicketListViewModel
+@{
+    ViewData["Title"] = "My Tickets";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">My Tickets</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">@Model.TotalCount ticket@(Model.TotalCount == 1 ? "" : "s") raised by you</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
+        <i class="bi bi-plus-lg me-1"></i> New Ticket
+    </a>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-xl-2">
+        <a href="@Url.Action("MyTickets", new { from = Model.FromDate, to = Model.ToDate })" class="text-decoration-none">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius:14px;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:#e0e7ff;">
+                            <i class="bi bi-ticket-detailed" style="color:#4f46e5;font-size:1.05rem;"></i>
+                        </div>
+                        <span class="text-muted" style="font-size:.74rem;font-weight:600;letter-spacing:.03em;">ALL</span>
+                    </div>
+                    <div class="fw-bold" style="font-size:1.6rem;color:#1e293b;line-height:1.1;">@Model.TotalCount</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <a href="@Url.Action("MyTickets", new { status = "Open", from = Model.FromDate, to = Model.ToDate })" class="text-decoration-none">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius:14px;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:#dbeafe;">
+                            <i class="bi bi-envelope-open" style="color:#2563eb;font-size:1.05rem;"></i>
+                        </div>
+                        <span class="text-muted" style="font-size:.74rem;font-weight:600;letter-spacing:.03em;">OPEN</span>
+                    </div>
+                    <div class="fw-bold" style="font-size:1.6rem;color:#2563eb;line-height:1.1;">@Model.OpenCount</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <a href="@Url.Action("MyTickets", new { status = "In Progress", from = Model.FromDate, to = Model.ToDate })" class="text-decoration-none">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius:14px;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:#fef3c7;">
+                            <i class="bi bi-hourglass-split" style="color:#d97706;font-size:1.05rem;"></i>
+                        </div>
+                        <span class="text-muted" style="font-size:.74rem;font-weight:600;letter-spacing:.03em;">IN PROGRESS</span>
+                    </div>
+                    <div class="fw-bold" style="font-size:1.6rem;color:#d97706;line-height:1.1;">@Model.InProgressCount</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <a href="@Url.Action("MyTickets", new { status = "Resolved", from = Model.FromDate, to = Model.ToDate })" class="text-decoration-none">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius:14px;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:#dcfce7;">
+                            <i class="bi bi-check-circle" style="color:#16a34a;font-size:1.05rem;"></i>
+                        </div>
+                        <span class="text-muted" style="font-size:.74rem;font-weight:600;letter-spacing:.03em;">RESOLVED</span>
+                    </div>
+                    <div class="fw-bold" style="font-size:1.6rem;color:#16a34a;line-height:1.1;">@Model.ResolvedCount</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+        <a href="@Url.Action("MyTickets", new { status = "Closed", from = Model.FromDate, to = Model.ToDate })" class="text-decoration-none">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius:14px;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="rounded-3 d-flex align-items-center justify-content-center" style="width:36px;height:36px;background:#f1f5f9;">
+                            <i class="bi bi-lock" style="color:#64748b;font-size:1.05rem;"></i>
+                        </div>
+                        <span class="text-muted" style="font-size:.74rem;font-weight:600;letter-spacing:.03em;">CLOSED</span>
+                    </div>
+                    <div class="fw-bold" style="font-size:1.6rem;color:#64748b;line-height:1.1;">@Model.ClosedCount</div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Date Range Filter -->
+<form method="get" class="card border-0 shadow-sm mb-4" style="border-radius:12px;">
+    <div class="card-body py-3 px-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small fw-semibold text-muted mb-1">From Date</label>
+                <input type="date" name="from" value="@Model.FromDate" class="form-control form-control-sm" style="border-radius:8px;border-color:#e2e8f0;" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small fw-semibold text-muted mb-1">To Date</label>
+                <input type="date" name="to" value="@Model.ToDate" class="form-control form-control-sm" style="border-radius:8px;border-color:#e2e8f0;" />
+            </div>
+            @if (!string.IsNullOrEmpty(Model.StatusFilter))
+            {
+                <input type="hidden" name="status" value="@Model.StatusFilter" />
+            }
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm text-white" style="background:#4f46e5;border-radius:8px;padding:6px 20px;">
+                    <i class="bi bi-funnel me-1"></i> Filter
+                </button>
+                <a asp-action="MyTickets" class="btn btn-sm btn-outline-secondary ms-1" style="border-radius:8px;">Reset</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Ticket Table -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">Ticket No</th>
+                        <th>Subject</th>
+                        <th>Category</th>
+                        <th>Sub Category</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Assigned To</th>
+                        <th>Created</th>
+                        <th class="pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Tickets.Any())
+                    {
+                        <tr>
+                            <td colspan="9" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No tickets found</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var t in Model.Tickets)
+                        {
+                            var statusClass = t.Status switch
+                            {
+                                "Open" => "background:#dbeafe;color:#2563eb;",
+                                "In Progress" => "background:#fef3c7;color:#d97706;",
+                                "Waiting for Client" => "background:#e0f2fe;color:#0891b2;",
+                                "Resolved" => "background:#dcfce7;color:#16a34a;",
+                                "Closed" => "background:#f1f5f9;color:#64748b;",
+                                _ => "background:#f1f5f9;color:#64748b;"
+                            };
+                            <tr>
+                                <td class="ps-3">
+                                    <a asp-action="Details" asp-route-id="@t.Id" class="fw-semibold text-decoration-none" style="color:#4f46e5;font-size:.85rem;">@t.TicketNumber</a>
+                                </td>
+                                <td>
+                                    <div style="max-width:280px;">
+                                        <a asp-action="Details" asp-route-id="@t.Id" class="text-decoration-none text-dark fw-semibold" style="font-size:.875rem;">@t.Subject</a>
+                                    </div>
+                                </td>
+                                <td style="font-size:.83rem;">@t.CategoryName</td>
+                                <td style="font-size:.83rem;">@(t.SubCategoryName ?? "—")</td>
+                                <td>
+                                    <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:@(t.PriorityColor ?? "#6b7280")20;color:@(t.PriorityColor ?? "#6b7280");">@t.PriorityName</span>
+                                </td>
+                                <td>
+                                    <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;@statusClass">@t.Status</span>
+                                </td>
+                                <td style="font-size:.83rem;">@(t.AssignedToName ?? "Unassigned")</td>
+                                <td style="font-size:.82rem;">@t.CreatedAt.ToString("dd MMM yyyy")</td>
+                                <td class="pe-3">
+                                    <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-sm btn-outline-secondary" title="View" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-eye"></i></a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

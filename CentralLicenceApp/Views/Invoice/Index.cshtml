@@ -10,7 +10,8 @@
     var partialCount   = Model.Count(i => i.Status == "Partial");
     var draftCount     = Model.Count(i => i.Status == "Draft");
     var overdueCount   = Model.Count(i => i.Status is not "Paid" and not "Cancelled" && i.DueDate.HasValue && i.DueDate.Value.Date < today);
-    var cancelledCount = Model.Count(i => i.Status == "Cancelled");
+    var cancelledCount  = Model.Count(i => i.Status == "Cancelled");
+    var cancelledAmount = Model.Where(i => i.Status == "Cancelled").Sum(i => i.TotalAmount);
     var fromVal        = ViewBag.From   as string ?? string.Empty;
     var toVal          = ViewBag.To     as string ?? string.Empty;
     var statusVal      = ViewBag.Status as string ?? string.Empty;
@@ -148,8 +149,8 @@
                     </div>
                     <span class="text-muted" style="font-size:.74rem;font-weight:600;letter-spacing:.03em;">CANCELLED</span>
                 </div>
-                <div class="fw-bold" style="font-size:1.6rem;color:#94a3b8;line-height:1.1;">@cancelledCount</div>
-                <div class="text-muted mt-1" style="font-size:.73rem;">Voided</div>
+                <div class="fw-bold" style="font-size:1.25rem;color:#94a3b8;line-height:1.2;">₹@cancelledAmount.ToString("N2")</div>
+                <div class="text-muted mt-1" style="font-size:.73rem;">@cancelledCount Voided</div>
             </div>
         </div>
     </div>

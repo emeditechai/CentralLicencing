@@ -49,6 +49,7 @@
     var isSuperAdmin = string.Equals(username, "admin", System.StringComparison.OrdinalIgnoreCase) || User.HasClaim("IsSuperAdmin", "true");
     var isAdmin = User.IsInRole("Administrator") || isSuperAdmin;
     var isFinance = User.IsInRole("Finance") || isSuperAdmin;
+    var isCrmOnly = (User.IsInRole("ClientTicket") || User.IsInRole("Ticket Admin") || User.IsInRole("Ticket Agent")) && !isAdmin;
     var profileImagePath = User.FindFirst("ProfileImagePath")?.Value ?? "";
     var currentProductType = Context.Request.Query["productType"].ToString();
     <div id="sidebar-overlay" onclick="closeSidebar()"></div>
@@ -57,8 +58,11 @@
             <img src="@brandLogoUrl" alt="@brandName" style="max-width:140px;max-height:54px;object-fit:contain;@(hasBrandLogo ? "background:rgba(255,255,255,.96);padding:.35rem .55rem;border-radius:12px;" : "filter:brightness(0) invert(1);")" />
         </div>
         <nav>
+            @if (!isCrmOnly)
+            {
             <div class="nav-lbl mt-2">Main</div>
             <div class="nav-item"><a asp-controller="Dashboard" asp-action="Index" class="@Act("Dashboard")"><i class="bi bi-speedometer2"></i> Dashboard</a></div>
+            }
 
             <!-- Licences section -->
             @{
@@ -69,8 +73,14 @@
                 var quotationInvoiceOpen = ctrl == "Quotation" || ctrl == "Invoice" || ctrl == "InvoicePayment";
                 var businessUnitOpen = businessUnitMasterOpen || businessUnitTransactionOpen || quotationInvoiceOpen;
                 var reportsOpen = ctrl == "Reports";
+                var crmTicketOpen = ctrl == "HelpDeskTicket";
+                var crmMasterOpen = ctrl == "TicketCategory" || ctrl == "TicketSubCategory" || ctrl == "TicketPriority";
+                var crmReportsOpen = ctrl == "TicketReports";
+                var crmOpen = crmTicketOpen || crmMasterOpen || crmReportsOpen;
                 var adminOpen    = ctrl == "User" || ctrl == "Role" || ctrl == "EmailConfig" || ctrl == "EmailTemplate" || ctrl == "EmailLog" || ctrl == "CompanySettings" || masterOpen;
             }
+            @if (!isCrmOnly)
+            {
             <a href="#section-licences" data-bs-toggle="collapse"
                class="nav-lbl nav-lbl-toggle mt-2"
                aria-expanded="@(licencesOpen ? "true" : "false")"
@@ -83,6 +93,7 @@
                 <div class="nav-item"><a asp-controller="LicenseHistory" asp-action="Index" class="@Act("LicenseHistory")"><i class="bi bi-clock-history"></i> Validation History</a></div>
                 <div class="nav-item"><a asp-controller="LicenseAuditLog" asp-action="Index" class="@Act("LicenseAuditLog")"><i class="bi bi-clipboard2-pulse"></i> Audit Log</a></div>
             </div><!-- /section-licences collapse -->
+            }
 
             @if (isAdmin)
             {
@@ -113,6 +124,8 @@
                 </div><!-- /section-admin collapse -->
             }
 
+            @if (!isCrmOnly)
+            {
             <div class="nav-item mt-1">
                 <a href="#section-business-unit" data-bs-toggle="collapse" class="@(businessUnitOpen ? "active" : "")" aria-expanded="@(businessUnitOpen ? "true" : "false")">
                     <i class="bi bi-diagram-2"></i> Business Unit
@@ -176,6 +189,57 @@
                 <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="Reports" asp-action="ExpenseReport" class="@(ctrl == "Reports" && (ViewContext.RouteData.Values["action"]?.ToString() == "ExpenseReport") ? "active" : "")"><i class="bi bi-wallet2"></i> Expense Report</a></div>
                 <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="Reports" asp-action="SettlementReport" class="@(ctrl == "Reports" && (ViewContext.RouteData.Values["action"]?.ToString() == "SettlementReport") ? "active" : "")"><i class="bi bi-cash-stack"></i> Settlement Report</a></div>
             </div>
+            }<!-- /!isCrmOnly -->
+
+            <!-- CRM / Help Desk section -->
+            <a href="#section-crm" data-bs-toggle="collapse"
+               class="nav-lbl nav-lbl-toggle mt-2"
+               aria-expanded="@(crmOpen ? "true" : "false")"
+               style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                <span class="nav-lbl-toggle-copy"><i class="bi bi-headset"></i><span>CRM</span></span>
+                <i class="bi bi-chevron-down nav-lbl-arrow @(crmOpen ? "rotated" : "")"></i>
+            </a>
+            <div class="collapse @(crmOpen ? "show" : "")" id="section-crm">
+                <div class="nav-item"><a asp-controller="HelpDeskTicket" asp-action="MyTickets" class="@(ctrl == "HelpDeskTicket" && (ViewContext.RouteData.Values["action"]?.ToString() == "MyTickets") ? "active" : "")"><i class="bi bi-ticket-perforated"></i> My Tickets</a></div>
+                @if (isAdmin || User.IsInRole("Ticket Admin") || User.IsInRole("Ticket Agent"))
+                {
+                    <div class="nav-item"><a asp-controller="HelpDeskTicket" asp-action="Index" class="@(ctrl == "HelpDeskTicket" && (ViewContext.RouteData.Values["action"]?.ToString() == "Index") ? "active" : "")"><i class="bi bi-kanban"></i> Ticket Management</a></div>
+                }
+                @if (isAdmin || User.IsInRole("Ticket Admin"))
+                {
+                    <div class="nav-item nav-item-nested">
+                        <a href="#section-crm-master" data-bs-toggle="collapse" class="@(crmMasterOpen ? "active" : "")" aria-expanded="@(crmMasterOpen ? "true" : "false")">
+                            <i class="bi bi-collection"></i> Master
+                            <i class="bi bi-chevron-down submenu-arrow"></i>
+                        </a>
+                    </div>
+                    <div class="collapse @(crmMasterOpen ? "show" : "")" id="section-crm-master">
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TicketCategory" asp-action="Index" class="@Act("TicketCategory")"><i class="bi bi-tags"></i> Ticket Categories</a></div>
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TicketSubCategory" asp-action="Index" class="@Act("TicketSubCategory")"><i class="bi bi-bookmark"></i> Ticket Sub Categories</a></div>
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TicketPriority" asp-action="Index" class="@Act("TicketPriority")"><i class="bi bi-flag"></i> Ticket Priorities</a></div>
+                    </div>
+                }
+                @if (isAdmin || User.IsInRole("Ticket Admin") || User.IsInRole("Ticket Agent"))
+                {
+                    <div class="nav-item nav-item-nested">
+                        <a href="#section-crm-reports" data-bs-toggle="collapse" class="@(crmReportsOpen ? "active" : "")" aria-expanded="@(crmReportsOpen ? "true" : "false")">
+                            <i class="bi bi-bar-chart-line"></i> Reports
+                            <i class="bi bi-chevron-down submenu-arrow"></i>
+                        </a>
+                    </div>
+                    <div class="collapse @(crmReportsOpen ? "show" : "")" id="section-crm-reports">
+                        @if (isAdmin || User.IsInRole("Ticket Admin"))
+                        {
+                            <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TicketReports" asp-action="Dashboard" class="@(ctrl == "TicketReports" && (ViewContext.RouteData.Values["action"]?.ToString() == "Dashboard") ? "active" : "")"><i class="bi bi-speedometer2"></i> Analytics Dashboard</a></div>
+                        }
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TicketReports" asp-action="AgentPerformance" class="@(ctrl == "TicketReports" && (ViewContext.RouteData.Values["action"]?.ToString() == "AgentPerformance") ? "active" : "")"><i class="bi bi-people"></i> Agent Performance</a></div>
+                        @if (isAdmin || User.IsInRole("Ticket Admin"))
+                        {
+                            <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TicketReports" asp-action="SlaCompliance" class="@(ctrl == "TicketReports" && (ViewContext.RouteData.Values["action"]?.ToString() == "SlaCompliance") ? "active" : "")"><i class="bi bi-shield-check"></i> SLA Compliance</a></div>
+                        }
+                    </div>
+                }
+            </div><!-- /section-crm collapse -->
         </nav>
         <div style="padding:1rem 1.5rem;border-top:1px solid #2d1258;">
             <form asp-controller="Account" asp-action="Logout" method="post"

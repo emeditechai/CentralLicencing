@@ -1,0 +1,444 @@
+@model CentralLicenceApp.Models.ViewModels.TicketDetailViewModel
+@using System.Security.Claims
+@{
+    ViewData["Title"] = $"Ticket {Model.Ticket.TicketNumber}";
+    var ticket = Model.Ticket;
+    var statusClass = ticket.Status switch
+    {
+        "Open" => "background:#dbeafe;color:#2563eb;",
+        "In Progress" => "background:#fef3c7;color:#d97706;",
+        "Waiting for Client" => "background:#e0f2fe;color:#0891b2;",
+        "Resolved" => "background:#dcfce7;color:#16a34a;",
+        "Closed" => "background:#f1f5f9;color:#64748b;",
+        _ => "background:#f1f5f9;color:#64748b;"
+    };
+    var currentUserId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var isClosed = ticket.Status == "Closed";
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    @if (Model.IsAgent)
+    {
+        <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+    }
+    else
+    {
+        <a asp-action="MyTickets" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+    }
+    <div class="flex-fill">
+        <div class="d-flex align-items-center gap-2">
+            <h4 class="fw-bold mb-0" style="color:#1e293b;">@ticket.TicketNumber</h4>
+            <span class="badge rounded-pill px-2 py-1" style="font-size:.75rem;@statusClass">@ticket.Status</span>
+            <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:@(ticket.PriorityColor ?? "#6b7280")20;color:@(ticket.PriorityColor ?? "#6b7280");">@ticket.PriorityName</span>
+        </div>
+        <p class="text-muted mb-0" style="font-size:.85rem;">@ticket.Subject</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left: Conversation -->
+    <div class="col-lg-8">
+        <!-- Original Description -->
+        <div class="card mb-3">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="avatar-sm d-flex align-items-center justify-content-center rounded-circle text-white fw-bold" style="width:38px;height:38px;min-width:38px;background:#4f46e5;font-size:.85rem;">
+                        @(ticket.CreatedByName.Length > 0 ? ticket.CreatedByName[0].ToString().ToUpper() : "U")
+                    </div>
+                    <div class="flex-fill">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="fw-semibold" style="font-size:.88rem;">@ticket.CreatedByName</span>
+                            <span class="text-muted" style="font-size:.75rem;">@ticket.CreatedAt.ToString("dd MMM yyyy, hh:mm tt")</span>
+                            <span class="badge rounded-pill" style="font-size:.65rem;background:#e0e7ff;color:#4f46e5;">Author</span>
+                        </div>
+                        <div style="font-size:.88rem;line-height:1.65;color:#334155;white-space:pre-wrap;">@ticket.Description</div>
+
+                        @{
+                            var initialAttachments = Model.Attachments.Where(a => a.MessageId == null).ToList();
+                        }
+                        @if (initialAttachments.Any())
+                        {
+                            <div class="mt-3 d-flex flex-wrap gap-2">
+                                @foreach (var att in initialAttachments)
+                                {
+                                    var previewUrl = Url.Action("PreviewAttachment", new { id = att.Id });
+                                    var isPreviewable = IsPreviewableFile(att.FileName);
+                                    @if (isPreviewable)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" style="border-radius:8px;font-size:.78rem;" onclick="openPreview('@previewUrl', '@att.FileName')">
+                                            <i class="bi bi-eye"></i> @att.FileName
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <a asp-action="DownloadAttachment" asp-route-id="@att.Id" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" style="border-radius:8px;font-size:.78rem;">
+                                            <i class="bi bi-download"></i> @att.FileName
+                                        </a>
+                                    }
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages Thread -->
+        @foreach (var msg in Model.Messages)
+        {
+            if (msg.IsInternal && !Model.IsAgent) { continue; }
+            var isOwn = msg.SenderId == currentUserId;
+            var isInternalNote = msg.IsInternal;
+            var bgColor = isInternalNote ? "#fffbeb" : (isOwn ? "#f8fafc" : "#ffffff");
+            var borderColor = isInternalNote ? "#fbbf24" : "#e2e8f0";
+            <div class="card mb-2" style="border-left:3px solid @borderColor;background:@bgColor;">
+                <div class="card-body p-3">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="avatar-sm d-flex align-items-center justify-content-center rounded-circle text-white fw-bold" style="width:34px;height:34px;min-width:34px;background:@(isInternalNote ? "#f59e0b" : "#6d28d9");font-size:.8rem;">
+                            @(msg.SenderName.Length > 0 ? msg.SenderName[0].ToString().ToUpper() : "U")
+                        </div>
+                        <div class="flex-fill">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <span class="fw-semibold" style="font-size:.84rem;">@msg.SenderName</span>
+                                <span class="text-muted" style="font-size:.73rem;">@msg.CreatedAt.ToString("dd MMM yyyy, hh:mm tt")</span>
+                                @if (isInternalNote)
+                                {
+                                    <span class="badge rounded-pill" style="font-size:.63rem;background:#fef3c7;color:#b45309;">Internal Note</span>
+                                }
+                            </div>
+                            <div style="font-size:.86rem;line-height:1.6;color:#334155;white-space:pre-wrap;">@msg.Message</div>
+
+                            @if (msg.Attachments.Any())
+                            {
+                                <div class="mt-2 d-flex flex-wrap gap-2">
+                                    @foreach (var att in msg.Attachments)
+                                    {
+                                        var previewUrl = Url.Action("PreviewAttachment", new { id = att.Id });
+                                        var isPreviewable = IsPreviewableFile(att.FileName);
+                                        @if (isPreviewable)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" style="border-radius:7px;font-size:.76rem;" onclick="openPreview('@previewUrl', '@att.FileName')">
+                                                <i class="bi bi-eye"></i> @att.FileName
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <a asp-action="DownloadAttachment" asp-route-id="@att.Id" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" style="border-radius:7px;font-size:.76rem;">
+                                                <i class="bi bi-download"></i> @att.FileName
+                                            </a>
+                                        }
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Reply Form -->
+        @if (!isClosed)
+        {
+            <div class="card mt-3">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold mb-3" style="font-size:.9rem;"><i class="bi bi-reply me-1"></i> Post a Reply</h6>
+                    <form asp-action="Reply" method="post" enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ticketId" value="@ticket.Id" />
+
+                        <div class="mb-3">
+                            <textarea name="replyMessage" class="form-control" rows="4" style="border-radius:10px;" placeholder="Type your reply..."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <input type="file" name="replyAttachments" class="form-control form-control-sm" style="border-radius:8px;" multiple />
+                        </div>
+
+                        <div class="d-flex align-items-center gap-3">
+                            <button type="submit" class="btn text-white px-4" style="background:#180a3c;border:none;border-radius:10px;">
+                                <i class="bi bi-send me-1"></i> Send Reply
+                            </button>
+                            @if (Model.IsAgent)
+                            {
+                                <div class="form-check">
+                                    <input type="checkbox" name="isInternal" value="true" class="form-check-input" id="chkInternal" />
+                                    <label class="form-check-label" for="chkInternal" style="font-size:.82rem;">
+                                        <i class="bi bi-eye-slash me-1"></i> Internal note (not visible to client)
+                                    </label>
+                                </div>
+                            }
+                            @if (!Model.IsAgent && !isClosed)
+                            {
+                                <div class="form-check">
+                                    <input type="checkbox" name="markAsClosed" value="true" class="form-check-input" id="chkMarkClosed" />
+                                    <label class="form-check-label" for="chkMarkClosed" style="font-size:.82rem;color:#dc2626;font-weight:600;">
+                                        <i class="bi bi-x-circle me-1"></i> Mark as Closed
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                        @if (!Model.IsAgent && !isClosed)
+                        {
+                            <div id="closeWarning" class="alert alert-warning mt-2 mb-0 py-2 px-3 d-none" style="font-size:.82rem;border-radius:8px;">
+                                <i class="bi bi-exclamation-triangle me-1"></i> A closing comment is <strong>required</strong> when marking the ticket as closed.
+                            </div>
+                        }
+                    </form>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="alert py-3 px-4 mt-3" style="background:#f1f5f9;border:none;border-radius:12px;">
+                <i class="bi bi-lock me-2"></i>This ticket has been <strong>closed</strong>. No further replies can be added.
+            </div>
+        }
+    </div>
+
+    <!-- Right: Ticket Info & Actions -->
+    <div class="col-lg-4">
+        <!-- Ticket Info -->
+        <div class="card mb-3">
+            <div class="card-body p-3">
+                <h6 class="fw-bold mb-3" style="font-size:.85rem;color:#64748b;"><i class="bi bi-info-circle me-1"></i> Ticket Details</h6>
+                <div class="mb-2">
+                    <div class="text-muted" style="font-size:.73rem;font-weight:600;">STATUS</div>
+                    <span class="badge rounded-pill px-2 py-1 mt-1" style="font-size:.75rem;@statusClass">@ticket.Status</span>
+                </div>
+                <div class="mb-2">
+                    <div class="text-muted" style="font-size:.73rem;font-weight:600;">PRIORITY</div>
+                    <span class="badge rounded-pill px-2 py-1 mt-1" style="font-size:.73rem;background:@(ticket.PriorityColor ?? "#6b7280")20;color:@(ticket.PriorityColor ?? "#6b7280");">@ticket.PriorityName</span>
+                </div>
+                <div class="mb-2">
+                    <div class="text-muted" style="font-size:.73rem;font-weight:600;">CATEGORY</div>
+                    <div style="font-size:.85rem;">@ticket.CategoryName</div>
+                </div>
+                @if (!string.IsNullOrEmpty(ticket.SubCategoryName))
+                {
+                    <div class="mb-2">
+                        <div class="text-muted" style="font-size:.73rem;font-weight:600;">SUB CATEGORY</div>
+                        <div style="font-size:.85rem;">@ticket.SubCategoryName</div>
+                    </div>
+                }
+                <div class="mb-2">
+                    <div class="text-muted" style="font-size:.73rem;font-weight:600;">CREATED BY</div>
+                    <div style="font-size:.85rem;">@ticket.CreatedByName</div>
+                </div>
+                <div class="mb-2">
+                    <div class="text-muted" style="font-size:.73rem;font-weight:600;">ASSIGNED TO</div>
+                    <div style="font-size:.85rem;">@(ticket.AssignedToName ?? "Unassigned")</div>
+                </div>
+                <div class="mb-2">
+                    <div class="text-muted" style="font-size:.73rem;font-weight:600;">CREATED</div>
+                    <div style="font-size:.85rem;">@ticket.CreatedAt.ToString("dd MMM yyyy, hh:mm tt")</div>
+                </div>
+                @if (ticket.FirstResponseAt.HasValue)
+                {
+                    <div class="mb-2">
+                        <div class="text-muted" style="font-size:.73rem;font-weight:600;">FIRST RESPONSE</div>
+                        <div style="font-size:.85rem;">@ticket.FirstResponseAt.Value.ToString("dd MMM yyyy, hh:mm tt")</div>
+                    </div>
+                }
+                @if (ticket.ResolvedAt.HasValue)
+                {
+                    <div class="mb-2">
+                        <div class="text-muted" style="font-size:.73rem;font-weight:600;">RESOLVED</div>
+                        <div style="font-size:.85rem;">@ticket.ResolvedAt.Value.ToString("dd MMM yyyy, hh:mm tt")</div>
+                    </div>
+                }
+                @if (ticket.ClosedAt.HasValue)
+                {
+                    <div class="mb-2">
+                        <div class="text-muted" style="font-size:.73rem;font-weight:600;">CLOSED</div>
+                        <div style="font-size:.85rem;">@ticket.ClosedAt.Value.ToString("dd MMM yyyy, hh:mm tt")</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Agent Actions -->
+        @if (Model.IsAgent && !isClosed)
+        {
+            <div class="card mb-3">
+                <div class="card-body p-3">
+                    <h6 class="fw-bold mb-3" style="font-size:.85rem;color:#64748b;"><i class="bi bi-gear me-1"></i> Actions</h6>
+
+                    <!-- Status Update -->
+                    <form asp-action="UpdateStatus" method="post" class="mb-3">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ticketId" value="@ticket.Id" />
+                        <label class="form-label fw-semibold" style="font-size:.78rem;">Change Status</label>
+                        <div class="d-flex gap-1">
+                            <select name="newStatus" class="form-select form-select-sm" style="border-radius:8px;">
+                                @foreach (var s in new[] { "Open", "In Progress", "Waiting for Client", "Resolved", "Closed" })
+                                {
+                                    <option value="@s" selected="@(s == ticket.Status)">@s</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn btn-sm text-white" style="background:#180a3c;border-radius:8px;white-space:nowrap;">Update</button>
+                        </div>
+                    </form>
+
+                    <!-- Assignment -->
+                    <form asp-action="Assign" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ticketId" value="@ticket.Id" />
+                        <label class="form-label fw-semibold" style="font-size:.78rem;">Assign To</label>
+                        <div class="d-flex gap-1">
+                            <select name="agentId" class="form-select form-select-sm" style="border-radius:8px;">
+                                <option value="">-- Select Agent --</option>
+                                @foreach (var a in Model.Agents)
+                                {
+                                    <option value="@a.Id" selected="@(a.Id == ticket.AssignedToId)">@a.FullName</option>
+                                }
+                            </select>
+                            <button type="submit" class="btn btn-sm text-white" style="background:#180a3c;border-radius:8px;">Assign</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        }
+
+        <!-- Client: Close resolved ticket -->
+        @if (!Model.IsAgent && ticket.Status == "Resolved")
+        {
+            <div class="card mb-3">
+                <div class="card-body p-3">
+                    <p style="font-size:.85rem;">Your ticket has been resolved. If the issue is fixed, you can close it.</p>
+                    <form asp-action="UpdateStatus" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="ticketId" value="@ticket.Id" />
+                        <input type="hidden" name="newStatus" value="Closed" />
+                        <button type="submit" class="btn btn-sm btn-success w-100" style="border-radius:8px;">
+                            <i class="bi bi-check-circle me-1"></i> Confirm &amp; Close Ticket
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        <!-- Audit Log -->
+        @if (Model.AuditLogs.Any())
+        {
+            <div class="card">
+                <div class="card-body p-3">
+                    <h6 class="fw-bold mb-3" style="font-size:.85rem;color:#64748b;"><i class="bi bi-clock-history me-1"></i> Activity Log</h6>
+                    <div style="max-height:300px;overflow-y:auto;">
+                        @foreach (var log in Model.AuditLogs)
+                        {
+                            <div class="d-flex gap-2 mb-2 pb-2" style="border-bottom:1px solid #f1f5f9;">
+                                <div style="width:6px;height:6px;min-width:6px;background:#94a3b8;border-radius:50%;margin-top:7px;"></div>
+                                <div>
+                                    <div style="font-size:.8rem;color:#334155;">
+                                        <span class="fw-semibold">@log.PerformedByName</span> — @log.Action
+                                        @if (!string.IsNullOrEmpty(log.OldValue) && !string.IsNullOrEmpty(log.NewValue))
+                                        {
+                                            <span class="text-muted">(@log.OldValue → @log.NewValue)</span>
+                                        }
+                                        else if (!string.IsNullOrEmpty(log.NewValue))
+                                        {
+                                            <span class="text-muted">(@log.NewValue)</span>
+                                        }
+                                    </div>
+                                    <div class="text-muted" style="font-size:.72rem;">@log.CreatedAt.ToString("dd MMM yyyy, hh:mm tt")</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;overflow:hidden;">
+            <div class="modal-header py-2 px-3" style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+                <h6 class="modal-title fw-semibold mb-0" id="previewModalLabel" style="font-size:.88rem;"></h6>
+                <div class="d-flex align-items-center gap-2">
+                    <a id="previewDownloadLink" href="#" class="btn btn-sm btn-outline-secondary" style="border-radius:7px;font-size:.76rem;" target="_blank"><i class="bi bi-download me-1"></i>Download</a>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+            <div class="modal-body p-0 text-center" style="min-height:400px;max-height:80vh;overflow:auto;background:#1e293b;">
+                <div id="previewContent"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    static bool IsPreviewableFile(string fileName)
+    {
+        var ext = System.IO.Path.GetExtension(fileName).ToLowerInvariant();
+        return ext is ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".bmp" or ".svg" or ".pdf" or ".mp4" or ".webm" or ".txt" or ".csv";
+    }
+}
+
+@section Scripts {
+<script>
+function openPreview(url, fileName) {
+    var ext = fileName.split('.').pop().toLowerCase();
+    var content = document.getElementById('previewContent');
+    document.getElementById('previewModalLabel').textContent = fileName;
+
+    var dlUrl = url.replace('/PreviewAttachment/', '/DownloadAttachment/');
+    document.getElementById('previewDownloadLink').href = dlUrl;
+
+    var imageExts = ['jpg','jpeg','png','gif','webp','bmp','svg'];
+    var videoExts = ['mp4','webm'];
+
+    if (imageExts.includes(ext)) {
+        content.innerHTML = '<img src="' + url + '" style="max-width:100%;max-height:78vh;object-fit:contain;" />';
+    } else if (ext === 'pdf') {
+        content.innerHTML = '<iframe src="' + url + '" style="width:100%;height:78vh;border:none;"></iframe>';
+    } else if (videoExts.includes(ext)) {
+        content.innerHTML = '<video controls style="max-width:100%;max-height:78vh;"><source src="' + url + '" /></video>';
+    } else {
+        content.innerHTML = '<iframe src="' + url + '" style="width:100%;height:78vh;border:none;background:#fff;"></iframe>';
+    }
+
+    var modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+}
+
+document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('previewContent').innerHTML = '';
+});
+
+// Mark as Closed — client-side validation
+(function() {
+    var chk = document.getElementById('chkMarkClosed');
+    if (!chk) return;
+
+    var warning = document.getElementById('closeWarning');
+    var textarea = chk.closest('form').querySelector('textarea[name="replyMessage"]');
+
+    chk.addEventListener('change', function() {
+        if (chk.checked) {
+            warning.classList.remove('d-none');
+            textarea.setAttribute('required', 'required');
+            textarea.placeholder = 'Please provide a closing comment...';
+        } else {
+            warning.classList.add('d-none');
+            textarea.removeAttribute('required');
+            textarea.placeholder = 'Type your reply...';
+        }
+    });
+
+    chk.closest('form').addEventListener('submit', function(e) {
+        if (chk.checked && !textarea.value.trim()) {
+            e.preventDefault();
+            textarea.focus();
+            textarea.classList.add('is-invalid');
+        }
+    });
+
+    textarea.addEventListener('input', function() {
+        if (textarea.value.trim()) textarea.classList.remove('is-invalid');
+    });
+})();
+</script>
+}

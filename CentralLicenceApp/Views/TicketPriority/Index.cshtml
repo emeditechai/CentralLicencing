@@ -1,0 +1,86 @@
+@model List<CentralLicenceApp.Models.TicketPriorityMaster>
+@{
+    ViewData["Title"] = "Ticket Priorities";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Ticket Priorities</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">@Model.Count priorit@(Model.Count == 1 ? "y" : "ies") configured</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
+        <i class="bi bi-plus-lg me-1"></i> New Priority
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Priority</th>
+                        <th>SLA Response</th>
+                        <th>SLA Resolution</th>
+                        <th>Sort</th>
+                        <th>Status</th>
+                        <th class="pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No ticket priorities found</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@item.Id</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div style="width:32px;height:32px;background:@(item.ColorCode ?? "#6b7280")20;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.9rem;">
+                                            <i class="bi bi-flag-fill" style="color:@(item.ColorCode ?? "#6b7280");"></i>
+                                        </div>
+                                        <span class="fw-semibold" style="font-size:.875rem;">@item.PriorityName</span>
+                                    </div>
+                                </td>
+                                <td style="font-size:.85rem;">@(item.SlaResponseHours.HasValue ? $"{item.SlaResponseHours}h" : "-")</td>
+                                <td style="font-size:.85rem;">@(item.SlaResolutionHours.HasValue ? $"{item.SlaResolutionHours}h" : "-")</td>
+                                <td style="font-size:.85rem;">@item.SortOrder</td>
+                                <td>
+                                    @if (item.IsActive)
+                                    {
+                                        <span class="badge badge-ok rounded-pill px-2 py-1" style="font-size:.73rem;">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-neu rounded-pill px-2 py-1" style="font-size:.73rem;">Inactive</span>
+                                    }
+                                </td>
+                                <td class="pe-3">
+                                    <div class="d-flex gap-1">
+                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" title="Edit" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
+                                        <form asp-action="Delete" method="post"
+                                              data-swal-confirm="true"
+                                              data-swal-title="Delete Ticket Priority?"
+                                              data-swal-text="Ticket priority <strong>@item.PriorityName</strong> will be deleted permanently."
+                                              data-swal-confirm-button="Yes, delete priority">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@item.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete" style="border-radius:7px;"><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

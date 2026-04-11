@@ -1,0 +1,63 @@
+@model CentralLicenceApp.Models.ViewModels.TicketSubCategoryFormViewModel
+@{
+    ViewData["Title"] = "Edit Ticket Sub Category";
+}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+    <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Edit Ticket Sub Category</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Update sub-category details</p>
+    </div>
+</div>
+
+<div class="card" style="max-width:560px;">
+    <div class="card-body p-4">
+        <form asp-action="Edit" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Id" />
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.83rem;"></div>
+
+            <div class="row g-3">
+                <div class="col-12">
+                    <label asp-for="CategoryId" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <select asp-for="CategoryId" class="form-select" style="border-radius:10px;">
+                        <option value="">-- Select Category --</option>
+                        @foreach (var c in Model.Categories)
+                        {
+                            <option value="@c.Id">@c.CategoryName</option>
+                        }
+                    </select>
+                    <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="SubCategoryName" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <input asp-for="SubCategoryName" class="form-control" style="border-radius:10px;" />
+                    <span asp-validation-for="SubCategoryName" class="text-danger small"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Description" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <textarea asp-for="Description" class="form-control" rows="3" style="border-radius:10px;"></textarea>
+                    <span asp-validation-for="Description" class="text-danger small"></span>
+                </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox" />
+                        <label asp-for="IsActive" class="form-check-label fw-semibold" style="font-size:.85rem;"></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn text-white px-4" style="background:#180a3c;border:none;border-radius:10px;">
+                    <i class="bi bi-check2-circle me-1"></i> Update Sub Category
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary" style="border-radius:10px;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

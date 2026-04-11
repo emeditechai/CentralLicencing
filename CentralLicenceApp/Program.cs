@@ -50,13 +50,25 @@ builder.Services.AddScoped<IPaymentModeRepository>(_ => new PaymentModeRepositor
 builder.Services.AddScoped<IInvoicePaymentRepository>(_ => new InvoicePaymentRepository(connStr));
 builder.Services.AddScoped<IInvoiceRefundRepository>(_ => new InvoiceRefundRepository(connStr));
 builder.Services.AddScoped<ICreditNoteRepository>(_ => new CreditNoteRepository(connStr));
+builder.Services.AddScoped<ITicketCategoryRepository>(_ => new TicketCategoryRepository(connStr));
+builder.Services.AddScoped<ITicketSubCategoryRepository>(_ => new TicketSubCategoryRepository(connStr));
+builder.Services.AddScoped<ITicketPriorityRepository>(_ => new TicketPriorityRepository(connStr));
+builder.Services.AddScoped<IHelpDeskTicketRepository>(_ => new HelpDeskTicketRepository(connStr));
+builder.Services.AddScoped<ITicketReportRepository>(_ => new TicketReportRepository(connStr));
 builder.Services.AddScoped<IClientDetailsReportExportService, ClientDetailsReportExportService>();
 builder.Services.AddScoped<IExpenseReportExportService, ExpenseReportExportService>();
 builder.Services.AddScoped<ISettlementReportExportService, SettlementReportExportService>();
+builder.Services.AddScoped<ITicketReportExportService, TicketReportExportService>();
 builder.Services.AddScoped<IUserPushSubscriptionRepository>(_ => new UserPushSubscriptionRepository(connStr));
 
 // Email service
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddScoped<ITicketEmailService>(sp =>
+    new TicketEmailService(
+        sp.GetRequiredService<IEmailService>(),
+        sp.GetRequiredService<ICompanySettingsRepository>(),
+        connStr,
+        sp.GetRequiredService<ILogger<TicketEmailService>>()));
 builder.Services.AddScoped<IViewRenderService, ViewRenderService>();
 builder.Services.AddSingleton<IBrowserProvider, BrowserProvider>();
 builder.Services.AddScoped<IDocumentPdfService, DocumentPdfService>();

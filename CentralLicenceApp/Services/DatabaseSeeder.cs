@@ -55,6 +55,8 @@ namespace CentralLicenceApp.Services
                 await EnsureInvoiceCancelRemarksAsync(conn);
                 await EnsurePaymentModeTableAsync(conn);
                 await EnsureInvoicePaymentTablesAsync(conn);
+                await EnsureHelpDeskTicketTablesAsync(conn);
+                await EnsureTicketReportStoredProcsAsync(conn);
             }
             catch (Exception ex)
             {
@@ -2050,6 +2052,359 @@ namespace CentralLicenceApp.Services
                     ALTER TABLE dbo.InvoicePaymentLine ADD BankId       INT           NULL;
                 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.InvoicePaymentLine') AND name = 'BankName')
                     ALTER TABLE dbo.InvoicePaymentLine ADD BankName     NVARCHAR(150) NULL;");
+        }
+
+        private static async Task EnsureHelpDeskTicketTablesAsync(SqlConnection conn)
+        {
+            await conn.ExecuteAsync(@"
+                -- Ticket Category Master
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='TicketCategoryMaster')
+                BEGIN
+                    CREATE TABLE [dbo].[TicketCategoryMaster] (
+                        [Id]           INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        [CategoryName] NVARCHAR(100)  NOT NULL,
+                        [Description]  NVARCHAR(300)  NULL,
+                        [IsActive]     BIT            NOT NULL DEFAULT 1,
+                        [CreatedAt]    DATETIME       NOT NULL DEFAULT GETDATE()
+                    );
+                END
+
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='UX_TicketCategoryMaster_CategoryName' AND object_id=OBJECT_ID('TicketCategoryMaster'))
+                    CREATE UNIQUE INDEX UX_TicketCategoryMaster_CategoryName ON dbo.TicketCategoryMaster(CategoryName);
+
+                IF NOT EXISTS (SELECT 1 FROM TicketCategoryMaster WHERE CategoryName='General Inquiry')
+                    INSERT INTO TicketCategoryMaster(CategoryName,Description,IsActive) VALUES('General Inquiry','General questions and inquiries',1);
+                IF NOT EXISTS (SELECT 1 FROM TicketCategoryMaster WHERE CategoryName='Technical Issue')
+                    INSERT INTO TicketCategoryMaster(CategoryName,Description,IsActive) VALUES('Technical Issue','Software bugs or technical problems',1);
+                IF NOT EXISTS (SELECT 1 FROM TicketCategoryMaster WHERE CategoryName='Billing')
+                    INSERT INTO TicketCategoryMaster(CategoryName,Description,IsActive) VALUES('Billing','Billing and payment related issues',1);
+                IF NOT EXISTS (SELECT 1 FROM TicketCategoryMaster WHERE CategoryName='Feature Request')
+                    INSERT INTO TicketCategoryMaster(CategoryName,Description,IsActive) VALUES('Feature Request','New feature or enhancement requests',1);
+                IF NOT EXISTS (SELECT 1 FROM TicketCategoryMaster WHERE CategoryName='Account Issue')
+                    INSERT INTO TicketCategoryMaster(CategoryName,Description,IsActive) VALUES('Account Issue','Account access and profile issues',1);
+
+                -- Ticket Priority Master
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='TicketPriorityMaster')
+                BEGIN
+                    CREATE TABLE [dbo].[TicketPriorityMaster] (
+                        [Id]           INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        [PriorityName] NVARCHAR(50)   NOT NULL,
+                        [ColorCode]    NVARCHAR(20)   NULL,
+                        [SortOrder]    INT            NOT NULL DEFAULT 0,
+                        [SlaResponseHours]   INT      NULL,
+                        [SlaResolutionHours] INT      NULL,
+                        [IsActive]     BIT            NOT NULL DEFAULT 1,
+                        [CreatedAt]    DATETIME       NOT NULL DEFAULT GETDATE()
+                    );
+                END
+
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='UX_TicketPriorityMaster_PriorityName' AND object_id=OBJECT_ID('TicketPriorityMaster'))
+                    CREATE UNIQUE INDEX UX_TicketPriorityMaster_PriorityName ON dbo.TicketPriorityMaster(PriorityName);
+
+                IF NOT EXISTS (SELECT 1 FROM TicketPriorityMaster WHERE PriorityName='Low')
+                    INSERT INTO TicketPriorityMaster(PriorityName,ColorCode,SortOrder,SlaResponseHours,SlaResolutionHours) VALUES('Low','#6b7280',1,24,72);
+                IF NOT EXISTS (SELECT 1 FROM TicketPriorityMaster WHERE PriorityName='Medium')
+                    INSERT INTO TicketPriorityMaster(PriorityName,ColorCode,SortOrder,SlaResponseHours,SlaResolutionHours) VALUES('Medium','#f59e0b',2,8,48);
+                IF NOT EXISTS (SELECT 1 FROM TicketPriorityMaster WHERE PriorityName='High')
+                    INSERT INTO TicketPriorityMaster(PriorityName,ColorCode,SortOrder,SlaResponseHours,SlaResolutionHours) VALUES('High','#ef4444',3,4,24);
+                IF NOT EXISTS (SELECT 1 FROM TicketPriorityMaster WHERE PriorityName='Critical')
+                    INSERT INTO TicketPriorityMaster(PriorityName,ColorCode,SortOrder,SlaResponseHours,SlaResolutionHours) VALUES('Critical','#dc2626',4,1,8);
+
+                -- HelpDeskTicket
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='HelpDeskTicket')
+                BEGIN
+                    CREATE TABLE [dbo].[HelpDeskTicket] (
+                        [Id]              INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        [TicketNumber]    NVARCHAR(20)   NOT NULL,
+                        [Subject]         NVARCHAR(300)  NOT NULL,
+                        [Description]     NVARCHAR(MAX)  NOT NULL,
+                        [CategoryId]      INT            NOT NULL,
+                        [PriorityId]      INT            NOT NULL,
+                        [Status]          NVARCHAR(30)   NOT NULL DEFAULT 'Open',
+                        [CreatedById]     INT            NOT NULL,
+                        [AssignedToId]    INT            NULL,
+                        [CreatedAt]       DATETIME       NOT NULL DEFAULT GETDATE(),
+                        [UpdatedAt]       DATETIME       NULL,
+                        [FirstResponseAt] DATETIME       NULL,
+                        [ResolvedAt]      DATETIME       NULL,
+                        [ClosedAt]        DATETIME       NULL,
+                        CONSTRAINT FK_HelpDeskTicket_Category FOREIGN KEY(CategoryId) REFERENCES TicketCategoryMaster(Id),
+                        CONSTRAINT FK_HelpDeskTicket_Priority FOREIGN KEY(PriorityId) REFERENCES TicketPriorityMaster(Id),
+                        CONSTRAINT FK_HelpDeskTicket_CreatedBy FOREIGN KEY(CreatedById) REFERENCES UserMaster(Id),
+                        CONSTRAINT FK_HelpDeskTicket_AssignedTo FOREIGN KEY(AssignedToId) REFERENCES UserMaster(Id)
+                    );
+                END
+
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='UX_HelpDeskTicket_TicketNumber' AND object_id=OBJECT_ID('HelpDeskTicket'))
+                    CREATE UNIQUE INDEX UX_HelpDeskTicket_TicketNumber ON dbo.HelpDeskTicket(TicketNumber);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_HelpDeskTicket_Status' AND object_id=OBJECT_ID('HelpDeskTicket'))
+                    CREATE INDEX IX_HelpDeskTicket_Status ON dbo.HelpDeskTicket(Status);
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_HelpDeskTicket_AssignedToId' AND object_id=OBJECT_ID('HelpDeskTicket'))
+                    CREATE INDEX IX_HelpDeskTicket_AssignedToId ON dbo.HelpDeskTicket(AssignedToId);
+
+                -- TicketMessage
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='TicketMessage')
+                BEGIN
+                    CREATE TABLE [dbo].[TicketMessage] (
+                        [Id]          INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        [TicketId]    INT            NOT NULL,
+                        [SenderId]    INT            NOT NULL,
+                        [Message]     NVARCHAR(MAX)  NOT NULL,
+                        [IsInternal]  BIT            NOT NULL DEFAULT 0,
+                        [CreatedAt]   DATETIME       NOT NULL DEFAULT GETDATE(),
+                        CONSTRAINT FK_TicketMessage_Ticket FOREIGN KEY(TicketId) REFERENCES HelpDeskTicket(Id),
+                        CONSTRAINT FK_TicketMessage_Sender FOREIGN KEY(SenderId) REFERENCES UserMaster(Id)
+                    );
+                END
+
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_TicketMessage_TicketId' AND object_id=OBJECT_ID('TicketMessage'))
+                    CREATE INDEX IX_TicketMessage_TicketId ON dbo.TicketMessage(TicketId);
+
+                -- TicketAttachment
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='TicketAttachment')
+                BEGIN
+                    CREATE TABLE [dbo].[TicketAttachment] (
+                        [Id]          INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        [TicketId]    INT            NOT NULL,
+                        [MessageId]   INT            NULL,
+                        [FileName]    NVARCHAR(300)  NOT NULL,
+                        [FilePath]    NVARCHAR(500)  NOT NULL,
+                        [FileSize]    BIGINT         NULL,
+                        [UploadedById] INT           NOT NULL,
+                        [CreatedAt]   DATETIME       NOT NULL DEFAULT GETDATE(),
+                        CONSTRAINT FK_TicketAttachment_Ticket FOREIGN KEY(TicketId) REFERENCES HelpDeskTicket(Id),
+                        CONSTRAINT FK_TicketAttachment_Message FOREIGN KEY(MessageId) REFERENCES TicketMessage(Id),
+                        CONSTRAINT FK_TicketAttachment_UploadedBy FOREIGN KEY(UploadedById) REFERENCES UserMaster(Id)
+                    );
+                END
+
+                -- TicketAuditLog
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='TicketAuditLog')
+                BEGIN
+                    CREATE TABLE [dbo].[TicketAuditLog] (
+                        [Id]          INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        [TicketId]    INT            NOT NULL,
+                        [Action]      NVARCHAR(100)  NOT NULL,
+                        [OldValue]    NVARCHAR(200)  NULL,
+                        [NewValue]    NVARCHAR(200)  NULL,
+                        [PerformedById] INT          NOT NULL,
+                        [CreatedAt]   DATETIME       NOT NULL DEFAULT GETDATE(),
+                        CONSTRAINT FK_TicketAuditLog_Ticket FOREIGN KEY(TicketId) REFERENCES HelpDeskTicket(Id),
+                        CONSTRAINT FK_TicketAuditLog_PerformedBy FOREIGN KEY(PerformedById) REFERENCES UserMaster(Id)
+                    );
+                END
+
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_TicketAuditLog_TicketId' AND object_id=OBJECT_ID('TicketAuditLog'))
+                    CREATE INDEX IX_TicketAuditLog_TicketId ON dbo.TicketAuditLog(TicketId);
+
+                -- Seed ticket roles
+                IF NOT EXISTS (SELECT 1 FROM RoleMaster WHERE RoleName='Ticket Agent')
+                    INSERT INTO RoleMaster(RoleName,IsActive) VALUES('Ticket Agent',1);
+                IF NOT EXISTS (SELECT 1 FROM RoleMaster WHERE RoleName='Ticket Admin')
+                    INSERT INTO RoleMaster(RoleName,IsActive) VALUES('Ticket Admin',1);
+                IF NOT EXISTS (SELECT 1 FROM RoleMaster WHERE RoleName='ClientTicket')
+                    INSERT INTO RoleMaster(RoleName,IsActive) VALUES('ClientTicket',1);
+
+                -- Ticket Sub Category Master
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='TicketSubCategoryMaster')
+                BEGIN
+                    CREATE TABLE [dbo].[TicketSubCategoryMaster] (
+                        [Id]              INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        [CategoryId]      INT            NOT NULL,
+                        [SubCategoryName] NVARCHAR(100)  NOT NULL,
+                        [Description]     NVARCHAR(300)  NULL,
+                        [IsActive]        BIT            NOT NULL DEFAULT 1,
+                        [CreatedAt]       DATETIME       NOT NULL DEFAULT GETDATE(),
+                        CONSTRAINT FK_TicketSubCategory_Category FOREIGN KEY(CategoryId) REFERENCES TicketCategoryMaster(Id)
+                    );
+                END
+
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_TicketSubCategoryMaster_CategoryId' AND object_id=OBJECT_ID('TicketSubCategoryMaster'))
+                    CREATE INDEX IX_TicketSubCategoryMaster_CategoryId ON dbo.TicketSubCategoryMaster(CategoryId);
+
+                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='UX_TicketSubCategoryMaster_Name_Category' AND object_id=OBJECT_ID('TicketSubCategoryMaster'))
+                    CREATE UNIQUE INDEX UX_TicketSubCategoryMaster_Name_Category ON dbo.TicketSubCategoryMaster(CategoryId, SubCategoryName);
+
+                -- Add SubCategoryId to HelpDeskTicket
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id=OBJECT_ID('HelpDeskTicket') AND name='SubCategoryId')
+                BEGIN
+                    ALTER TABLE [dbo].[HelpDeskTicket] ADD [SubCategoryId] INT NULL;
+                    ALTER TABLE [dbo].[HelpDeskTicket] ADD CONSTRAINT FK_HelpDeskTicket_SubCategory FOREIGN KEY(SubCategoryId) REFERENCES TicketSubCategoryMaster(Id);
+                END
+            ");
+        }
+
+        // ── Ticket Report Stored Procedures ──
+        private static async Task EnsureTicketReportStoredProcsAsync(SqlConnection conn)
+        {
+            // Each SP is idempotent: DROP IF EXISTS then CREATE
+            var procedures = new[]
+            {
+                // 1. Dashboard KPIs
+                @"
+                IF OBJECT_ID('dbo.usp_TicketReport_Dashboard','P') IS NOT NULL DROP PROCEDURE dbo.usp_TicketReport_Dashboard;
+                ",
+                @"
+                CREATE PROCEDURE dbo.usp_TicketReport_Dashboard @FromDate DATE=NULL, @ToDate DATE=NULL
+                AS BEGIN SET NOCOUNT ON;
+                SELECT COUNT(*) AS TotalTickets,
+                    SUM(CASE WHEN t.Status='Open' THEN 1 ELSE 0 END) AS OpenTickets,
+                    SUM(CASE WHEN t.Status='In Progress' THEN 1 ELSE 0 END) AS InProgressTickets,
+                    SUM(CASE WHEN t.Status='Resolved' THEN 1 ELSE 0 END) AS ResolvedTickets,
+                    SUM(CASE WHEN t.Status='Closed' THEN 1 ELSE 0 END) AS ClosedTickets,
+                    SUM(CASE WHEN t.Status='Waiting for Client' THEN 1 ELSE 0 END) AS WaitingTickets,
+                    ISNULL(AVG(CASE WHEN t.FirstResponseAt IS NOT NULL THEN DATEDIFF(MINUTE,t.CreatedAt,t.FirstResponseAt)/60.0 END),0) AS AvgResponseTimeHours,
+                    ISNULL(AVG(CASE WHEN t.ResolvedAt IS NOT NULL THEN DATEDIFF(MINUTE,t.CreatedAt,t.ResolvedAt)/60.0 END),0) AS AvgResolutionTimeHours
+                FROM HelpDeskTicket t
+                WHERE (@FromDate IS NULL OR CAST(t.CreatedAt AS DATE)>=@FromDate)
+                  AND (@ToDate IS NULL OR CAST(t.CreatedAt AS DATE)<=@ToDate);
+                END
+                ",
+                // 2. Status Distribution
+                @"IF OBJECT_ID('dbo.usp_TicketReport_StatusDistribution','P') IS NOT NULL DROP PROCEDURE dbo.usp_TicketReport_StatusDistribution;",
+                @"
+                CREATE PROCEDURE dbo.usp_TicketReport_StatusDistribution @FromDate DATE=NULL, @ToDate DATE=NULL
+                AS BEGIN SET NOCOUNT ON;
+                SELECT t.Status, COUNT(*) AS [Count]
+                FROM HelpDeskTicket t
+                WHERE (@FromDate IS NULL OR CAST(t.CreatedAt AS DATE)>=@FromDate)
+                  AND (@ToDate IS NULL OR CAST(t.CreatedAt AS DATE)<=@ToDate)
+                GROUP BY t.Status ORDER BY [Count] DESC;
+                END
+                ",
+                // 3. Category Distribution
+                @"IF OBJECT_ID('dbo.usp_TicketReport_CategoryDistribution','P') IS NOT NULL DROP PROCEDURE dbo.usp_TicketReport_CategoryDistribution;",
+                @"
+                CREATE PROCEDURE dbo.usp_TicketReport_CategoryDistribution @FromDate DATE=NULL, @ToDate DATE=NULL
+                AS BEGIN SET NOCOUNT ON;
+                SELECT c.CategoryName, COUNT(*) AS [Count]
+                FROM HelpDeskTicket t INNER JOIN TicketCategoryMaster c ON c.Id=t.CategoryId
+                WHERE (@FromDate IS NULL OR CAST(t.CreatedAt AS DATE)>=@FromDate)
+                  AND (@ToDate IS NULL OR CAST(t.CreatedAt AS DATE)<=@ToDate)
+                GROUP BY c.CategoryName ORDER BY [Count] DESC;
+                END
+                ",
+                // 4. Priority Distribution
+                @"IF OBJECT_ID('dbo.usp_TicketReport_PriorityDistribution','P') IS NOT NULL DROP PROCEDURE dbo.usp_TicketReport_PriorityDistribution;",
+                @"
+                CREATE PROCEDURE dbo.usp_TicketReport_PriorityDistribution @FromDate DATE=NULL, @ToDate DATE=NULL
+                AS BEGIN SET NOCOUNT ON;
+                SELECT p.PriorityName, p.ColorCode, COUNT(*) AS [Count]
+                FROM HelpDeskTicket t INNER JOIN TicketPriorityMaster p ON p.Id=t.PriorityId
+                WHERE (@FromDate IS NULL OR CAST(t.CreatedAt AS DATE)>=@FromDate)
+                  AND (@ToDate IS NULL OR CAST(t.CreatedAt AS DATE)<=@ToDate)
+                GROUP BY p.PriorityName, p.ColorCode ORDER BY p.ColorCode DESC;
+                END
+                ",
+                // 5. Daily Trend
+                @"IF OBJECT_ID('dbo.usp_TicketReport_DailyTrend','P') IS NOT NULL DROP PROCEDURE dbo.usp_TicketReport_DailyTrend;",
+                @"
+                CREATE PROCEDURE dbo.usp_TicketReport_DailyTrend @FromDate DATE=NULL, @ToDate DATE=NULL
+                AS BEGIN SET NOCOUNT ON;
+                ;WITH DateRange AS (
+                    SELECT ISNULL(@FromDate,CAST(DATEADD(DAY,-30,GETDATE()) AS DATE)) AS dt
+                    UNION ALL SELECT DATEADD(DAY,1,dt) FROM DateRange WHERE dt<ISNULL(@ToDate,CAST(GETDATE() AS DATE))
+                ),
+                Created AS (
+                    SELECT CAST(t.CreatedAt AS DATE) AS TicketDate, COUNT(*) AS CreatedCount
+                    FROM HelpDeskTicket t
+                    WHERE (@FromDate IS NULL OR CAST(t.CreatedAt AS DATE)>=@FromDate)
+                      AND (@ToDate IS NULL OR CAST(t.CreatedAt AS DATE)<=@ToDate)
+                    GROUP BY CAST(t.CreatedAt AS DATE)
+                ),
+                Resolved AS (
+                    SELECT CAST(t.ResolvedAt AS DATE) AS TicketDate, COUNT(*) AS ResolvedCount
+                    FROM HelpDeskTicket t WHERE t.ResolvedAt IS NOT NULL
+                      AND (@FromDate IS NULL OR CAST(t.ResolvedAt AS DATE)>=@FromDate)
+                      AND (@ToDate IS NULL OR CAST(t.ResolvedAt AS DATE)<=@ToDate)
+                    GROUP BY CAST(t.ResolvedAt AS DATE)
+                )
+                SELECT d.dt AS TicketDate, ISNULL(c.CreatedCount,0) AS CreatedCount, ISNULL(r.ResolvedCount,0) AS ResolvedCount
+                FROM DateRange d LEFT JOIN Created c ON c.TicketDate=d.dt LEFT JOIN Resolved r ON r.TicketDate=d.dt
+                ORDER BY d.dt OPTION(MAXRECURSION 366);
+                END
+                ",
+                // 6. Agent Performance (paginated)
+                @"IF OBJECT_ID('dbo.usp_TicketReport_AgentPerformance','P') IS NOT NULL DROP PROCEDURE dbo.usp_TicketReport_AgentPerformance;",
+                @"
+                CREATE PROCEDURE dbo.usp_TicketReport_AgentPerformance @FromDate DATE=NULL, @ToDate DATE=NULL, @Page INT=1, @PageSize INT=20, @AgentId INT=NULL
+                AS BEGIN SET NOCOUNT ON;
+                SELECT u.Id AS AgentId, ISNULL(u.FullName,u.Username) AS AgentName,
+                    COUNT(*) AS TotalAssigned,
+                    SUM(CASE WHEN t.Status='Resolved' THEN 1 ELSE 0 END) AS Resolved,
+                    SUM(CASE WHEN t.Status='Closed' THEN 1 ELSE 0 END) AS Closed,
+                    SUM(CASE WHEN t.Status='Open' THEN 1 ELSE 0 END) AS [Open],
+                    SUM(CASE WHEN t.Status='In Progress' THEN 1 ELSE 0 END) AS InProgress,
+                    ISNULL(AVG(CASE WHEN t.FirstResponseAt IS NOT NULL THEN DATEDIFF(MINUTE,t.CreatedAt,t.FirstResponseAt)/60.0 END),0) AS AvgResponseTimeHours,
+                    ISNULL(AVG(CASE WHEN t.ResolvedAt IS NOT NULL THEN DATEDIFF(MINUTE,t.CreatedAt,t.ResolvedAt)/60.0 END),0) AS AvgResolutionTimeHours,
+                    CASE WHEN COUNT(*)>0 THEN CAST(SUM(CASE WHEN t.Status IN('Resolved','Closed') THEN 1 ELSE 0 END)*100.0/COUNT(*) AS DECIMAL(5,1)) ELSE 0 END AS ResolutionRate,
+                    COUNT(*) OVER() AS TotalCount
+                FROM HelpDeskTicket t INNER JOIN UserMaster u ON u.Id=t.AssignedToId
+                WHERE t.AssignedToId IS NOT NULL
+                  AND (@AgentId IS NULL OR t.AssignedToId=@AgentId)
+                  AND (@FromDate IS NULL OR CAST(t.CreatedAt AS DATE)>=@FromDate)
+                  AND (@ToDate IS NULL OR CAST(t.CreatedAt AS DATE)<=@ToDate)
+                GROUP BY u.Id, u.FullName, u.Username
+                ORDER BY TotalAssigned DESC
+                OFFSET (@Page-1)*@PageSize ROWS FETCH NEXT @PageSize ROWS ONLY;
+                END
+                ",
+                // 7. SLA Compliance (paginated)
+                @"IF OBJECT_ID('dbo.usp_TicketReport_SlaCompliance','P') IS NOT NULL DROP PROCEDURE dbo.usp_TicketReport_SlaCompliance;",
+                @"
+                CREATE PROCEDURE dbo.usp_TicketReport_SlaCompliance @FromDate DATE=NULL, @ToDate DATE=NULL, @Page INT=1, @PageSize INT=20
+                AS BEGIN SET NOCOUNT ON;
+                SELECT t.Id AS TicketId, t.TicketNumber, t.Subject, p.PriorityName, p.ColorCode AS PriorityColor,
+                    t.Status, cr.FullName AS CreatedByName, ag.FullName AS AssignedToName,
+                    t.CreatedAt, t.FirstResponseAt, t.ResolvedAt,
+                    ISNULL(p.SlaResponseHours,0) AS SlaResponseHours,
+                    ISNULL(p.SlaResolutionHours,0) AS SlaResolutionHours,
+                    CASE WHEN t.FirstResponseAt IS NOT NULL THEN DATEDIFF(MINUTE,t.CreatedAt,t.FirstResponseAt)/60.0 END AS ActualResponseHours,
+                    CASE WHEN t.ResolvedAt IS NOT NULL THEN DATEDIFF(MINUTE,t.CreatedAt,t.ResolvedAt)/60.0 END AS ActualResolutionHours,
+                    CASE WHEN t.FirstResponseAt IS NULL THEN 'Pending'
+                         WHEN DATEDIFF(MINUTE,t.CreatedAt,t.FirstResponseAt)/60.0<=ISNULL(p.SlaResponseHours,9999) THEN 'Met'
+                         ELSE 'Breached' END AS ResponseSlaStatus,
+                    CASE WHEN t.ResolvedAt IS NULL AND t.Status NOT IN('Resolved','Closed') THEN 'Pending'
+                         WHEN t.ResolvedAt IS NOT NULL AND DATEDIFF(MINUTE,t.CreatedAt,t.ResolvedAt)/60.0<=ISNULL(p.SlaResolutionHours,9999) THEN 'Met'
+                         WHEN t.ResolvedAt IS NOT NULL THEN 'Breached'
+                         ELSE 'Pending' END AS ResolutionSlaStatus,
+                    COUNT(*) OVER() AS TotalCount
+                FROM HelpDeskTicket t
+                INNER JOIN TicketPriorityMaster p ON p.Id=t.PriorityId
+                INNER JOIN UserMaster cr ON cr.Id=t.CreatedById
+                LEFT JOIN UserMaster ag ON ag.Id=t.AssignedToId
+                WHERE (@FromDate IS NULL OR CAST(t.CreatedAt AS DATE)>=@FromDate)
+                  AND (@ToDate IS NULL OR CAST(t.CreatedAt AS DATE)<=@ToDate)
+                ORDER BY t.CreatedAt DESC
+                OFFSET (@Page-1)*@PageSize ROWS FETCH NEXT @PageSize ROWS ONLY;
+                END
+                ",
+                // 8. SLA Compliance Summary (totals for cards - not paginated)
+                @"IF OBJECT_ID('dbo.usp_TicketReport_SlaComplianceSummary','P') IS NOT NULL DROP PROCEDURE dbo.usp_TicketReport_SlaComplianceSummary;",
+                @"
+                CREATE PROCEDURE dbo.usp_TicketReport_SlaComplianceSummary @FromDate DATE=NULL, @ToDate DATE=NULL
+                AS BEGIN SET NOCOUNT ON;
+                SELECT COUNT(*) AS TotalTickets,
+                    SUM(CASE WHEN t.FirstResponseAt IS NOT NULL
+                             AND DATEDIFF(MINUTE,t.CreatedAt,t.FirstResponseAt)/60.0<=ISNULL(p.SlaResponseHours,9999) THEN 1 ELSE 0 END) AS ResponseSlaMetCount,
+                    SUM(CASE WHEN t.FirstResponseAt IS NOT NULL
+                             AND DATEDIFF(MINUTE,t.CreatedAt,t.FirstResponseAt)/60.0>ISNULL(p.SlaResponseHours,9999) THEN 1 ELSE 0 END) AS ResponseSlaBreachedCount,
+                    SUM(CASE WHEN t.ResolvedAt IS NOT NULL
+                             AND DATEDIFF(MINUTE,t.CreatedAt,t.ResolvedAt)/60.0<=ISNULL(p.SlaResolutionHours,9999) THEN 1 ELSE 0 END) AS ResolutionSlaMetCount,
+                    SUM(CASE WHEN t.ResolvedAt IS NOT NULL
+                             AND DATEDIFF(MINUTE,t.CreatedAt,t.ResolvedAt)/60.0>ISNULL(p.SlaResolutionHours,9999) THEN 1 ELSE 0 END) AS ResolutionSlaBreachedCount
+                FROM HelpDeskTicket t
+                INNER JOIN TicketPriorityMaster p ON p.Id=t.PriorityId
+                WHERE (@FromDate IS NULL OR CAST(t.CreatedAt AS DATE)>=@FromDate)
+                  AND (@ToDate IS NULL OR CAST(t.CreatedAt AS DATE)<=@ToDate);
+                END
+                "
+            };
+
+            foreach (var sql in procedures)
+            {
+                await conn.ExecuteAsync(sql);
+            }
         }
     }
 }

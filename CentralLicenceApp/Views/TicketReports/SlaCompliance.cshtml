@@ -1,0 +1,272 @@
+@model CentralLicenceApp.Models.ViewModels.SlaComplianceReportViewModel
+@{
+    ViewData["Title"] = "SLA Compliance Report";
+    var fromVal = Model.FromDate?.ToString("yyyy-MM-dd") ?? "";
+    var toVal = Model.ToDate?.ToString("yyyy-MM-dd") ?? "";
+}
+
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div>
+            <h4 class="fw-bold mb-0" style="color:#1e293b;">SLA Compliance Report</h4>
+            <small class="text-muted">Track response and resolution time compliance against SLA targets</small>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a asp-action="ExportSlaComplianceExcel"
+               asp-route-fromDate="@fromVal"
+               asp-route-toDate="@toVal"
+               class="btn btn-sm text-white"
+               style="border-radius:10px;background:#15803d;border:none;">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </a>
+            <a asp-action="ExportSlaCompliancePdf"
+               asp-route-fromDate="@fromVal"
+               asp-route-toDate="@toVal"
+               class="btn btn-sm text-white"
+               style="border-radius:10px;background:#b91c1c;border:none;">
+                <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+            </a>
+        </div>
+    </div>
+
+    <!-- Date Filter -->
+    <form method="get" class="card border-0 shadow-sm mb-4" style="border-radius:12px;">
+        <div class="card-body py-3 px-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label small fw-semibold text-muted mb-1">From Date</label>
+                    <input type="date" name="fromDate" value="@fromVal" class="form-control form-control-sm" style="border-radius:8px;border-color:#e2e8f0;" />
+                </div>
+                <div class="col-auto">
+                    <label class="form-label small fw-semibold text-muted mb-1">To Date</label>
+                    <input type="date" name="toDate" value="@toVal" class="form-control form-control-sm" style="border-radius:8px;border-color:#e2e8f0;" />
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-sm text-white" style="background:#4f46e5;border-radius:8px;padding:6px 20px;">
+                        <i class="bi bi-funnel me-1"></i> Filter
+                    </button>
+                    <a asp-action="SlaCompliance" class="btn btn-sm btn-outline-secondary ms-1" style="border-radius:8px;">Reset</a>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <!-- SLA Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl-2 col-md-4">
+            <div class="card border-0 shadow-sm" style="border-radius:12px;">
+                <div class="card-body py-3 text-center">
+                    <div class="text-muted" style="font-size:.72rem;font-weight:600;">TOTAL TICKETS</div>
+                    <div class="fw-bold fs-3" style="color:#1e293b;">@Model.TotalTickets</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4">
+            <div class="card border-0 shadow-sm" style="border-radius:12px;">
+                <div class="card-body py-3 text-center">
+                    <div class="text-muted" style="font-size:.72rem;font-weight:600;">RESPONSE SLA MET</div>
+                    <div class="fw-bold fs-3" style="color:#16a34a;">@Model.ResponseSlaMetCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4">
+            <div class="card border-0 shadow-sm" style="border-radius:12px;">
+                <div class="card-body py-3 text-center">
+                    <div class="text-muted" style="font-size:.72rem;font-weight:600;">RESPONSE BREACHED</div>
+                    <div class="fw-bold fs-3" style="color:#ef4444;">@Model.ResponseSlaBreachedCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4">
+            <div class="card border-0 shadow-sm" style="border-radius:12px;">
+                <div class="card-body py-3 text-center">
+                    <div class="text-muted" style="font-size:.72rem;font-weight:600;">RESOLUTION SLA MET</div>
+                    <div class="fw-bold fs-3" style="color:#16a34a;">@Model.ResolutionSlaMetCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4">
+            <div class="card border-0 shadow-sm" style="border-radius:12px;">
+                <div class="card-body py-3 text-center">
+                    <div class="text-muted" style="font-size:.72rem;font-weight:600;">RESOLUTION BREACHED</div>
+                    <div class="fw-bold fs-3" style="color:#ef4444;">@Model.ResolutionSlaBreachedCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-2 col-md-4">
+            <div class="card border-0 shadow-sm" style="border-radius:12px;">
+                <div class="card-body py-3 text-center">
+                    <div class="text-muted" style="font-size:.72rem;font-weight:600;">PENDING</div>
+                    <div class="fw-bold fs-3" style="color:#d97706;">@Model.Rows.Count(r => r.ResponseSlaStatus == "Pending")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compliance Gauges -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-6">
+            <div class="card border-0 shadow-sm" style="border-radius:12px;">
+                <div class="card-body py-3 px-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-lightning-charge me-1"></i> Response SLA Compliance</h6>
+                        @{
+                            var respColor = Model.ResponseSlaCompliancePercent >= 80 ? "#16a34a" : Model.ResponseSlaCompliancePercent >= 50 ? "#d97706" : "#ef4444";
+                        }
+                        <span class="fw-bold fs-5" style="color:@respColor;">@Model.ResponseSlaCompliancePercent.ToString("0.#")%</span>
+                    </div>
+                    <div class="progress" style="height:12px;border-radius:6px;">
+                        <div class="progress-bar" role="progressbar" style="width:@Model.ResponseSlaCompliancePercent.ToString("0")%;background:@respColor;border-radius:6px;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <small class="text-muted">@Model.ResponseSlaMetCount met</small>
+                        <small style="color:#ef4444;">@Model.ResponseSlaBreachedCount breached</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-6">
+            <div class="card border-0 shadow-sm" style="border-radius:12px;">
+                <div class="card-body py-3 px-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0"><i class="bi bi-hourglass-split me-1"></i> Resolution SLA Compliance</h6>
+                        @{
+                            var resColor = Model.ResolutionSlaCompliancePercent >= 80 ? "#16a34a" : Model.ResolutionSlaCompliancePercent >= 50 ? "#d97706" : "#ef4444";
+                        }
+                        <span class="fw-bold fs-5" style="color:@resColor;">@Model.ResolutionSlaCompliancePercent.ToString("0.#")%</span>
+                    </div>
+                    <div class="progress" style="height:12px;border-radius:6px;">
+                        <div class="progress-bar" role="progressbar" style="width:@Model.ResolutionSlaCompliancePercent.ToString("0")%;background:@resColor;border-radius:6px;"></div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-1">
+                        <small class="text-muted">@Model.ResolutionSlaMetCount met</small>
+                        <small style="color:#ef4444;">@Model.ResolutionSlaBreachedCount breached</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLA Detail Table -->
+    <div class="card border-0 shadow-sm" style="border-radius:12px;">
+        <div class="card-header bg-white border-0 py-3 px-4">
+            <h6 class="fw-bold mb-0"><i class="bi bi-table me-2"></i>Ticket-Level SLA Details</h6>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" style="font-size:.83rem;">
+                    <thead>
+                        <tr style="background:#f8fafc;">
+                            <th class="ps-4">Ticket</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Assigned To</th>
+                            <th class="text-center">SLA Resp (h)</th>
+                            <th class="text-center">Actual Resp (h)</th>
+                            <th class="text-center">Resp SLA</th>
+                            <th class="text-center">SLA Resolve (h)</th>
+                            <th class="text-center">Actual Resolve (h)</th>
+                            <th class="text-center pe-4">Resolve SLA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (!Model.Rows.Any())
+                    {
+                        <tr><td colspan="10" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No tickets found</td></tr>
+                    }
+                    @foreach (var r in Model.Rows)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <a asp-controller="HelpDeskTicket" asp-action="Details" asp-route-id="@r.TicketId" class="text-decoration-none fw-semibold" style="color:#4f46e5;">@r.TicketNumber</a>
+                                <div class="text-muted" style="font-size:.75rem;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">@r.Subject</div>
+                            </td>
+                            <td><span class="badge rounded-pill px-2 py-1" style="font-size:.72rem;background:@(r.PriorityColor ?? "#6b7280")20;color:@(r.PriorityColor ?? "#6b7280");">@r.PriorityName</span></td>
+                            <td>
+                                @{
+                                    var stStyle = r.Status switch
+                                    {
+                                        "Open" => "background:#dbeafe;color:#2563eb;",
+                                        "In Progress" => "background:#fef3c7;color:#d97706;",
+                                        "Waiting for Client" => "background:#e0f2fe;color:#0891b2;",
+                                        "Resolved" => "background:#dcfce7;color:#16a34a;",
+                                        "Closed" => "background:#f1f5f9;color:#64748b;",
+                                        _ => "background:#f1f5f9;color:#64748b;"
+                                    };
+                                }
+                                <span class="badge rounded-pill px-2 py-1" style="font-size:.72rem;@stStyle">@r.Status</span>
+                            </td>
+                            <td>@(r.AssignedToName ?? "Unassigned")</td>
+                            <td class="text-center">@r.SlaResponseHours.ToString("0.#")</td>
+                            <td class="text-center">@(r.ActualResponseHours.HasValue ? r.ActualResponseHours.Value.ToString("0.#") : "—")</td>
+                            <td class="text-center">
+                                @{
+                                    var rsBg = r.ResponseSlaStatus == "Met" ? "background:#dcfce7;color:#16a34a;" :
+                                               r.ResponseSlaStatus == "Breached" ? "background:#fee2e2;color:#ef4444;" :
+                                               "background:#fef3c7;color:#d97706;";
+                                }
+                                <span class="badge rounded-pill px-2 py-1" style="font-size:.72rem;@rsBg">@r.ResponseSlaStatus</span>
+                            </td>
+                            <td class="text-center">@r.SlaResolutionHours.ToString("0.#")</td>
+                            <td class="text-center">@(r.ActualResolutionHours.HasValue ? r.ActualResolutionHours.Value.ToString("0.#") : "—")</td>
+                            <td class="text-center pe-4">
+                                @{
+                                    var rrBg = r.ResolutionSlaStatus == "Met" ? "background:#dcfce7;color:#16a34a;" :
+                                               r.ResolutionSlaStatus == "Breached" ? "background:#fee2e2;color:#ef4444;" :
+                                               "background:#fef3c7;color:#d97706;";
+                                }
+                                <span class="badge rounded-pill px-2 py-1" style="font-size:.72rem;@rrBg">@r.ResolutionSlaStatus</span>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @if (Model.TotalPages > 1)
+        {
+            <div class="d-flex align-items-center justify-content-between px-3 py-3 border-top" style="font-size:.82rem;">
+                <span class="text-muted">
+                    Showing @((Model.PageNumber - 1) * Model.PageSize + 1)&ndash;@(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalTickets)) of @Model.TotalTickets records
+                </span>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        @if (Model.PageNumber > 1)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-action="SlaCompliance"
+                                   asp-route-page="@(Model.PageNumber - 1)"
+                                   asp-route-fromDate="@fromVal"
+                                   asp-route-toDate="@toVal">&laquo;</a>
+                            </li>
+                        }
+                        @{
+                            int startPg = Math.Max(1, Model.PageNumber - 2);
+                            int endPg   = Math.Min(Model.TotalPages, startPg + 4);
+                            if (endPg - startPg < 4) startPg = Math.Max(1, endPg - 4);
+                        }
+                        @for (int pg = startPg; pg <= endPg; pg++)
+                        {
+                            <li class="page-item @(pg == Model.PageNumber ? "active" : "")">
+                                <a class="page-link" asp-action="SlaCompliance"
+                                   asp-route-page="@pg"
+                                   asp-route-fromDate="@fromVal"
+                                   asp-route-toDate="@toVal">@pg</a>
+                            </li>
+                        }
+                        @if (Model.PageNumber < Model.TotalPages)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-action="SlaCompliance"
+                                   asp-route-page="@(Model.PageNumber + 1)"
+                                   asp-route-fromDate="@fromVal"
+                                   asp-route-toDate="@toVal">&raquo;</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>

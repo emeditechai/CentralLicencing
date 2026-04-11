@@ -28,8 +28,15 @@ namespace CentralLicenceApp.Controllers
             _clientDetailsRepo  = clientDetailsRepo;
         }
 
+        private static readonly HashSet<string> CrmOnlyRoles = new(StringComparer.OrdinalIgnoreCase)
+            { "ClientTicket", "Ticket Admin", "Ticket Agent" };
+
         public async Task<IActionResult> Index(string? productType)
         {
+            var currentRole = User.FindFirstValue(ClaimTypes.Role) ?? "";
+            if (CrmOnlyRoles.Contains(currentRole))
+                return RedirectToAction("MyTickets", "HelpDeskTicket");
+
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null)
             {

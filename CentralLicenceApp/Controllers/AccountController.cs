@@ -23,12 +23,27 @@ namespace CentralLicenceApp.Controllers
             _roleSelectionProtector = dataProtectionProvider.CreateProtector("AccountController.PendingRoleSelection.v1");
         }
 
+        private static readonly HashSet<string> CrmOnlyRoles = new(StringComparer.OrdinalIgnoreCase)
+            { "ClientTicket", "Ticket Admin", "Ticket Agent" };
+
+        private bool IsCrmOnlyRole() => CrmOnlyRoles.Contains(User.FindFirstValue(ClaimTypes.Role) ?? "");
+
+        private IActionResult RedirectToDefaultHome()
+            => IsCrmOnlyRole()
+                ? RedirectToAction("MyTickets", "HelpDeskTicket")
+                : RedirectToAction("Index", "Dashboard");
+
+        private IActionResult RedirectToDefaultHome(string roleName)
+            => CrmOnlyRoles.Contains(roleName)
+                ? RedirectToAction("MyTickets", "HelpDeskTicket")
+                : RedirectToAction("Index", "Dashboard");
+
         [HttpGet]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Login(string? returnUrl = null)
         {
             if (User.Identity?.IsAuthenticated == true)
-                return RedirectToAction("Index", "Dashboard");
+                return RedirectToDefaultHome();
 
             ApplyNoCacheHeaders();
             ViewData["ReturnUrl"] = returnUrl;
@@ -80,10 +95,11 @@ namespace CentralLicenceApp.Controllers
 
             await SignInWithRoleAsync(user, assignedRoles[0].Id, model.RememberMe);
 
+            var loginRoleName = assignedRoles[0].RoleName;
             if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
                 return Redirect(returnUrl);
 
-            return RedirectToAction("Index", "Dashboard");
+            return RedirectToDefaultHome(loginRoleName);
         }
 
         [HttpPost]
@@ -131,7 +147,7 @@ namespace CentralLicenceApp.Controllers
             if (!string.IsNullOrEmpty(payload.ReturnUrl) && Url.IsLocalUrl(payload.ReturnUrl))
                 return Redirect(payload.ReturnUrl);
 
-            return RedirectToAction("Index", "Dashboard");
+            return RedirectToDefaultHome(selectedRole.RoleName);
         }
 
         [HttpPost]
@@ -318,7 +334,7 @@ namespace CentralLicenceApp.Controllers
                 return Redirect(returnUrl);
             }
 
-            return RedirectToAction("Index", "Dashboard");
+            return RedirectToDefaultHome();
         }
 
         private sealed class PendingRoleSelectionPayload
