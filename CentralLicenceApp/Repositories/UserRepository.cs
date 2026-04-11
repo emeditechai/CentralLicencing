@@ -163,6 +163,31 @@ namespace CentralLicenceApp.Repositories
             return user;
         }
 
+        public async Task<UserMaster?> GetByEmailAsync(string email)
+        {
+            using var conn = CreateConnection();
+            var user = await conn.QuerySingleOrDefaultAsync<UserMaster>(@"
+                  SELECT u.*, r.RoleName, l.Name AS LocationName,
+                      d.DepartmentName,
+                      g.DesignationName,
+                      et.TypeName AS EmployeeTypeName,
+                      m.FullName AS ManagerName
+                FROM UserMaster u
+                INNER JOIN RoleMaster r ON u.RoleId = r.Id
+                LEFT JOIN LocationMaster l ON u.LocationId = l.Id
+                LEFT JOIN EmployeeDepartmentMaster d ON u.DepartmentId = d.Id
+                LEFT JOIN EmployeeDesignationMaster g ON u.DesignationId = g.Id
+                LEFT JOIN EmployeeTypeMaster et ON u.EmployeeTypeId = et.Id
+                LEFT JOIN UserMaster m ON u.ManagerId = m.Id
+                WHERE u.Email = @Email AND u.IsActive = 1", new { Email = email });
+            if (user != null)
+            {
+                await PopulateRolesAsync(conn, new[] { user });
+            }
+
+            return user;
+        }
+
         public async Task<int> CreateAsync(UserMaster user)
         {
             using var conn = CreateConnection();

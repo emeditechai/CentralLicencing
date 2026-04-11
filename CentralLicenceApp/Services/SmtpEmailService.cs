@@ -134,6 +134,30 @@ namespace CentralLicenceApp.Services
             await SendCoreAsync(template.TemplateName, template.TemplateKey, toEmail, toName, subject, body, null, null);
         }
 
+        public async Task<(string Subject, string Body)?> ResolveTemplateAsync(string templateKey, Dictionary<string, string> placeholders)
+        {
+            var template = await _templateRepo.GetByKeyAsync(templateKey);
+            if (template == null)
+            {
+                _logger.LogWarning("Email template '{Key}' not found or inactive.", templateKey);
+                return null;
+            }
+
+            var company = await _companySettingsRepo.GetParentCompanyAsync();
+            var companyName = ResolveCompanyName(company);
+            var templateValues = placeholders == null
+                ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, string>(placeholders, StringComparer.OrdinalIgnoreCase);
+
+            templateValues["CompanyName"] = companyName;
+            templateValues["AppName"] = companyName;
+
+            var subject = ReplaceBranding(ReplacePlaceholders(template.Subject, templateValues), companyName);
+            var body = ReplaceBranding(ReplacePlaceholders(template.Body, templateValues), companyName);
+
+            return (subject, body);
+        }
+
         private async Task LogEmailAsync(string emailType, string? templateKey, string? toEmail, string? toName,
             string? subject, string? htmlBody, string status, string? errorMessage)
         {

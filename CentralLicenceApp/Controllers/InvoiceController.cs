@@ -408,9 +408,18 @@ ITermsConditionTemplateRepository termsRepo,
                             {
                                 var (pdfBytes, _) = await pdf.GenerateInvoicePdfAsync(inv);
                                 var fileName = $"Invoice_{inv.InvoiceNo.Replace("/", "-")}.pdf";
-                                var subject  = $"Invoice {inv.InvoiceNo} from {inv.PartyName}";
-                                var body     = BuildInvoiceEmailBody(inv);
-                                await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, fileName, "Invoice");
+                                var placeholders = BuildInvoicePlaceholders(inv);
+                                var resolved = await email.ResolveTemplateAsync("INVOICE_SENT", placeholders);
+                                if (resolved != null)
+                                {
+                                    await email.SendWithAttachmentAsync(partyEmail, partyName, resolved.Value.Subject, resolved.Value.Body, pdfBytes, fileName, "Invoice");
+                                }
+                                else
+                                {
+                                    var subject = $"Invoice {inv.InvoiceNo} from {inv.PartyName}";
+                                    var body = BuildInvoiceEmailBody(inv);
+                                    await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, fileName, "Invoice");
+                                }
                             }
                             catch { /* background failure — logged by email service */ }
                         });
@@ -461,15 +470,71 @@ ITermsConditionTemplateRepository termsRepo,
                 {
                     var (pdfBytes, _) = await pdf.GenerateInvoicePdfAsync(capturedInv);
                     var fileName = $"Invoice_{capturedInv.InvoiceNo.Replace("/", "-")}.pdf";
-                    var subject  = $"Invoice {capturedInv.InvoiceNo} from {capturedInv.PartyName}";
-                    var body     = BuildInvoiceEmailBody(capturedInv);
-                    await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, fileName, "Invoice");
+                    var placeholders = BuildInvoicePlaceholders(capturedInv);
+                    var resolved = await email.ResolveTemplateAsync("INVOICE_SENT", placeholders);
+                    if (resolved != null)
+                    {
+                        await email.SendWithAttachmentAsync(partyEmail, partyName, resolved.Value.Subject, resolved.Value.Body, pdfBytes, fileName, "Invoice");
+                    }
+                    else
+                    {
+                        var subject = $"Invoice {capturedInv.InvoiceNo} from {capturedInv.PartyName}";
+                        var body = BuildInvoiceEmailBody(capturedInv);
+                        await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, fileName, "Invoice");
+                    }
                 }
                 catch { /* background failure */ }
             });
             TempData["Success"] = $"Email is being delivered to <strong>{partyEmail}</strong> in background.";
 
             return RedirectToAction(nameof(Details), new { id });
+        }
+
+        private static Dictionary<string, string> BuildInvoicePlaceholders(Invoice inv)
+        {
+            var linesHtml = string.Join("", inv.Lines.Select((l, i) =>
+                $"<tr style='background:{((i % 2 == 0) ? "#f9f9fd" : "#ffffff")};'>" +
+                $"<td style='padding:7px 10px;border-bottom:1px solid #eeeff6;'>{l.ItemDescription}{(!string.IsNullOrWhiteSpace(l.PlanName) ? " <span style=\"color:#6366f1;font-size:12px;\">• " + l.PlanName + "</span>" : "")}</td>" +
+                $"<td style='padding:7px 10px;border-bottom:1px solid #eeeff6;text-align:center;'>{l.Qty}</td>" +
+                $"<td style='padding:7px 10px;border-bottom:1px solid #eeeff6;text-align:right;'>₹{l.Rate:0.00}</td>" +
+                $"<td style='padding:7px 10px;border-bottom:1px solid #eeeff6;text-align:right;font-weight:600;'>₹{l.Amount:0.00}</td>" +
+                "</tr>"));
+
+            var lineItemsTable = $@"<table width='100%' cellpadding='0' cellspacing='0' style='border-radius:8px;overflow:hidden;border:1px solid #e2e4f0;margin-bottom:20px;'>
+          <thead><tr style='background:#1e293b;'>
+            <th style='padding:9px 10px;text-align:left;color:#e2e8f0;font-size:12px;'>Item</th>
+            <th style='padding:9px 10px;text-align:center;color:#e2e8f0;font-size:12px;'>Qty</th>
+            <th style='padding:9px 10px;text-align:right;color:#e2e8f0;font-size:12px;'>Rate</th>
+            <th style='padding:9px 10px;text-align:right;color:#e2e8f0;font-size:12px;'>Amount</th>
+          </tr></thead>
+          <tbody>{linesHtml}</tbody>
+        </table>";
+
+            var totalsTable = $@"<table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:20px;'>
+          <tr><td width='60%'></td><td width='40%'>
+            <table width='100%' cellpadding='0' cellspacing='0' style='border-radius:8px;overflow:hidden;border:1px solid #e2e4f0;'>
+              <tr><td style='padding:7px 12px;color:#475569;font-size:13px;'>Sub Total</td><td style='padding:7px 12px;text-align:right;font-size:13px;'>₹{inv.SubTotal:0.00}</td></tr>
+              {(inv.TotalGst > 0 ? $"<tr><td style='padding:7px 12px;color:#475569;font-size:13px;'>GST</td><td style='padding:7px 12px;text-align:right;font-size:13px;'>₹{inv.TotalGst:0.00}</td></tr>" : "")}
+              <tr style='background:#1e293b;'><td style='padding:9px 12px;color:#ffffff;font-size:14px;font-weight:700;'>Total</td><td style='padding:9px 12px;text-align:right;color:#ffffff;font-size:14px;font-weight:700;'>₹{inv.TotalAmount:0.00}</td></tr>
+              {(inv.ReceivedAmount > 0 ? $"<tr><td style='padding:7px 12px;color:#10b981;font-size:13px;'>Paid</td><td style='padding:7px 12px;text-align:right;color:#10b981;font-size:13px;'>₹{inv.ReceivedAmount:0.00}</td></tr>" : "")}
+              {(inv.CurrentBalance > 0 ? $"<tr style='background:#fef3c7;'><td style='padding:8px 12px;color:#92400e;font-size:13px;font-weight:700;'>Balance Due</td><td style='padding:8px 12px;text-align:right;color:#92400e;font-size:13px;font-weight:700;'>₹{inv.CurrentBalance:0.00}</td></tr>" : "")}
+            </table>
+          </td></tr>
+        </table>";
+
+            var dueInfo = inv.DueDate.HasValue
+                ? $"<p style='margin:0 0 6px;'>Please ensure payment of <strong>₹{inv.CurrentBalance:0.00}</strong> is made by <strong>{inv.DueDate.Value:dd MMM yyyy}</strong>.</p>"
+                : string.Empty;
+
+            return new Dictionary<string, string>
+            {
+                ["InvoiceNo"] = inv.InvoiceNo,
+                ["InvoiceDate"] = inv.InvoiceDate.ToString("dd MMM yyyy"),
+                ["PartyName"] = inv.PartyName,
+                ["LineItemsTable"] = lineItemsTable,
+                ["TotalsTable"] = totalsTable,
+                ["DueInfo"] = dueInfo
+            };
         }
 
         private static string BuildInvoiceEmailBody(Invoice inv)

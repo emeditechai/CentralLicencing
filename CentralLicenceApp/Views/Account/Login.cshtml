@@ -103,6 +103,13 @@
             position: absolute; left: .85rem; top: 50%; transform: translateY(-50%);
             color: #94a3b8; font-size: .95rem; pointer-events: none;
         }
+        .input-wrap .pw-toggle {
+            position: absolute; right: .85rem; top: 50%; transform: translateY(-50%);
+            color: #94a3b8; font-size: 1rem; cursor: pointer; z-index: 2;
+            background: none; border: none; padding: 0; line-height: 1;
+        }
+        .input-wrap .pw-toggle:hover { color: #6366f1; }
+        .input-wrap .has-toggle { padding-right: 2.5rem; }
         .btn-signin {
             width: 100%;
             background: linear-gradient(135deg, #6366f1, #4f46e5);
@@ -209,14 +216,20 @@
                 <label class="form-label">Password</label>
                 <div class="input-wrap">
                     <i class="fi bi bi-lock"></i>
-                    <input asp-for="Password" type="password" class="form-control" placeholder="Enter your password" autocomplete="off" />
+                    <input asp-for="Password" type="password" class="form-control has-toggle" placeholder="Enter your password" autocomplete="off" id="passwordInput" />
+                    <button type="button" class="pw-toggle" id="togglePassword" tabindex="-1" title="Show password">
+                        <i class="bi bi-eye"></i>
+                    </button>
                 </div>
                 <span asp-validation-for="Password" class="text-danger" style="font-size:.77rem;"></span>
             </div>
 
-            <div class="form-check mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="form-check mb-0">
                 <input asp-for="RememberMe" class="form-check-input" type="checkbox" id="rememberMe" />
                 <label class="form-check-label" for="rememberMe" style="font-size:.83rem;color:#475569;">Keep me signed in</label>
+                </div>
+                <a href="@Url.Action("ForgotPassword", "Account")" style="font-size:.83rem;color:#6366f1;text-decoration:none;font-weight:600;">Forgot Password?</a>
             </div>
 
             <button type="submit" class="btn btn-signin">
@@ -273,6 +286,19 @@
 <script src="https://cdn.jsdelivr.net/npm/jquery-validation-unobtrusive@4.0.0/dist/jquery.validate.unobtrusive.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Password visibility toggle
+        var toggleBtn = document.getElementById('togglePassword');
+        var pwInput = document.getElementById('passwordInput');
+        if (toggleBtn && pwInput) {
+            toggleBtn.addEventListener('click', function () {
+                var isPassword = pwInput.type === 'password';
+                pwInput.type = isPassword ? 'text' : 'password';
+                toggleBtn.querySelector('i').className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+                toggleBtn.title = isPassword ? 'Hide password' : 'Show password';
+            });
+        }
+
+        // Role selection modal
         var roleModalEl = document.getElementById('roleSelectionModal');
         if (!roleModalEl) {
             return;

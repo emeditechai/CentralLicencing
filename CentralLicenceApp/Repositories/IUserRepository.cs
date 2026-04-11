@@ -10,6 +10,7 @@ namespace CentralLicenceApp.Repositories
         Task<(IEnumerable<UserMaster> Items, int TotalCount)> GetPagedAsync(string? search, string? status, int? roleId, int page, int pageSize);
         Task<UserMaster?> GetByIdAsync(int id);
         Task<UserMaster?> GetByUsernameAsync(string username);
+        Task<UserMaster?> GetByEmailAsync(string email);
         Task<int> CreateAsync(UserMaster user);
         Task<bool> UpdateAsync(UserMaster user);
         Task<bool> UpdatePasswordAsync(int id, string passwordHash);

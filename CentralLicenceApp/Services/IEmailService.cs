@@ -10,5 +10,6 @@ namespace CentralLicenceApp.Services
             byte[] attachmentBytes, string attachmentFileName, string? emailType = null);
         Task SendTemplatedAsync(string templateKey, string toEmail, string toName,
             Dictionary<string, string> placeholders);
+        Task<(string Subject, string Body)?> ResolveTemplateAsync(string templateKey, Dictionary<string, string> placeholders);
     }
 }

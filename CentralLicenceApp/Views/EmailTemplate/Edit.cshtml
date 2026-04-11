@@ -9,6 +9,14 @@
         "AMC_EXPIRY_REMINDER"     => ("AMC Expiry Reminder",                 "bi-exclamation-triangle-fill", "#dc2626", "#fee2e2"),
         "EXPENSE_REQUEST_SUBMITTED" => ("Expense Request Submitted",          "bi-receipt-cutoff",   "#1d4ed8", "#dbeafe"),
         "EXPENSE_SETTLEMENT_COMPLETED" => ("Expense Settlement Completed",    "bi-cash-coin",        "#166534", "#dcfce7"),
+        "PASSWORD_RESET"          => ("Password Reset",                      "bi-key-fill",          "#6366f1", "#eef2ff"),
+        "TICKET_CREATED"          => ("Ticket Created Notification",         "bi-ticket-perforated-fill", "#7c3aed", "#f5f3ff"),
+        "TICKET_ASSIGNED"         => ("Ticket Assigned Notification",        "bi-person-check-fill", "#7c3aed", "#f5f3ff"),
+        "TICKET_STATUS_CHANGED"   => ("Ticket Status Changed",              "bi-arrow-repeat",      "#7c3aed", "#f5f3ff"),
+        "TICKET_REPLY"            => ("Ticket Reply Notification",           "bi-chat-dots-fill",    "#7c3aed", "#f5f3ff"),
+        "QUOTATION_SENT"          => ("Quotation Sent to Party",            "bi-file-earmark-text-fill", "#1e293b", "#f1f5f9"),
+        "INVOICE_SENT"            => ("Invoice Sent to Party",              "bi-file-earmark-ruled-fill", "#1e293b", "#f1f5f9"),
+        "USER_ONBOARDING"         => ("New User Onboarding",                 "bi-person-plus-fill",  "#0891b2", "#ecfeff"),
         _                         => (Model.TemplateName,                    "bi-envelope",          "#64748b", "#f1f5f9")
     };
 }
@@ -122,13 +130,17 @@
                         </tr>
                     </thead>
                     <tbody style="color:#374151;">
+                        <tr><td colspan="2" class="fw-bold" style="color:#6366f1;font-size:.78rem;border-bottom:2px solid #e9d5ff;">LICENCE / CLIENT</td></tr>
                         <tr><td><code>{{ClientName}}</code></td><td>Client full name</td></tr>
                         <tr><td><code>{{ClientCode}}</code></td><td>Unique client code</td></tr>
                         <tr><td><code>{{ExpiryDate}}</code></td><td>License expiry date</td></tr>
                         <tr><td><code>{{AmcExpiryDate}}</code></td><td>AMC expiry date</td></tr>
                         <tr><td><code>{{DaysRemaining}}</code></td><td>Days until expiry</td></tr>
-                        <tr><td><code>{{AppName}}</code></td><td>Application name (eRestoPOS)</td></tr>
+                        <tr><td><code>{{AppName}}</code></td><td>Application name / Company</td></tr>
                         <tr><td><code>{{AppUrl}}</code></td><td>Application URL</td></tr>
+                        <tr><td><code>{{CompanyName}}</code></td><td>Company name (auto-set)</td></tr>
+
+                        <tr><td colspan="2" class="fw-bold pt-3" style="color:#1d4ed8;font-size:.78rem;border-bottom:2px solid #dbeafe;">EXPENSE / SETTLEMENT</td></tr>
                         <tr><td><code>{{RequestNumber}}</code></td><td>Expense request number</td></tr>
                         <tr><td><code>{{EmployeeName}}</code></td><td>Employee full name</td></tr>
                         <tr><td><code>{{EmployeeCode}}</code></td><td>Employee code</td></tr>
@@ -138,13 +150,52 @@
                         <tr><td><code>{{SubmittedAt}}</code></td><td>Submission timestamp</td></tr>
                         <tr><td><code>{{CurrentStatus}}</code></td><td>Current workflow status</td></tr>
                         <tr><td><code>{{ApproverName}}</code></td><td>Assigned approver name</td></tr>
-                        <tr><td><code>{{DetailsUrl}}</code></td><td>Absolute request details link</td></tr>
-                        <tr><td><code>{{SettlementReceiptNumber}}</code></td><td>Settlement receipt number</td></tr>
-                        <tr><td><code>{{SettlementDate}}</code></td><td>Settlement completion date</td></tr>
-                        <tr><td><code>{{SettlementAmount}}</code></td><td>Final settled amount</td></tr>
-                        <tr><td><code>{{SettlementMode}}</code></td><td>Mode of reimbursement payment</td></tr>
-                        <tr><td><code>{{SettlementReferenceNo}}</code></td><td>Settlement payment reference</td></tr>
-                        <tr><td><code>{{SettlementReceiptUrl}}</code></td><td>Absolute settlement receipt link</td></tr>
+                        <tr><td><code>{{DetailsUrl}}</code></td><td>Request details link</td></tr>
+                        <tr><td><code>{{SettlementReceiptNumber}}</code></td><td>Settlement receipt no</td></tr>
+                        <tr><td><code>{{SettlementDate}}</code></td><td>Settlement date</td></tr>
+                        <tr><td><code>{{SettlementAmount}}</code></td><td>Settled amount</td></tr>
+                        <tr><td><code>{{SettlementMode}}</code></td><td>Payment mode</td></tr>
+                        <tr><td><code>{{SettlementReferenceNo}}</code></td><td>Payment reference</td></tr>
+                        <tr><td><code>{{SettlementReceiptUrl}}</code></td><td>Settlement receipt link</td></tr>
+
+                        <tr><td colspan="2" class="fw-bold pt-3" style="color:#6366f1;font-size:.78rem;border-bottom:2px solid #eef2ff;">PASSWORD RESET</td></tr>
+                        <tr><td><code>{{FullName}}</code></td><td>User's full name</td></tr>
+                        <tr><td><code>{{ResetUrl}}</code></td><td>Password reset link</td></tr>
+
+                        <tr><td colspan="2" class="fw-bold pt-3" style="color:#7c3aed;font-size:.78rem;border-bottom:2px solid #f5f3ff;">CRM / TICKETS</td></tr>
+                        <tr><td><code>{{TicketNumber}}</code></td><td>Ticket number</td></tr>
+                        <tr><td><code>{{Heading}}</code></td><td>Email heading text</td></tr>
+                        <tr><td><code>{{IntroMessage}}</code></td><td>Intro paragraph</td></tr>
+                        <tr><td><code>{{DetailsTable}}</code></td><td>Ticket details table (auto)</td></tr>
+                        <tr><td><code>{{NewStatus}}</code></td><td>Updated ticket status</td></tr>
+                        <tr><td><code>{{NoteLabel}}</code></td><td>Reply / Internal Note label</td></tr>
+
+                        <tr><td colspan="2" class="fw-bold pt-3" style="color:#1e293b;font-size:.78rem;border-bottom:2px solid #e2e8f0;">QUOTATION</td></tr>
+                        <tr><td><code>{{QuotationNo}}</code></td><td>Quotation number</td></tr>
+                        <tr><td><code>{{QuotationDate}}</code></td><td>Quotation date</td></tr>
+                        <tr><td><code>{{PartyName}}</code></td><td>Party / customer name</td></tr>
+                        <tr><td><code>{{LineItemsTable}}</code></td><td>Line-items table (auto)</td></tr>
+                        <tr><td><code>{{TotalsTable}}</code></td><td>Totals summary table (auto)</td></tr>
+                        <tr><td><code>{{ValidUntilInfo}}</code></td><td>Validity info (auto)</td></tr>
+
+                        <tr><td colspan="2" class="fw-bold pt-3" style="color:#1e293b;font-size:.78rem;border-bottom:2px solid #e2e8f0;">INVOICE</td></tr>
+                        <tr><td><code>{{InvoiceNo}}</code></td><td>Invoice number</td></tr>
+                        <tr><td><code>{{InvoiceDate}}</code></td><td>Invoice date</td></tr>
+                        <tr><td><code>{{DueInfo}}</code></td><td>Due date / balance info (auto)</td></tr>
+
+                        <tr><td colspan="2" class="fw-bold pt-3" style="color:#0891b2;font-size:.78rem;border-bottom:2px solid #ecfeff;">USER ONBOARDING</td></tr>
+                        <tr><td><code>{{Username}}</code></td><td>Login username</td></tr>
+                        <tr><td><code>{{Email}}</code></td><td>User email address</td></tr>
+                        <tr><td><code>{{PhoneNumber}}</code></td><td>Phone number</td></tr>
+                        <tr><td><code>{{RoleName}}</code></td><td>Assigned role</td></tr>
+                        <tr><td><code>{{LocationName}}</code></td><td>Location / branch</td></tr>
+                        <tr><td><code>{{DepartmentName}}</code></td><td>Department name</td></tr>
+                        <tr><td><code>{{DesignationName}}</code></td><td>Designation / title</td></tr>
+                        <tr><td><code>{{ManagerName}}</code></td><td>Reporting manager</td></tr>
+                        <tr><td><code>{{IsCoreMember}}</code></td><td>Core member (Yes/No)</td></tr>
+                        <tr><td><code>{{Status}}</code></td><td>Account status</td></tr>
+                        <tr><td><code>{{LoginUrl}}</code></td><td>Application login URL</td></tr>
+                        <tr><td><code>{{TemporaryPassword}}</code></td><td>Temporary password</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -175,6 +226,7 @@
         var html = document.getElementById('bodyEditor').value;
         // Replace placeholders with sample values for preview
         var samples = {
+            // Licence / Client
             '{{ClientName}}': 'RAJ Traders',
             '{{ClientCode}}': 'CI-250001',
             '{{ExpiryDate}}': '01 Apr 2026',
@@ -182,10 +234,12 @@
             '{{DaysRemaining}}': '7',
             '{{AppName}}': 'eRestoPOS',
             '{{AppUrl}}': 'http://198.38.81.123:2001',
+            '{{CompanyName}}': 'Emeditechai Pvt. Ltd.',
+            // Expense / Settlement
             '{{RequestNumber}}': 'EXP-20260326-0007',
             '{{EmployeeName}}': 'Abhik Porel',
             '{{EmployeeCode}}': 'EMP-104',
-            '{{PurposeOfTravel}}': 'Client implementation visit and advance booking for travel and accommodation.',
+            '{{PurposeOfTravel}}': 'Client visit – travel and accommodation.',
             '{{TotalAmount}}': '18,750.00',
             '{{ItemCount}}': '4',
             '{{SubmittedAt}}': '26 Mar 2026 10:30 AM',
@@ -197,7 +251,41 @@
             '{{SettlementAmount}}': '18,750.00',
             '{{SettlementMode}}': 'Bank Transfer',
             '{{SettlementReferenceNo}}': 'UTR0045892361',
-            '{{SettlementReceiptUrl}}': 'http://your-app-url/ExpenseRequest/SettlementReceipt/7'
+            '{{SettlementReceiptUrl}}': 'http://your-app-url/ExpenseRequest/SettlementReceipt/7',
+            // Password Reset
+            '{{FullName}}': 'Abhik Porel',
+            '{{ResetUrl}}': 'http://your-app-url/Account/ResetPassword?token=sample',
+            // Ticket
+            '{{TicketNumber}}': 'TKT-20260326-0001',
+            '{{Heading}}': 'New Support Ticket Created',
+            '{{IntroMessage}}': 'A new support ticket has been submitted. Please find the details below.',
+            '{{DetailsTable}}': '<table style="width:100%;border-collapse:collapse;"><tr><td style="padding:6px 10px;border:1px solid #e5e7eb;">Subject</td><td style="padding:6px 10px;border:1px solid #e5e7eb;">Login issue</td></tr></table>',
+            '{{NewStatus}}': 'In Progress',
+            '{{NoteLabel}}': 'Public Reply',
+            // Quotation
+            '{{QuotationNo}}': 'QT-250001',
+            '{{QuotationDate}}': '26 Mar 2026',
+            '{{PartyName}}': 'RAJ Traders',
+            '{{LineItemsTable}}': '<table style="width:100%;border-collapse:collapse;"><tr style="background:#f1f5f9;"><th style="padding:6px 10px;border:1px solid #e5e7eb;">Item</th><th style="padding:6px 10px;border:1px solid #e5e7eb;">Amount</th></tr><tr><td style="padding:6px 10px;border:1px solid #e5e7eb;">Product A</td><td style="padding:6px 10px;border:1px solid #e5e7eb;">₹10,000</td></tr></table>',
+            '{{TotalsTable}}': '<table style="width:100%;"><tr><td style="padding:4px 10px;"><strong>Total</strong></td><td style="padding:4px 10px;text-align:right;"><strong>₹10,000.00</strong></td></tr></table>',
+            '{{ValidUntilInfo}}': '<p style="color:#64748b;font-size:13px;">Valid until: 25 Apr 2026</p>',
+            // Invoice
+            '{{InvoiceNo}}': 'INV-250001',
+            '{{InvoiceDate}}': '26 Mar 2026',
+            '{{DueInfo}}': '<p style="color:#64748b;font-size:13px;">Due: 25 Apr 2026 &bull; Balance Due: ₹10,000.00</p>',
+            // User Onboarding
+            '{{Username}}': 'johndoe',
+            '{{Email}}': 'johndoe@example.com',
+            '{{PhoneNumber}}': '9876543210',
+            '{{RoleName}}': 'Employee',
+            '{{LocationName}}': 'Head Office',
+            '{{DepartmentName}}': 'Operations',
+            '{{DesignationName}}': 'Executive',
+            '{{ManagerName}}': 'Abhik Porel',
+            '{{IsCoreMember}}': 'No',
+            '{{Status}}': 'Active',
+            '{{LoginUrl}}': 'http://your-app-url/Account/Login',
+            '{{TemporaryPassword}}': 'TempPass@123'
         };
         for (var key in samples) {
             html = html.split(key).join(samples[key]);

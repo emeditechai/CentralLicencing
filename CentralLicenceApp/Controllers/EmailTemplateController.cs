@@ -56,6 +56,7 @@ namespace CentralLicenceApp.Controllers
 
             var placeholders = new System.Collections.Generic.Dictionary<string, string>
             {
+                // Licence / Client
                 ["ClientName"]    = "Test Client",
                 ["ClientCode"]    = "CI-000001",
                 ["ExpiryDate"]    = System.DateTime.Today.AddMonths(1).ToString("dd MMM yyyy"),
@@ -63,10 +64,11 @@ namespace CentralLicenceApp.Controllers
                 ["DaysRemaining"] = "7",
                 ["AppName"]       = "eRestoPOS",
                 ["AppUrl"]        = "http://your-app-url",
+                // Expense / Settlement
                 ["RequestNumber"] = "EXP-20260326-0007",
                 ["EmployeeName"] = "Abhik Porel",
                 ["EmployeeCode"] = "EMP-104",
-                ["PurposeOfTravel"] = "Client implementation visit and advance booking for travel and accommodation.",
+                ["PurposeOfTravel"] = "Client visit – travel and accommodation.",
                 ["TotalAmount"] = "18,750.00",
                 ["ItemCount"] = "4",
                 ["SubmittedAt"] = System.DateTime.Now.ToString("dd MMM yyyy hh:mm tt"),
@@ -78,7 +80,41 @@ namespace CentralLicenceApp.Controllers
                 ["SettlementAmount"] = "18,750.00",
                 ["SettlementMode"] = "Bank Transfer",
                 ["SettlementReferenceNo"] = "UTR0045892361",
-                ["SettlementReceiptUrl"] = "http://your-app-url/ExpenseRequest/SettlementReceipt/7"
+                ["SettlementReceiptUrl"] = "http://your-app-url/ExpenseRequest/SettlementReceipt/7",
+                // Password Reset
+                ["FullName"] = "Abhik Porel",
+                ["ResetUrl"] = "http://your-app-url/Account/ResetPassword?token=sample",
+                // Ticket
+                ["TicketNumber"] = "TKT-20260326-0001",
+                ["Heading"] = "New Support Ticket Created",
+                ["IntroMessage"] = "A new support ticket has been submitted. Please find the details below.",
+                ["DetailsTable"] = "<table style=\"width:100%;border-collapse:collapse;\"><tr><td style=\"padding:6px 10px;border:1px solid #e5e7eb;\">Subject</td><td style=\"padding:6px 10px;border:1px solid #e5e7eb;\">Login issue</td></tr></table>",
+                ["NewStatus"] = "In Progress",
+                ["NoteLabel"] = "Public Reply",
+                // Quotation
+                ["QuotationNo"] = "QT-250001",
+                ["QuotationDate"] = System.DateTime.Today.ToString("dd MMM yyyy"),
+                ["PartyName"] = "RAJ Traders",
+                ["LineItemsTable"] = "<table style=\"width:100%;border-collapse:collapse;\"><tr style=\"background:#f1f5f9;\"><th style=\"padding:6px 10px;border:1px solid #e5e7eb;\">Item</th><th style=\"padding:6px 10px;border:1px solid #e5e7eb;\">Amount</th></tr><tr><td style=\"padding:6px 10px;border:1px solid #e5e7eb;\">Product A</td><td style=\"padding:6px 10px;border:1px solid #e5e7eb;\">₹10,000</td></tr></table>",
+                ["TotalsTable"] = "<table style=\"width:100%;\"><tr><td style=\"padding:4px 10px;\"><strong>Total</strong></td><td style=\"padding:4px 10px;text-align:right;\"><strong>₹10,000.00</strong></td></tr></table>",
+                ["ValidUntilInfo"] = "<p style=\"color:#64748b;font-size:13px;\">Valid until: " + System.DateTime.Today.AddDays(30).ToString("dd MMM yyyy") + "</p>",
+                // Invoice
+                ["InvoiceNo"] = "INV-250001",
+                ["InvoiceDate"] = System.DateTime.Today.ToString("dd MMM yyyy"),
+                ["DueInfo"] = "<p style=\"color:#64748b;font-size:13px;\">Due: " + System.DateTime.Today.AddDays(30).ToString("dd MMM yyyy") + " &bull; Balance Due: ₹10,000.00</p>",
+                // User Onboarding
+                ["Username"] = "johndoe",
+                ["Email"] = "johndoe@example.com",
+                ["PhoneNumber"] = "9876543210",
+                ["RoleName"] = "Employee",
+                ["LocationName"] = "Head Office",
+                ["DepartmentName"] = "Operations",
+                ["DesignationName"] = "Executive",
+                ["ManagerName"] = "Abhik Porel",
+                ["IsCoreMember"] = "No",
+                ["Status"] = "Active",
+                ["LoginUrl"] = "http://your-app-url/Account/Login",
+                ["TemporaryPassword"] = "TempPass@123"
             };
 
             await _emailService.SendTemplatedAsync(template.TemplateKey, testEmail, "Test", placeholders);

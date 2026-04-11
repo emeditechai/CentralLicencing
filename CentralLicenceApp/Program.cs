@@ -165,4 +165,13 @@ app.MapHub<TicketNotificationHub>("/hubs/ticket-notifications");
 // Warm up Chromium in the background so the first PDF request is fast.
 _ = app.Services.GetRequiredService<IBrowserProvider>().WarmUpAsync();
 
+// Seed database defaults (tables, roles, templates, etc.)
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = new DatabaseSeeder(
+        scope.ServiceProvider.GetRequiredService<IConfiguration>(),
+        scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>());
+    await seeder.SeedAsync();
+}
+
 app.Run();

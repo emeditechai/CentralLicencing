@@ -20,47 +20,55 @@ namespace CentralLicenceApp.Services
 
         public async Task SeedAsync()
         {
-            try
-            {
-                using var conn = new SqlConnection(_connectionString);
+            using var conn = new SqlConnection(_connectionString);
 
-                await EnsureRoleMasterAsync(conn);
-                await EnsureLocationMasterAsync(conn);
-                await EnsureEmployeeDepartmentMasterAsync(conn);
-                await EnsureEmployeeDesignationMasterAsync(conn);
-                await EnsureEmployeeTypeMasterAsync(conn);
-                await EnsurePricingModelMasterAsync(conn);
-                await EnsureExpenseCategoryMasterAsync(conn);
-                await EnsureProductMasterTablesAsync(conn);
-                await EnsureProductRateDiscountOfferTableAsync(conn);
-                await EnsureExpenseRequestTablesAsync(conn);
-                await EnsureUserPushSubscriptionTableAsync(conn);
-                await EnsureUserMasterAsync(conn);
-                await SeedDefaultUsersAsync(conn);
-                await EnsureCompanySettingsTablesAsync(conn);
-                await EnsureEmailLogTableAsync(conn);
-                await EnsureEmailTemplatesTableAsync(conn);
-                await EnsureEmailRemindersTableAsync(conn);
-                await EnsureClientDetailsTableAsync(conn);
-                await EnsureClientDetailsReportStoredProcedureAsync(conn);
-                await SeedDefaultEmailTemplatesAsync(conn);
-                await EnsurePartyMasterTableAsync(conn);
-                await EnsureQuotationTablesAsync(conn);
-                await EnsureQuotationGstColumnsAsync(conn);
-                await EnsureBankMasterTableAsync(conn);
-                await EnsureUserDigitalSignatureColumnAsync(conn);
-                await EnsureQuotationSignatoriesTableAsync(conn);
-                await EnsureInvoiceSignatoriesTableAsync(conn);
-                await EnsureQuotationCancelRemarksAsync(conn);
-                await EnsureInvoiceCancelRemarksAsync(conn);
-                await EnsurePaymentModeTableAsync(conn);
-                await EnsureInvoicePaymentTablesAsync(conn);
-                await EnsureHelpDeskTicketTablesAsync(conn);
-                await EnsureTicketReportStoredProcsAsync(conn);
-            }
-            catch (Exception ex)
+            var steps = new (string Name, Func<Task> Action)[]
             {
-                _logger.LogError(ex, "Database seeding failed.");
+                ("RoleMaster",               () => EnsureRoleMasterAsync(conn)),
+                ("LocationMaster",           () => EnsureLocationMasterAsync(conn)),
+                ("EmployeeDepartment",       () => EnsureEmployeeDepartmentMasterAsync(conn)),
+                ("EmployeeDesignation",      () => EnsureEmployeeDesignationMasterAsync(conn)),
+                ("EmployeeType",             () => EnsureEmployeeTypeMasterAsync(conn)),
+                ("PricingModel",             () => EnsurePricingModelMasterAsync(conn)),
+                ("ExpenseCategory",          () => EnsureExpenseCategoryMasterAsync(conn)),
+                ("ProductMasterTables",      () => EnsureProductMasterTablesAsync(conn)),
+                ("ProductRateDiscount",      () => EnsureProductRateDiscountOfferTableAsync(conn)),
+                ("ExpenseRequestTables",     () => EnsureExpenseRequestTablesAsync(conn)),
+                ("UserPushSubscription",     () => EnsureUserPushSubscriptionTableAsync(conn)),
+                ("UserMaster",               () => EnsureUserMasterAsync(conn)),
+                ("DefaultUsers",             () => SeedDefaultUsersAsync(conn)),
+                ("CompanySettings",          () => EnsureCompanySettingsTablesAsync(conn)),
+                ("EmailLogTable",            () => EnsureEmailLogTableAsync(conn)),
+                ("EmailTemplatesTable",      () => EnsureEmailTemplatesTableAsync(conn)),
+                ("EmailReminders",           () => EnsureEmailRemindersTableAsync(conn)),
+                ("ClientDetails",            () => EnsureClientDetailsTableAsync(conn)),
+                ("ClientDetailsReport",      () => EnsureClientDetailsReportStoredProcedureAsync(conn)),
+                ("DefaultEmailTemplates",    () => SeedDefaultEmailTemplatesAsync(conn)),
+                ("PartyMaster",              () => EnsurePartyMasterTableAsync(conn)),
+                ("QuotationTables",          () => EnsureQuotationTablesAsync(conn)),
+                ("QuotationGstColumns",      () => EnsureQuotationGstColumnsAsync(conn)),
+                ("BankMaster",               () => EnsureBankMasterTableAsync(conn)),
+                ("UserDigitalSignature",     () => EnsureUserDigitalSignatureColumnAsync(conn)),
+                ("QuotationSignatories",     () => EnsureQuotationSignatoriesTableAsync(conn)),
+                ("InvoiceSignatories",       () => EnsureInvoiceSignatoriesTableAsync(conn)),
+                ("QuotationCancelRemarks",   () => EnsureQuotationCancelRemarksAsync(conn)),
+                ("InvoiceCancelRemarks",     () => EnsureInvoiceCancelRemarksAsync(conn)),
+                ("PaymentMode",              () => EnsurePaymentModeTableAsync(conn)),
+                ("InvoicePaymentTables",     () => EnsureInvoicePaymentTablesAsync(conn)),
+                ("HelpDeskTicketTables",     () => EnsureHelpDeskTicketTablesAsync(conn)),
+                ("TicketReportStoredProcs",  () => EnsureTicketReportStoredProcsAsync(conn))
+            };
+
+            foreach (var (name, action) in steps)
+            {
+                try
+                {
+                    await action();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Database seed step '{Step}' failed — continuing with remaining steps.", name);
+                }
             }
         }
 
@@ -1298,7 +1306,7 @@ namespace CentralLicenceApp.Services
                     END");
         }
 
-        private static async Task SeedDefaultEmailTemplatesAsync(SqlConnection conn)
+        private async Task SeedDefaultEmailTemplatesAsync(SqlConnection conn)
         {
             const string activatedHtml = @"<!DOCTYPE html><html><head><meta charset=""utf-8""/></head>
 <body style=""margin:0;padding:0;background:#f1f5f9;font-family:Segoe UI,Arial,sans-serif;"">
@@ -1704,16 +1712,190 @@ namespace CentralLicenceApp.Services
 
             foreach (var (key, name, subject, body) in templates)
             {
-                var exists = await conn.ExecuteScalarAsync<bool>(
-                    "SELECT COUNT(1) FROM tbl_centralemailtemplates WHERE TemplateKey = @Key",
-                    new { Key = key });
-                if (!exists)
+                try
                 {
-                    await conn.ExecuteAsync(@"
-                        INSERT INTO tbl_centralemailtemplates
-                            (TemplateKey, TemplateName, Subject, Body, IsActive, CreatedAt)
-                        VALUES (@Key, @Name, @Subject, @Body, 1, GETDATE())",
-                        new { Key = key, Name = name, Subject = subject, Body = body });
+                    var exists = await conn.ExecuteScalarAsync<int>(
+                        "SELECT COUNT(1) FROM tbl_centralemailtemplates WHERE TemplateKey = @Key",
+                        new { Key = key });
+                    if (exists == 0)
+                    {
+                        await conn.ExecuteAsync(@"
+                            INSERT INTO tbl_centralemailtemplates
+                                (TemplateKey, TemplateName, Subject, Body, IsActive, CreatedAt)
+                            VALUES (@Key, @Name, @Subject, @Body, 1, GETDATE())",
+                            new { Key = key, Name = name, Subject = subject, Body = body });
+                        _logger.LogInformation("Seeded email template: {Key}", key);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to seed email template: {Key}", key);
+                }
+            }
+
+            // ── New templates for Password Reset, Tickets, Quotation, Invoice ──
+
+            const string passwordResetHtml = @"<!DOCTYPE html><html><head><meta charset=""utf-8""/></head>
+<body style=""margin:0;padding:0;background:#f1f5f9;font-family:Segoe UI,Arial,sans-serif;"">
+<table width=""100%"" cellpadding=""0"" cellspacing=""0"">
+  <tr><td align=""center"" style=""padding:40px 20px;"">
+    <table width=""580"" cellpadding=""0"" cellspacing=""0""
+           style=""background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08);"">
+      <tr>
+        <td style=""background:linear-gradient(135deg,#6366f1 0%,#4f46e5 100%);padding:36px 40px;text-align:center;"">
+          <p style=""margin:0;color:#c7d2fe;font-size:12px;letter-spacing:2px;text-transform:uppercase;"">{{CompanyName}}</p>
+          <h1 style=""margin:8px 0 4px;color:#fff;font-size:26px;font-weight:700;"">Password Reset</h1>
+          <p style=""margin:0;color:#e0e7ff;font-size:14px;"">A request was made to reset your password</p>
+        </td>
+      </tr>
+      <tr>
+        <td style=""padding:36px 40px;"">
+          <p style=""margin:0 0 16px;color:#374151;font-size:15px;"">Hello <strong>{{FullName}}</strong>,</p>
+          <p style=""margin:0 0 24px;color:#374151;font-size:14px;line-height:1.7;"">
+            We received a request to reset your password. Click the button below to set a new password.
+          </p>
+          <div style=""text-align:center;margin:0 0 24px;"">
+            <a href=""{{ResetUrl}}"" style=""display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;box-shadow:0 4px 14px rgba(99,102,241,.35);"">Reset Password</a>
+          </div>
+          <p style=""margin:0 0 8px;color:#64748b;font-size:13px;line-height:1.7;"">This link will expire in <strong>30 minutes</strong>. If you did not request a password reset, you can safely ignore this email.</p>
+          <p style=""margin:0;color:#94a3b8;font-size:12px;line-height:1.7;"">If the button doesn't work, copy and paste this URL into your browser:<br/><a href=""{{ResetUrl}}"" style=""color:#6366f1;word-break:break-all;"">{{ResetUrl}}</a></p>
+        </td>
+      </tr>
+      <tr>
+        <td style=""background:#f8fafc;padding:16px 40px;text-align:center;border-top:1px solid #f1f5f9;"">
+          <p style=""margin:0;color:#94a3b8;font-size:12px;"">&#169; 2026 {{CompanyName}} &middot; Tech Driven HealthCare</p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>";
+
+            const string ticketCreatedHtml = @"<!DOCTYPE html><html><head><meta charset=""utf-8""/></head>
+<body style=""margin:0;padding:0;background:#f1f5f9;font-family:Segoe UI,Roboto,Arial,sans-serif;"">
+<table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background:#f1f5f9;padding:32px 16px;"">
+<tr><td align=""center"">
+<table width=""600"" cellpadding=""0"" cellspacing=""0"" style=""max-width:600px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1);"">
+  <tr><td style=""background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:28px 32px;text-align:center;"">
+    <h1 style=""margin:0;color:#fff;font-size:22px;font-weight:700;"">{{CompanyName}}</h1>
+    <p style=""margin:6px 0 0;color:rgba(255,255,255,.85);font-size:13px;"">Help Desk Notification</p>
+  </td></tr>
+  <tr><td style=""padding:32px;"">
+    <h2 style=""margin:0 0 12px;color:#1e293b;font-size:18px;font-weight:700;"">{{Heading}}</h2>
+    <p style=""margin:0 0 24px;color:#475569;font-size:14px;line-height:1.6;"">{{IntroMessage}}</p>
+    {{DetailsTable}}
+  </td></tr>
+  <tr><td style=""padding:20px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center;"">
+    <p style=""margin:0;color:#94a3b8;font-size:12px;"">This is an automated notification from {{CompanyName}} Help Desk. Please do not reply to this email.</p>
+  </td></tr>
+</table>
+</td></tr>
+</table>
+</body></html>";
+
+            const string ticketAssignedHtml = ticketCreatedHtml;
+            const string ticketStatusChangedHtml = ticketCreatedHtml;
+            const string ticketReplyHtml = ticketCreatedHtml;
+
+            const string quotationSentHtml = @"<!DOCTYPE html><html><head><meta charset=""utf-8""/></head>
+<body style=""margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;"">
+<table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background:#f1f5f9;padding:30px 0;"">
+  <tr><td align=""center"">
+    <table width=""600"" cellpadding=""0"" cellspacing=""0"" style=""background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);"">
+      <tr><td style=""background:#1e293b;padding:28px 32px;"">
+        <h1 style=""margin:0;color:#fff;font-size:22px;letter-spacing:.04em;"">Quotation {{QuotationNo}}</h1>
+        <p style=""margin:6px 0 0;color:#94a3b8;font-size:13px;"">Dated {{QuotationDate}}</p>
+      </td></tr>
+      <tr><td style=""padding:28px 32px;"">
+        <p style=""margin:0 0 10px;font-size:15px;color:#1e293b;"">Dear <strong>{{PartyName}}</strong>,</p>
+        <p style=""margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;"">
+          Please find your quotation details below. The PDF copy is attached to this email for your reference.
+        </p>
+        {{LineItemsTable}}
+        {{TotalsTable}}
+        {{ValidUntilInfo}}
+        <p style=""margin:20px 0 0;font-size:13px;color:#64748b;"">The original quotation PDF is attached. Please contact us if you have any questions.</p>
+      </td></tr>
+      <tr><td style=""background:#f8fafc;padding:18px 32px;border-top:1px solid #e2e8f0;text-align:center;"">
+        <p style=""margin:0;font-size:12px;color:#94a3b8;"">This is an auto-generated email from {{CompanyName}}. Please do not reply directly.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>";
+
+            const string invoiceSentHtml = @"<!DOCTYPE html><html><head><meta charset=""utf-8""/></head>
+<body style=""margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;"">
+<table width=""100%"" cellpadding=""0"" cellspacing=""0"" style=""background:#f1f5f9;padding:30px 0;"">
+  <tr><td align=""center"">
+    <table width=""600"" cellpadding=""0"" cellspacing=""0"" style=""background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.08);"">
+      <tr><td style=""background:#1e293b;padding:28px 32px;"">
+        <h1 style=""margin:0;color:#fff;font-size:22px;letter-spacing:.04em;"">Invoice {{InvoiceNo}}</h1>
+        <p style=""margin:6px 0 0;color:#94a3b8;font-size:13px;"">Dated {{InvoiceDate}}</p>
+      </td></tr>
+      <tr><td style=""padding:28px 32px;"">
+        <p style=""margin:0 0 10px;font-size:15px;color:#1e293b;"">Dear <strong>{{PartyName}}</strong>,</p>
+        <p style=""margin:0 0 20px;font-size:14px;color:#475569;line-height:1.6;"">
+          Please find your invoice attached. A summary is provided below for your reference.
+        </p>
+        {{LineItemsTable}}
+        {{TotalsTable}}
+        {{DueInfo}}
+        <p style=""margin:20px 0 0;font-size:13px;color:#64748b;"">The original invoice PDF is attached to this email. Please contact us if you have any questions.</p>
+      </td></tr>
+      <tr><td style=""background:#f8fafc;padding:18px 32px;border-top:1px solid #e2e8f0;text-align:center;"">
+        <p style=""margin:0;font-size:12px;color:#94a3b8;"">This is an auto-generated email from {{CompanyName}}. Please do not reply directly.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>";
+
+            var newTemplates = new[]
+            {
+                ("PASSWORD_RESET", "Password Reset",
+                 "Password Reset Request — {{CompanyName}}",
+                 passwordResetHtml),
+                ("TICKET_CREATED", "Ticket Created Notification",
+                 "[{{CompanyName}}] New Ticket Created – {{TicketNumber}}",
+                 ticketCreatedHtml),
+                ("TICKET_ASSIGNED", "Ticket Assigned Notification",
+                 "[{{CompanyName}}] Ticket Assigned – {{TicketNumber}}",
+                 ticketAssignedHtml),
+                ("TICKET_STATUS_CHANGED", "Ticket Status Changed",
+                 "[{{CompanyName}}] Ticket {{TicketNumber}} Status Updated – {{NewStatus}}",
+                 ticketStatusChangedHtml),
+                ("TICKET_REPLY", "Ticket Reply Notification",
+                 "[{{CompanyName}}] {{NoteLabel}} on Ticket {{TicketNumber}}",
+                 ticketReplyHtml),
+                ("QUOTATION_SENT", "Quotation Sent to Party",
+                 "Quotation {{QuotationNo}} from {{CompanyName}}",
+                 quotationSentHtml),
+                ("INVOICE_SENT", "Invoice Sent to Party",
+                 "Invoice {{InvoiceNo}} from {{CompanyName}}",
+                 invoiceSentHtml)
+            };
+
+            foreach (var (key, name, subject, body) in newTemplates)
+            {
+                try
+                {
+                    var exists = await conn.ExecuteScalarAsync<int>(
+                        "SELECT COUNT(1) FROM tbl_centralemailtemplates WHERE TemplateKey = @Key",
+                        new { Key = key });
+                    if (exists == 0)
+                    {
+                        await conn.ExecuteAsync(@"
+                            INSERT INTO tbl_centralemailtemplates
+                                (TemplateKey, TemplateName, Subject, Body, IsActive, CreatedAt)
+                            VALUES (@Key, @Name, @Subject, @Body, 1, GETDATE())",
+                            new { Key = key, Name = name, Subject = subject, Body = body });
+                        _logger.LogInformation("Seeded email template: {Key}", key);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to seed email template: {Key}", key);
                 }
             }
         }

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using CentralLicenceApp.Models;
 using CentralLicenceApp.Models.ViewModels;
 using CentralLicenceApp.Repositories;
+using CentralLicenceApp.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -16,11 +17,15 @@ namespace CentralLicenceApp.Controllers
     {
         private readonly IUserRepository _userRepo;
         private readonly IDataProtector _roleSelectionProtector;
+        private readonly IDataProtector _passwordResetProtector;
+        private readonly IEmailService _emailService;
 
-        public AccountController(IUserRepository userRepo, IDataProtectionProvider dataProtectionProvider)
+        public AccountController(IUserRepository userRepo, IDataProtectionProvider dataProtectionProvider, IEmailService emailService)
         {
             _userRepo = userRepo;
             _roleSelectionProtector = dataProtectionProvider.CreateProtector("AccountController.PendingRoleSelection.v1");
+            _passwordResetProtector = dataProtectionProvider.CreateProtector("AccountController.PasswordReset.v1");
+            _emailService = emailService;
         }
 
         private static readonly HashSet<string> CrmOnlyRoles = new(StringComparer.OrdinalIgnoreCase)
@@ -265,6 +270,93 @@ namespace CentralLicenceApp.Controllers
             Response.Headers.Expires = "0";
         }
 
+        // ── Forgot Password ──────────────────────────────────────────
+
+        [HttpGet]
+        public IActionResult ForgotPassword()
+        {
+            return View(new ForgotPasswordViewModel());
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return View(model);
+
+            var user = await _userRepo.GetByEmailAsync(model.Email.Trim());
+            if (user != null)
+            {
+                var payload = new PasswordResetPayload
+                {
+                    UserId = user.Id,
+                    IssuedAtUtc = DateTimeOffset.UtcNow
+                };
+                var token = _passwordResetProtector.Protect(JsonSerializer.Serialize(payload));
+                var resetUrl = Url.Action("ResetPassword", "Account", new { token }, Request.Scheme);
+
+                await _emailService.SendTemplatedAsync("PASSWORD_RESET", user.Email, user.FullName ?? user.Username,
+                    new Dictionary<string, string>
+                    {
+                        ["FullName"] = user.FullName ?? user.Username,
+                        ["ResetUrl"] = resetUrl!
+                    });
+            }
+
+            // Always show success to prevent email enumeration
+            TempData["ForgotPasswordSent"] = true;
+            return View("ForgotPasswordConfirmation");
+        }
+
+        [HttpGet]
+        public IActionResult ResetPassword(string token)
+        {
+            if (string.IsNullOrEmpty(token))
+                return RedirectToAction(nameof(Login));
+
+            return View(new ResetPasswordViewModel { Token = token });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return View(model);
+
+            PasswordResetPayload? payload;
+            try
+            {
+                payload = JsonSerializer.Deserialize<PasswordResetPayload>(
+                    _passwordResetProtector.Unprotect(model.Token));
+            }
+            catch
+            {
+                TempData["Error"] = "The password reset link is invalid or has been tampered with. Please request a new one.";
+                return RedirectToAction(nameof(ForgotPassword));
+            }
+
+            if (payload == null || payload.IssuedAtUtc < DateTimeOffset.UtcNow.AddMinutes(-30))
+            {
+                TempData["Error"] = "The password reset link has expired. Please request a new one.";
+                return RedirectToAction(nameof(ForgotPassword));
+            }
+
+            var user = await _userRepo.GetByIdAsync(payload.UserId);
+            if (user == null || !user.IsActive)
+            {
+                TempData["Error"] = "This account is no longer available.";
+                return RedirectToAction(nameof(Login));
+            }
+
+            var newHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
+            await _userRepo.UpdatePasswordAsync(user.Id, newHash);
+
+            TempData["Success"] = "Your password has been reset successfully. Please sign in with your new password.";
+            return RedirectToAction(nameof(Login));
+        }
+
         private LoginViewModel BuildRoleSelectionModel(UserMaster user, bool rememberMe, string? returnUrl)
         {
             ViewData["ReturnUrl"] = returnUrl;
@@ -342,6 +434,12 @@ namespace CentralLicenceApp.Controllers
             public int UserId { get; set; }
             public bool RememberMe { get; set; }
             public string? ReturnUrl { get; set; }
+            public DateTimeOffset IssuedAtUtc { get; set; }
+        }
+
+        private sealed class PasswordResetPayload
+        {
+            public int UserId { get; set; }
             public DateTimeOffset IssuedAtUtc { get; set; }
         }
     }

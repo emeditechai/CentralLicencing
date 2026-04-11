@@ -23,7 +23,7 @@
             <span class="fw-semibold" style="font-size:.82rem;text-transform:uppercase;letter-spacing:.04em;">Available Placeholders</span>
         </div>
         <div class="d-flex flex-wrap gap-2" style="font-size:.78rem;">
-            @foreach (var ph in new[] { "{{ClientName}}", "{{ClientCode}}", "{{ExpiryDate}}", "{{AmcExpiryDate}}", "{{DaysRemaining}}", "{{AppName}}", "{{AppUrl}}", "{{RequestNumber}}", "{{EmployeeName}}", "{{EmployeeCode}}", "{{PurposeOfTravel}}", "{{TotalAmount}}", "{{ItemCount}}", "{{SubmittedAt}}", "{{CurrentStatus}}", "{{ApproverName}}", "{{DetailsUrl}}", "{{SettlementReceiptNumber}}", "{{SettlementDate}}", "{{SettlementAmount}}", "{{SettlementMode}}", "{{SettlementReferenceNo}}", "{{SettlementReceiptUrl}}" })
+            @foreach (var ph in new[] { "{{ClientName}}", "{{ClientCode}}", "{{ExpiryDate}}", "{{AmcExpiryDate}}", "{{DaysRemaining}}", "{{AppName}}", "{{AppUrl}}", "{{CompanyName}}", "{{RequestNumber}}", "{{EmployeeName}}", "{{EmployeeCode}}", "{{PurposeOfTravel}}", "{{TotalAmount}}", "{{ItemCount}}", "{{SubmittedAt}}", "{{CurrentStatus}}", "{{ApproverName}}", "{{DetailsUrl}}", "{{SettlementReceiptNumber}}", "{{SettlementDate}}", "{{SettlementAmount}}", "{{SettlementMode}}", "{{SettlementReferenceNo}}", "{{SettlementReceiptUrl}}", "{{FullName}}", "{{ResetUrl}}", "{{TicketNumber}}", "{{Heading}}", "{{IntroMessage}}", "{{DetailsTable}}", "{{NewStatus}}", "{{NoteLabel}}", "{{QuotationNo}}", "{{QuotationDate}}", "{{PartyName}}", "{{LineItemsTable}}", "{{TotalsTable}}", "{{ValidUntilInfo}}", "{{InvoiceNo}}", "{{InvoiceDate}}", "{{DueInfo}}", "{{Username}}", "{{Email}}", "{{PhoneNumber}}", "{{RoleName}}", "{{LocationName}}", "{{DepartmentName}}", "{{DesignationName}}", "{{ManagerName}}", "{{IsCoreMember}}", "{{Status}}", "{{LoginUrl}}", "{{TemporaryPassword}}" })
             {
                 <code style="background:#ede9fe;color:#6d28d9;border-radius:6px;padding:2px 8px;">@ph</code>
             }
@@ -53,6 +53,14 @@ else
                 "AMC_EXPIRY_REMINDER"     => ("#fee2e2", "#dc2626", "bi-exclamation-triangle-fill"),
                 "EXPENSE_REQUEST_SUBMITTED" => ("#dbeafe", "#1d4ed8", "bi-receipt-cutoff"),
                 "EXPENSE_SETTLEMENT_COMPLETED" => ("#dcfce7", "#166534", "bi-cash-coin"),
+                "PASSWORD_RESET"              => ("#eef2ff", "#6366f1", "bi-key-fill"),
+                "TICKET_CREATED"              => ("#f5f3ff", "#7c3aed", "bi-ticket-perforated-fill"),
+                "TICKET_ASSIGNED"             => ("#f5f3ff", "#7c3aed", "bi-person-check-fill"),
+                "TICKET_STATUS_CHANGED"       => ("#f5f3ff", "#7c3aed", "bi-arrow-repeat"),
+                "TICKET_REPLY"                => ("#f5f3ff", "#7c3aed", "bi-chat-dots-fill"),
+                "QUOTATION_SENT"              => ("#f1f5f9", "#1e293b", "bi-file-earmark-text-fill"),
+                "INVOICE_SENT"                => ("#f1f5f9", "#1e293b", "bi-file-earmark-ruled-fill"),
+                "USER_ONBOARDING"             => ("#ecfeff", "#0891b2", "bi-person-plus-fill"),
                 _                         => ("#f1f5f9", "#64748b", "bi-envelope")
             };
 
@@ -102,6 +110,14 @@ else
                                     "AMC_EXPIRY_REMINDER"     => "Sent daily at 9 AM when AMC expiry is within 7 days",
                                     "EXPENSE_REQUEST_SUBMITTED" => "Sent when an expense or advance request is submitted",
                                     "EXPENSE_SETTLEMENT_COMPLETED" => "Sent to the requester after settlement is completed",
+                                    "PASSWORD_RESET"              => "Sent when a user requests a password reset",
+                                    "TICKET_CREATED"              => "Sent to admins when a new support ticket is created",
+                                    "TICKET_ASSIGNED"             => "Sent when a ticket is assigned to a team member",
+                                    "TICKET_STATUS_CHANGED"       => "Sent when a ticket status is updated",
+                                    "TICKET_REPLY"                => "Sent when a new reply is posted on a ticket",
+                                    "QUOTATION_SENT"              => "Sent as the body when a quotation is emailed to a party",
+                                    "INVOICE_SENT"                => "Sent as the body when an invoice is emailed to a party",
+                                    "USER_ONBOARDING"             => "Sent when a new user account is created",
                                     _                         => "Manual trigger"
                                 })
                             </div>

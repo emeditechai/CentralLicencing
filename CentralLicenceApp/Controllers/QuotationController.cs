@@ -328,9 +328,18 @@ ITermsConditionTemplateRepository termsRepo,
                             {
                                 var (pdfBytes, _) = await pdf.GenerateQuotationPdfAsync(q);
                                 var fileName = $"Quotation_{q.QuotationNo.Replace("/", "-")}.pdf";
-                                var subject  = $"Quotation {q.QuotationNo} from {q.PartyName}";
-                                var body     = BuildQuotationEmailBody(q);
-                                await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, fileName, "Quotation");
+                                var placeholders = BuildQuotationPlaceholders(q);
+                                var resolved = await email.ResolveTemplateAsync("QUOTATION_SENT", placeholders);
+                                if (resolved != null)
+                                {
+                                    await email.SendWithAttachmentAsync(partyEmail, partyName, resolved.Value.Subject, resolved.Value.Body, pdfBytes, fileName, "Quotation");
+                                }
+                                else
+                                {
+                                    var subject = $"Quotation {q.QuotationNo} from {q.PartyName}";
+                                    var body = BuildQuotationEmailBody(q);
+                                    await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, fileName, "Quotation");
+                                }
                             }
                             catch { /* background failure */ }
                         });
@@ -352,6 +361,51 @@ ITermsConditionTemplateRepository termsRepo,
             }
 
             return RedirectToAction(nameof(Details), new { id });
+        }
+
+        private static Dictionary<string, string> BuildQuotationPlaceholders(Quotation q)
+        {
+            var linesHtml = string.Join("", q.Lines.Select((l, i) =>
+                $"<tr style='background:{((i % 2 == 0) ? "#f9f9fd" : "#ffffff")};'>" +
+                $"<td style='padding:7px 10px;border-bottom:1px solid #eeeff6;'>{l.ItemDescription}{(!string.IsNullOrWhiteSpace(l.PlanName) ? " <span style=\"color:#6366f1;font-size:12px;\">• " + l.PlanName + "</span>" : "")}</td>" +
+                $"<td style='padding:7px 10px;border-bottom:1px solid #eeeff6;text-align:center;'>{l.Qty}</td>" +
+                $"<td style='padding:7px 10px;border-bottom:1px solid #eeeff6;text-align:right;'>₹{l.Rate:0.00}</td>" +
+                $"<td style='padding:7px 10px;border-bottom:1px solid #eeeff6;text-align:right;font-weight:600;'>₹{l.Amount:0.00}</td>" +
+                "</tr>"));
+
+            var lineItemsTable = $@"<table width='100%' cellpadding='0' cellspacing='0' style='border-radius:8px;overflow:hidden;border:1px solid #e2e4f0;margin-bottom:20px;'>
+          <thead><tr style='background:#1e293b;'>
+            <th style='padding:9px 10px;text-align:left;color:#e2e8f0;font-size:12px;'>Item</th>
+            <th style='padding:9px 10px;text-align:center;color:#e2e8f0;font-size:12px;'>Qty</th>
+            <th style='padding:9px 10px;text-align:right;color:#e2e8f0;font-size:12px;'>Rate</th>
+            <th style='padding:9px 10px;text-align:right;color:#e2e8f0;font-size:12px;'>Amount</th>
+          </tr></thead>
+          <tbody>{linesHtml}</tbody>
+        </table>";
+
+            var totalsTable = $@"<table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:20px;'>
+          <tr><td width='60%'></td><td width='40%'>
+            <table width='100%' cellpadding='0' cellspacing='0' style='border-radius:8px;overflow:hidden;border:1px solid #e2e4f0;'>
+              <tr><td style='padding:7px 12px;color:#475569;font-size:13px;'>Sub Total</td><td style='padding:7px 12px;text-align:right;font-size:13px;'>₹{q.SubTotal:0.00}</td></tr>
+              {(q.TotalGst > 0 ? $"<tr><td style='padding:7px 12px;color:#475569;font-size:13px;'>GST</td><td style='padding:7px 12px;text-align:right;font-size:13px;'>₹{q.TotalGst:0.00}</td></tr>" : "")}
+              <tr style='background:#1e293b;'><td style='padding:9px 12px;color:#ffffff;font-size:14px;font-weight:700;'>Total</td><td style='padding:9px 12px;text-align:right;color:#ffffff;font-size:14px;font-weight:700;'>₹{q.TotalAmount:0.00}</td></tr>
+            </table>
+          </td></tr>
+        </table>";
+
+            var validUntilInfo = q.ValidUntilDate.HasValue
+                ? $"<p style='margin:0 0 6px;'>This quotation is valid until <strong>{q.ValidUntilDate.Value:dd MMM yyyy}</strong>.</p>"
+                : string.Empty;
+
+            return new Dictionary<string, string>
+            {
+                ["QuotationNo"] = q.QuotationNo,
+                ["QuotationDate"] = q.QuotationDate.ToString("dd MMM yyyy"),
+                ["PartyName"] = q.PartyName,
+                ["LineItemsTable"] = lineItemsTable,
+                ["TotalsTable"] = totalsTable,
+                ["ValidUntilInfo"] = validUntilInfo
+            };
         }
 
         private static string BuildQuotationEmailBody(Quotation q)
