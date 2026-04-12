@@ -76,7 +76,7 @@
                 var crmTicketOpen = ctrl == "HelpDeskTicket";
                 var crmTaskLogOpen = ctrl == "DailyTaskLog";
                 var crmMasterOpen = ctrl == "TicketCategory" || ctrl == "TicketSubCategory" || ctrl == "TicketPriority" || ctrl == "ProjectModule" || ctrl == "TaskTypeMaster" || ctrl == "TaskCategoryMaster";
-                var crmReportsOpen = ctrl == "TicketReports";
+                var crmReportsOpen = ctrl == "TicketReports" || ctrl == "TaskReport";
                 var crmOpen = crmTicketOpen || crmTaskLogOpen || crmMasterOpen || crmReportsOpen;
                 var adminOpen    = ctrl == "User" || ctrl == "Role" || ctrl == "EmailConfig" || ctrl == "EmailTemplate" || ctrl == "EmailLog" || ctrl == "CompanySettings" || masterOpen;
             }
@@ -252,6 +252,9 @@
                         {
                             <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TicketReports" asp-action="SlaCompliance" class="@(ctrl == "TicketReports" && (ViewContext.RouteData.Values["action"]?.ToString() == "SlaCompliance") ? "active" : "")"><i class="bi bi-shield-check"></i> SLA Compliance</a></div>
                         }
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TaskReport" asp-action="Timesheet" class="@(ctrl == "TaskReport" && ViewContext.RouteData.Values["action"]?.ToString() == "Timesheet" ? "active" : "")"><i class="bi bi-calendar3-week"></i> Timesheet Report</a></div>
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TaskReport" asp-action="EmployeeProductivity" class="@(ctrl == "TaskReport" && ViewContext.RouteData.Values["action"]?.ToString() == "EmployeeProductivity" ? "active" : "")"><i class="bi bi-graph-up-arrow"></i> Employee Productivity</a></div>
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TaskReport" asp-action="ProjectEffort" class="@(ctrl == "TaskReport" && ViewContext.RouteData.Values["action"]?.ToString() == "ProjectEffort" ? "active" : "")"><i class="bi bi-folder2-open"></i> Project Effort</a></div>
                     </div>
                 }
             </div><!-- /section-crm collapse -->

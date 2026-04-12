@@ -1,0 +1,195 @@
+@model CentralLicenceApp.Models.ViewModels.TimesheetReportViewModel
+@{
+    ViewData["Title"] = "Timesheet Report";
+}
+
+@functions {
+    string FmtTime(int mins)
+    {
+        if (mins == 0) return "0m";
+        var h = mins / 60; var m = mins % 60;
+        if (h == 0) return $"{m}m";
+        if (m == 0) return $"{h}h";
+        return $"{h}h {m}m";
+    }
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4 gap-3 flex-wrap">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;"><i class="bi bi-calendar3-week me-2" style="color:#6366f1;"></i>Timesheet Report</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">
+            @if (Model.IsAdminView)
+            {
+                <span><i class="bi bi-shield-check me-1 text-success"></i>Administrator view — showing all users' time entries</span>
+            }
+            else
+            {
+                <span><i class="bi bi-person-circle me-1"></i>Showing your own time entries</span>
+            }
+        </p>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">TOTAL ENTRIES</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#1e293b;">@Model.TotalEntries</div>
+                <div class="text-muted" style="font-size:.78rem;">Time log entries matching filters</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">TOTAL EFFORT (PAGE)</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#6366f1;">@FmtTime(Model.TotalMinutes)</div>
+                <div class="text-muted" style="font-size:.78rem;">Sum of time on current page</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">PAGE</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#0ea5e9;">@Model.PageNumber / @(Model.TotalPages == 0 ? 1 : Model.TotalPages)</div>
+                <div class="text-muted" style="font-size:.78rem;">Showing @Model.Items.Count of @Model.TotalCount entries</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4" style="border:1px solid #e2e8f0;">
+    <div class="card-body py-3">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">From Date</label>
+                <input type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" class="form-control" style="border-radius:10px;" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">To Date</label>
+                <input type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" class="form-control" style="border-radius:10px;" />
+            </div>
+            @if (Model.IsAdminView)
+            {
+                <div class="col-md-2">
+                    <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">User</label>
+                    <select name="user" class="form-select" style="border-radius:10px;">
+                        <option value="">All Users</option>
+                        @foreach (var u in Model.Users) { <option value="@u.Id" selected="@(Model.UserFilter == u.Id)">@u.FullName</option> }
+                    </select>
+                </div>
+            }
+            <div class="col-md-2">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Task Type</label>
+                <select name="taskType" class="form-select" style="border-radius:10px;">
+                    <option value="">All Types</option>
+                    @foreach (var t in Model.TaskTypes) { <option value="@t.Id" selected="@(Model.TaskTypeFilter == t.Id)">@t.Name</option> }
+                </select>
+            </div>
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-primary" style="border-radius:10px;background:linear-gradient(135deg,#6366f1,#4f46e5);border:none;font-weight:600;">
+                    <i class="bi bi-funnel-fill me-1"></i>Filter
+                </button>
+                <a asp-action="Timesheet" class="btn btn-outline-secondary ms-1" style="border-radius:10px;font-weight:600;">
+                    <i class="bi bi-x-lg me-1"></i>Clear
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Data Table -->
+<div class="card" style="border:1px solid #e2e8f0;">
+    @if (!Model.Items.Any())
+    {
+        <div class="card-body text-center py-5">
+            <i class="bi bi-calendar-x" style="font-size:3rem;color:#cbd5e1;"></i>
+            <div class="text-muted mt-2">No time entries found for the selected filters.</div>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" style="font-size:.85rem;">
+                <thead style="background:#f8fafc;">
+                    <tr>
+                        <th style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Date</th>
+                        @if (Model.IsAdminView) { <th style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">User</th> }
+                        <th style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Task</th>
+                        <th style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Type</th>
+                        <th style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Category</th>
+                        <th style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Reference</th>
+                        <th style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Time</th>
+                        <th style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Items)
+                    {
+                        var typeCls = row.TaskTypeName == "Development" ? "background:linear-gradient(135deg,#ede9fe,#ddd6fe);color:#5b21b6;" : "background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#1e40af;";
+                        <tr>
+                            <td style="white-space:nowrap;font-weight:600;">@row.LogDate.ToString("dd MMM yyyy")</td>
+                            @if (Model.IsAdminView) { <td style="font-weight:600;color:#1e293b;">@row.UserName</td> }
+                            <td>
+                                <div style="font-weight:700;color:#1e293b;">@row.TaskTitle</div>
+                                <span class="badge" style="font-size:.65rem;padding:2px 8px;border-radius:12px;@(row.TaskStatus == "Completed" ? "background:#dcfce7;color:#166534;" : row.TaskStatus == "In Progress" ? "background:#dbeafe;color:#1e40af;" : "background:#fef9c3;color:#92400e;")">@row.TaskStatus</span>
+                            </td>
+                            <td><span class="badge" style="font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:20px;@typeCls">@row.TaskTypeName</span></td>
+                            <td style="color:#475569;">@row.TaskCategoryName</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(row.TicketNumber))
+                                {
+                                    <span style="font-size:.72rem;color:#6366f1;font-weight:600;"><i class="bi bi-ticket-perforated me-1"></i>@row.TicketNumber</span>
+                                }
+                                else if (!string.IsNullOrEmpty(row.ProjectModuleName))
+                                {
+                                    <span style="font-size:.72rem;color:#059669;font-weight:600;"><i class="bi bi-folder me-1"></i>@row.ProjectModuleName</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td style="font-weight:700;color:#1e293b;white-space:nowrap;">@FmtTime(row.TimeSpentMinutes)</td>
+                            <td style="color:#64748b;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="@row.Remarks">@(row.Remarks ?? "—")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot style="background:#f8fafc;font-weight:700;">
+                    <tr>
+                        <td colspan="@(Model.IsAdminView ? 6 : 5)" class="text-end" style="color:#64748b;">Page Total:</td>
+                        <td style="color:#6366f1;">@FmtTime(Model.TotalMinutes)</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        @if (Model.TotalPages > 1)
+        {
+            <div class="card-footer d-flex justify-content-center py-3" style="background:#fff;border-top:1px solid #f1f5f9;">
+                <nav>
+                    <ul class="pagination mb-0" style="gap:4px;">
+                        @for (int p = 1; p <= Model.TotalPages; p++)
+                        {
+                            <li class="page-item @(p == Model.PageNumber ? "active" : "")">
+                                <a class="page-link" style="border-radius:8px;font-size:.82rem;font-weight:600;@(p == Model.PageNumber ? "background:#6366f1;border-color:#6366f1;" : "")"
+                                   asp-action="Timesheet"
+                                   asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
+                                   asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
+                                   asp-route-user="@Model.UserFilter"
+                                   asp-route-taskType="@Model.TaskTypeFilter"
+                                   asp-route-page="@p">@p</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            </div>
+        }
+    }
+</div>

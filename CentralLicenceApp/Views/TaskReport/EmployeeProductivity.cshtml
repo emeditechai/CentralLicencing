@@ -1,0 +1,163 @@
+@model CentralLicenceApp.Models.ViewModels.EmployeeProductivityReportViewModel
+@{
+    ViewData["Title"] = "Employee Productivity Report";
+}
+
+@functions {
+    string FmtTime(int mins)
+    {
+        if (mins == 0) return "0m";
+        var h = mins / 60; var m = mins % 60;
+        if (h == 0) return $"{m}m";
+        if (m == 0) return $"{h}h";
+        return $"{h}h {m}m";
+    }
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4 gap-3 flex-wrap">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;"><i class="bi bi-graph-up-arrow me-2" style="color:#6366f1;"></i>Employee Productivity Report</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">
+            @if (Model.IsAdminView)
+            {
+                <span><i class="bi bi-shield-check me-1 text-success"></i>Administrator view — showing all employees' productivity</span>
+            }
+            else
+            {
+                <span><i class="bi bi-person-circle me-1"></i>Showing your own productivity stats</span>
+            }
+        </p>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">TOTAL TASKS</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#1e293b;">@Model.GrandTotalTasks</div>
+                <div class="text-muted" style="font-size:.78rem;">Across all employees in filter</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">TOTAL EFFORT</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#6366f1;">@FmtTime(Model.GrandTotalMinutes)</div>
+                <div class="text-muted" style="font-size:.78rem;">Combined effort (excl. cancelled)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100" style="border:1px solid #e2e8f0;box-shadow:0 10px 24px rgba(15,23,42,.05);">
+            <div class="card-body">
+                <div class="text-muted" style="font-size:.74rem;font-weight:800;letter-spacing:.05em;">AVG COMPLETION RATE</div>
+                <div class="mt-2" style="font-size:1.7rem;font-weight:800;color:#15803d;">@Model.AvgCompletionRate%</div>
+                <div class="text-muted" style="font-size:.78rem;">Average across employees</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4" style="border:1px solid #e2e8f0;">
+    <div class="card-body py-3">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">From Date</label>
+                <input type="date" name="fromDate" value="@(Model.FromDate?.ToString("yyyy-MM-dd"))" class="form-control" style="border-radius:10px;" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">To Date</label>
+                <input type="date" name="toDate" value="@(Model.ToDate?.ToString("yyyy-MM-dd"))" class="form-control" style="border-radius:10px;" />
+            </div>
+            @if (Model.IsAdminView)
+            {
+                <div class="col-md-3">
+                    <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">User</label>
+                    <select name="user" class="form-select" style="border-radius:10px;">
+                        <option value="">All Users</option>
+                        @foreach (var u in Model.Users) { <option value="@u.Id" selected="@(Model.UserFilter == u.Id)">@u.FullName</option> }
+                    </select>
+                </div>
+            }
+            <div class="col-md-auto">
+                <button type="submit" class="btn btn-primary" style="border-radius:10px;background:linear-gradient(135deg,#6366f1,#4f46e5);border:none;font-weight:600;">
+                    <i class="bi bi-funnel-fill me-1"></i>Filter
+                </button>
+                <a asp-action="EmployeeProductivity" class="btn btn-outline-secondary ms-1" style="border-radius:10px;font-weight:600;">
+                    <i class="bi bi-x-lg me-1"></i>Clear
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Data Table -->
+<div class="card" style="border:1px solid #e2e8f0;">
+    @if (!Model.Items.Any())
+    {
+        <div class="card-body text-center py-5">
+            <i class="bi bi-graph-down" style="font-size:3rem;color:#cbd5e1;"></i>
+            <div class="text-muted mt-2">No productivity data found for the selected filters.</div>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" style="font-size:.85rem;">
+                <thead style="background:#f8fafc;">
+                    <tr>
+                        <th style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Employee</th>
+                        <th class="text-center" style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Total Tasks</th>
+                        <th class="text-center" style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Completed</th>
+                        <th class="text-center" style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Pending</th>
+                        <th class="text-center" style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Cancelled</th>
+                        <th class="text-center" style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Total Effort</th>
+                        <th class="text-center" style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;"><i class="bi bi-code-slash"></i> Dev</th>
+                        <th class="text-center" style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;"><i class="bi bi-headset"></i> Support</th>
+                        <th class="text-center" style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Completion %</th>
+                        <th class="text-center" style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Avg / Task</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Items)
+                    {
+                        var rateColor = row.CompletionRate >= 80 ? "#15803d" : row.CompletionRate >= 50 ? "#d97706" : "#dc2626";
+                        var rateBg = row.CompletionRate >= 80 ? "#dcfce7" : row.CompletionRate >= 50 ? "#fef9c3" : "#fee2e2";
+                        <tr>
+                            <td style="font-weight:700;color:#1e293b;"><i class="bi bi-person-circle me-1" style="color:#6366f1;"></i>@row.UserName</td>
+                            <td class="text-center" style="font-weight:700;color:#1e293b;">@row.TotalTasks</td>
+                            <td class="text-center"><span class="badge" style="background:#dcfce7;color:#166534;font-size:.72rem;padding:3px 10px;border-radius:12px;">@row.CompletedTasks</span></td>
+                            <td class="text-center"><span class="badge" style="background:#fef9c3;color:#92400e;font-size:.72rem;padding:3px 10px;border-radius:12px;">@row.PendingTasks</span></td>
+                            <td class="text-center"><span class="badge" style="background:#f1f5f9;color:#64748b;font-size:.72rem;padding:3px 10px;border-radius:12px;">@row.CancelledTasks</span></td>
+                            <td class="text-center" style="font-weight:700;color:#6366f1;">@FmtTime(row.TotalMinutes)</td>
+                            <td class="text-center" style="font-weight:600;color:#5b21b6;">@FmtTime(row.DevMinutes)</td>
+                            <td class="text-center" style="font-weight:600;color:#1e40af;">@FmtTime(row.SupportMinutes)</td>
+                            <td class="text-center">
+                                <span class="badge" style="background:@rateBg;color:@rateColor;font-size:.75rem;font-weight:700;padding:4px 12px;border-radius:20px;">@row.CompletionRate%</span>
+                            </td>
+                            <td class="text-center" style="font-weight:600;color:#475569;">@FmtTime(row.AvgMinutesPerTask)</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot style="background:#f8fafc;font-weight:700;">
+                    <tr>
+                        <td style="color:#64748b;">Totals</td>
+                        <td class="text-center" style="color:#1e293b;">@Model.GrandTotalTasks</td>
+                        <td class="text-center" style="color:#166534;">@Model.Items.Sum(x => x.CompletedTasks)</td>
+                        <td class="text-center" style="color:#92400e;">@Model.Items.Sum(x => x.PendingTasks)</td>
+                        <td class="text-center" style="color:#64748b;">@Model.Items.Sum(x => x.CancelledTasks)</td>
+                        <td class="text-center" style="color:#6366f1;">@FmtTime(Model.GrandTotalMinutes)</td>
+                        <td class="text-center" style="color:#5b21b6;">@FmtTime(Model.Items.Sum(x => x.DevMinutes))</td>
+                        <td class="text-center" style="color:#1e40af;">@FmtTime(Model.Items.Sum(x => x.SupportMinutes))</td>
+                        <td class="text-center" style="color:#15803d;">@Model.AvgCompletionRate%</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+</div>

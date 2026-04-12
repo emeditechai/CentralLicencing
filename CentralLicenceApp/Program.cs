@@ -61,6 +61,7 @@ builder.Services.AddScoped<IDailyTaskLogRepository>(_ => new DailyTaskLogReposit
 builder.Services.AddScoped<IProjectModuleRepository>(_ => new ProjectModuleRepository(connStr));
 builder.Services.AddScoped<ITaskTypeMasterRepository>(_ => new TaskTypeMasterRepository(connStr));
 builder.Services.AddScoped<ITaskCategoryMasterRepository>(_ => new TaskCategoryMasterRepository(connStr));
+builder.Services.AddScoped<ITaskReportRepository>(_ => new TaskReportRepository(connStr));
 builder.Services.AddScoped<IClientDetailsReportExportService, ClientDetailsReportExportService>();
 builder.Services.AddScoped<IExpenseReportExportService, ExpenseReportExportService>();
 builder.Services.AddScoped<ISettlementReportExportService, SettlementReportExportService>();
@@ -187,6 +188,18 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogWarning(ex, "DailyTaskLog table seeding encountered an error (non-blocking).");
+    }
+
+    // Ensure Task Report stored procedures exist
+    try
+    {
+        var taskReportRepo = scope.ServiceProvider.GetRequiredService<ITaskReportRepository>();
+        await taskReportRepo.EnsureProceduresAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(ex, "Task Report SP seeding encountered an error (non-blocking).");
     }
 }
 
