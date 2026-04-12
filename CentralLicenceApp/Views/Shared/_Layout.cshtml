@@ -74,9 +74,10 @@
                 var businessUnitOpen = businessUnitMasterOpen || businessUnitTransactionOpen || quotationInvoiceOpen;
                 var reportsOpen = ctrl == "Reports";
                 var crmTicketOpen = ctrl == "HelpDeskTicket";
-                var crmMasterOpen = ctrl == "TicketCategory" || ctrl == "TicketSubCategory" || ctrl == "TicketPriority";
+                var crmTaskLogOpen = ctrl == "DailyTaskLog";
+                var crmMasterOpen = ctrl == "TicketCategory" || ctrl == "TicketSubCategory" || ctrl == "TicketPriority" || ctrl == "ProjectModule" || ctrl == "TaskTypeMaster" || ctrl == "TaskCategoryMaster";
                 var crmReportsOpen = ctrl == "TicketReports";
-                var crmOpen = crmTicketOpen || crmMasterOpen || crmReportsOpen;
+                var crmOpen = crmTicketOpen || crmTaskLogOpen || crmMasterOpen || crmReportsOpen;
                 var adminOpen    = ctrl == "User" || ctrl == "Role" || ctrl == "EmailConfig" || ctrl == "EmailTemplate" || ctrl == "EmailLog" || ctrl == "CompanySettings" || masterOpen;
             }
             @if (!isCrmOnly)
@@ -208,6 +209,14 @@
                 {
                     <div class="nav-item"><a asp-controller="HelpDeskTicket" asp-action="Index" class="@(ctrl == "HelpDeskTicket" && (ViewContext.RouteData.Values["action"]?.ToString() == "Index") ? "active" : "")"><i class="bi bi-kanban"></i> Ticket Management</a></div>
                 }
+                @if (isAdmin || User.IsInRole("Ticket Admin") || User.IsInRole("Ticket Agent"))
+                {
+                    <div class="nav-item"><a asp-controller="DailyTaskLog" asp-action="Index" class="@(ctrl == "DailyTaskLog" && (ViewContext.RouteData.Values["action"]?.ToString() == "Index") ? "active" : "")"><i class="bi bi-journal-check"></i> My Task Log</a></div>
+                }
+                @if (isAdmin || User.IsInRole("Ticket Admin") || User.IsInRole("Ticket Agent"))
+                {
+                    <div class="nav-item"><a asp-controller="DailyTaskLog" asp-action="TeamView" class="@(ctrl == "DailyTaskLog" && (ViewContext.RouteData.Values["action"]?.ToString() == "TeamView") ? "active" : "")"><i class="bi bi-people"></i> Team Task Log</a></div>
+                }
                 @if (isAdmin || User.IsInRole("Ticket Admin"))
                 {
                     <div class="nav-item nav-item-nested">
@@ -220,6 +229,9 @@
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TicketCategory" asp-action="Index" class="@Act("TicketCategory")"><i class="bi bi-tags"></i> Ticket Categories</a></div>
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TicketSubCategory" asp-action="Index" class="@Act("TicketSubCategory")"><i class="bi bi-bookmark"></i> Ticket Sub Categories</a></div>
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TicketPriority" asp-action="Index" class="@Act("TicketPriority")"><i class="bi bi-flag"></i> Ticket Priorities</a></div>
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TaskTypeMaster" asp-action="Index" class="@Act("TaskTypeMaster")"><i class="bi bi-code-slash"></i> Task Types</a></div>
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TaskCategoryMaster" asp-action="Index" class="@Act("TaskCategoryMaster")"><i class="bi bi-bookmark-star"></i> Task Categories</a></div>
+                        <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="ProjectModule" asp-action="Index" class="@Act("ProjectModule")"><i class="bi bi-folder2-open"></i> Project / Module</a></div>
                     </div>
                 }
                 @if (isAdmin || User.IsInRole("Ticket Admin") || User.IsInRole("Ticket Agent"))
@@ -271,11 +283,11 @@
             </button>
             @if (!string.IsNullOrWhiteSpace(profileImagePath))
             {
-                <img src="@Url.Content(profileImagePath)" alt="@fullName" class="avatar avatar-img" />
+                <img src="@Url.Content(profileImagePath)" alt="@fullName" class="avatar avatar-img" style="cursor:pointer;" onclick="document.getElementById('dpModal').style.display='flex'" title="Change Profile Picture" />
             }
             else
             {
-                <div class="avatar">@initials</div>
+                <div class="avatar" style="cursor:pointer;" onclick="document.getElementById('dpModal').style.display='flex'" title="Change Profile Picture">@initials</div>
             }
             <div>
                 <div class="uname">@fullName</div>
@@ -346,6 +358,124 @@
             </div>
         </footer>
     </div>
+
+    <!-- ── Profile Picture Modal ── -->
+    <div id="dpModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center;"
+         onclick="if(event.target===this)this.style.display='none'">
+        <div style="background:#fff;border-radius:18px;width:380px;max-width:94vw;box-shadow:0 20px 60px rgba(0,0,0,.18);overflow:hidden;animation:dpSlideIn .25s ease-out;">
+            <div style="padding:22px 24px 14px;border-bottom:1px solid #f1f5f9;">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h6 class="fw-bold mb-0" style="color:#1e293b;font-size:.95rem;"><i class="bi bi-camera-fill me-2" style="color:#6366f1;"></i>Profile Picture</h6>
+                    <button type="button" onclick="document.getElementById('dpModal').style.display='none'" style="background:none;border:none;font-size:1.25rem;color:#94a3b8;cursor:pointer;line-height:1;">&times;</button>
+                </div>
+            </div>
+            <div style="padding:24px;" class="text-center">
+                <div id="dpPreviewWrap" style="width:120px;height:120px;border-radius:50%;overflow:hidden;margin:0 auto 18px;border:3px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;justify-content:center;">
+                    @if (!string.IsNullOrWhiteSpace(profileImagePath))
+                    {
+                        <img id="dpPreviewImg" src="@Url.Content(profileImagePath)" style="width:100%;height:100%;object-fit:cover;" />
+                    }
+                    else
+                    {
+                        <span id="dpPreviewInitials" style="font-size:2.5rem;font-weight:700;color:#94a3b8;">@initials</span>
+                        <img id="dpPreviewImg" src="" style="width:100%;height:100%;object-fit:cover;display:none;" />
+                    }
+                </div>
+                <form id="dpUploadForm" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+                    <label for="dpFileInput" style="display:inline-block;padding:8px 20px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:10px;font-size:.82rem;font-weight:600;cursor:pointer;margin-bottom:10px;box-shadow:0 2px 8px rgba(99,102,241,.3);">
+                        <i class="bi bi-upload me-1"></i> Choose Image
+                    </label>
+                    <input id="dpFileInput" type="file" name="profileImage" accept=".jpg,.jpeg,.png,.gif,.webp" style="display:none;" onchange="dpPreviewFile(this)" />
+                    <div id="dpFileName" style="font-size:.75rem;color:#94a3b8;margin-bottom:14px;"></div>
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="button" id="dpSaveBtn" class="btn btn-sm" onclick="dpUpload()" disabled
+                                style="background:#6366f1;color:#fff;border-radius:8px;font-weight:600;padding:6px 20px;font-size:.82rem;">
+                            <i class="bi bi-check-lg me-1"></i> Save
+                        </button>
+                        @if (!string.IsNullOrWhiteSpace(profileImagePath))
+                        {
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="dpRemove()" style="border-radius:8px;font-size:.82rem;padding:6px 14px;">
+                                <i class="bi bi-trash3 me-1"></i> Remove
+                            </button>
+                        }
+                    </div>
+                </form>
+                <div id="dpStatus" style="margin-top:12px;font-size:.78rem;display:none;"></div>
+            </div>
+        </div>
+    </div>
+    <style>
+        @@keyframes dpSlideIn { from { opacity:0; transform:translateY(20px) scale(.96); } to { opacity:1; transform:translateY(0) scale(1); } }
+    </style>
+    <script>
+    function dpPreviewFile(input) {
+        var file = input.files[0];
+        if (!file) return;
+        if (file.size > 2 * 1024 * 1024) {
+            showAppAlert('error', 'Too Large', 'Image must be under 2 MB.');
+            input.value = '';
+            return;
+        }
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            var img = document.getElementById('dpPreviewImg');
+            img.src = e.target.result;
+            img.style.display = 'block';
+            var ini = document.getElementById('dpPreviewInitials');
+            if (ini) ini.style.display = 'none';
+            document.getElementById('dpSaveBtn').disabled = false;
+        };
+        reader.readAsDataURL(file);
+        document.getElementById('dpFileName').textContent = file.name;
+    }
+    function dpUpload() {
+        var form = document.getElementById('dpUploadForm');
+        var fd = new FormData(form);
+        var btn = document.getElementById('dpSaveBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving…';
+        fetch('@Url.Action("ChangeProfilePicture", "Account")', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(function(data) {
+                if (data.success) {
+                    document.querySelectorAll('.avatar-img').forEach(function(img) { img.src = data.imageUrl; });
+                    document.querySelectorAll('.avatar').forEach(function(el) {
+                        if (!el.classList.contains('avatar-img')) {
+                            el.outerHTML = '<img src="' + data.imageUrl + '" alt="Profile" class="avatar avatar-img" style="cursor:pointer;" onclick="document.getElementById(\'dpModal\').style.display=\'flex\'" title="Change Profile Picture" />';
+                        }
+                    });
+                    showAppAlert('success', 'Updated', data.message);
+                    setTimeout(function() { location.reload(); }, 800);
+                } else {
+                    showAppAlert('error', 'Error', data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Save';
+                }
+            })
+            .catch(function() {
+                showAppAlert('error', 'Error', 'Upload failed. Please try again.');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Save';
+            });
+    }
+    function dpRemove() {
+        if (!confirm('Remove your profile picture?')) return;
+        var token = document.querySelector('#dpUploadForm input[name="__RequestVerificationToken"]').value;
+        var fd = new FormData();
+        fd.append('__RequestVerificationToken', token);
+        fetch('@Url.Action("RemoveProfilePicture", "Account")', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(function(data) {
+                if (data.success) {
+                    showAppAlert('success', 'Removed', data.message);
+                    setTimeout(function() { location.reload(); }, 800);
+                } else {
+                    showAppAlert('error', 'Error', data.message);
+                }
+            });
+    }
+    </script>
 }
 else
 {
@@ -528,6 +658,7 @@ else
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="~/js/expense-browser-notifications.js" asp-append-version="true"></script>
 <script src="~/js/ticket-browser-notifications.js" asp-append-version="true"></script>
+
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

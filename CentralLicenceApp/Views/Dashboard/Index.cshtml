@@ -4,197 +4,268 @@
     var selectedPT    = Model.SelectedProductType ?? "";
 }
 
-<!-- Product Type Filter -->
-<div class="d-flex align-items-center justify-content-between mb-4">
-    <div>
-        <h4 class="fw-bold mb-0" style="color:#1e293b;">Dashboard</h4>
-        @if (!string.IsNullOrEmpty(selectedPT))
-        {
-            <p class="text-muted mb-0" style="font-size:.82rem;">Showing data for <strong style="color:#6366f1;">@selectedPT</strong></p>
-        }
-        else
-        {
-            <p class="text-muted mb-0" style="font-size:.82rem;">Showing data for all products</p>
-        }
-    </div>
-    <form method="get" class="d-flex align-items-center gap-2">
-        <label class="fw-semibold mb-0" style="font-size:.82rem;color:#64748b;white-space:nowrap;">Product Type</label>
-        <select name="productType" class="form-select form-select-sm" style="min-width:160px;border-radius:10px;"
-                onchange="this.form.submit()">
-            <option value="">All Products</option>
-            @foreach (var pt in Model.AvailableProductTypes)
+<style>
+    /* ── Dashboard Hero ── */
+    .db-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .db-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:320px; height:320px; background:rgba(255,255,255,.06); border-radius:50%; pointer-events:none; }
+    .db-hero::after { content:''; position:absolute; bottom:-35%; left:15%; width:220px; height:220px; background:rgba(255,255,255,.04); border-radius:50%; pointer-events:none; }
+    .db-hero h4 { color:#fff; font-weight:800; font-size:1.5rem; letter-spacing:-.02em; margin-bottom:.25rem; }
+    .db-hero .db-sub { color:rgba(255,255,255,.75); font-size:.85rem; }
+    .db-hero-filter .form-select { background:rgba(255,255,255,.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.25); color:#fff; border-radius:10px; font-size:.82rem; font-weight:600; min-width:170px; }
+    .db-hero-filter .form-select option { color:#1e293b; background:#fff; }
+    .db-hero-filter .form-select:focus { box-shadow:0 0 0 3px rgba(255,255,255,.2); border-color:rgba(255,255,255,.4); }
+    .db-hero-filter label { color:rgba(255,255,255,.7); font-size:.78rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+    .db-hero-filter .btn-clear { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); color:#fff; border-radius:8px; font-size:.78rem; font-weight:600; }
+    .db-hero-filter .btn-clear:hover { background:rgba(255,255,255,.25); }
+
+    /* ── Stat Cards ── */
+    .db-stat { border-radius:16px; padding:1.35rem 1.5rem; color:#fff; position:relative; overflow:hidden; transition:transform .2s ease, box-shadow .2s ease; border:none; }
+    .db-stat:hover { transform:translateY(-3px); box-shadow:0 12px 32px rgba(0,0,0,.15); }
+    .db-stat::before { content:''; position:absolute; top:-20px; right:-20px; width:80px; height:80px; background:rgba(255,255,255,.1); border-radius:50%; }
+    .db-stat-ico { width:50px; height:50px; background:rgba(255,255,255,.2); border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:1.35rem; flex-shrink:0; }
+    .db-stat-val { font-size:2rem; font-weight:800; line-height:1.15; letter-spacing:-.02em; }
+    .db-stat-lbl { font-size:.78rem; font-weight:600; opacity:.85; text-transform:uppercase; letter-spacing:.04em; }
+
+    /* ── Section Cards ── */
+    .db-card { background:#fff; border-radius:18px; box-shadow:0 4px 24px rgba(0,0,0,.06); border:1px solid #f1f5f9; overflow:hidden; }
+    .db-card-head { padding:1.1rem 1.5rem; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; justify-content:space-between; }
+    .db-card-title { font-size:.92rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:.5rem; }
+    .db-card-title .db-ico { width:32px; height:32px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:.85rem; }
+    .db-view-btn { font-size:.78rem; font-weight:600; border-radius:8px; border:1.5px solid #e2e8f0; color:#64748b; padding:.3rem .75rem; background:#fff; transition:all .18s; text-decoration:none; }
+    .db-view-btn:hover { border-color:#818cf8; color:#6366f1; background:#f5f3ff; }
+
+    /* ── Tables inside cards ── */
+    .db-table { margin-bottom:0; }
+    .db-table thead { background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+    .db-table thead th { font-size:.7rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.08em; padding:.75rem .85rem; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+    .db-table tbody tr { transition:all .15s ease; border-bottom:1px solid #f8fafc; }
+    .db-table tbody tr:hover { background:linear-gradient(90deg,#f5f3ff,#eff6ff); }
+    .db-table td { vertical-align:middle; padding:.75rem .85rem; font-size:.85rem; color:#334155; }
+
+    .db-client-name { font-weight:700; font-size:.85rem; color:#1e293b; margin-bottom:1px; }
+    .db-client-code { font-size:.72rem; font-weight:600; color:#818cf8; background:#f5f3ff; padding:1px 8px; border-radius:6px; display:inline-block; }
+
+    .db-badge { font-size:.72rem; font-weight:700; letter-spacing:.04em; padding:5px 12px; border-radius:20px; }
+    .db-badge-active { background:linear-gradient(135deg,#dcfce7,#bbf7d0); color:#166534; }
+    .db-badge-expired { background:linear-gradient(135deg,#fee2e2,#fecaca); color:#991b1b; }
+    .db-badge-inactive { background:linear-gradient(135deg,#f1f5f9,#e2e8f0); color:#475569; }
+
+    .db-urgency-pill { display:inline-block; border-radius:20px; padding:.2rem .7rem; font-size:.75rem; font-weight:700; }
+
+    .db-empty { padding:2.5rem 1rem; text-align:center; color:#94a3b8; font-size:.85rem; }
+    .db-empty i { font-size:2rem; display:block; margin-bottom:.5rem; color:#cbd5e1; }
+
+    /* ── Subscription Reminders ── */
+    .db-reminder-card { border-left:4px solid #f59e0b; }
+    .db-renew-btn { background:linear-gradient(135deg,#d1fae5,#a7f3d0); color:#065f46; border:none; border-radius:8px; font-size:.76rem; font-weight:700; padding:.3rem .7rem; transition:all .18s; }
+    .db-renew-btn:hover { background:linear-gradient(135deg,#a7f3d0,#6ee7b7); transform:translateY(-1px); box-shadow:0 2px 8px rgba(16,185,129,.2); }
+
+    @@media (max-width:768px) {
+        .db-hero { padding:1.25rem; border-radius:14px; }
+        .db-hero h4 { font-size:1.15rem; }
+        .db-stat { padding:1rem 1.15rem; }
+        .db-stat-val { font-size:1.5rem; }
+    }
+</style>
+
+<!-- ── Hero Header ── -->
+<div class="db-hero">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3" style="position:relative;z-index:1;">
+        <div>
+            <h4><i class="bi bi-speedometer2 me-2" style="opacity:.85;"></i>Dashboard</h4>
+            @if (!string.IsNullOrEmpty(selectedPT))
             {
-                <option value="@pt" selected="@(selectedPT == pt)">@pt</option>
+                <div class="db-sub">Showing data for <strong style="color:#fff;">@selectedPT</strong></div>
             }
-        </select>
-        @if (!string.IsNullOrEmpty(selectedPT))
-        {
-            <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;white-space:nowrap;">Clear</a>
-        }
-    </form>
+            else
+            {
+                <div class="db-sub">Overview of all products and licences</div>
+            }
+        </div>
+        <form method="get" class="d-flex align-items-center gap-2 db-hero-filter">
+            <label class="mb-0">Product Type</label>
+            <select name="productType" class="form-select form-select-sm"
+                    onchange="this.form.submit()">
+                <option value="">All Products</option>
+                @foreach (var pt in Model.AvailableProductTypes)
+                {
+                    <option value="@pt" selected="@(selectedPT == pt)">@pt</option>
+                }
+            </select>
+            @if (!string.IsNullOrEmpty(selectedPT))
+            {
+                <a asp-action="Index" class="btn btn-sm btn-clear">
+                    <i class="bi bi-x-lg me-1"></i>Clear
+                </a>
+            }
+        </form>
+    </div>
 </div>
 
+<!-- ── Stat Cards Row 1: Licences ── -->
+<div class="row g-3 mb-3">
+    <div class="col-sm-6 col-xl-3">
+        <div class="db-stat d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);box-shadow:0 6px 24px rgba(99,102,241,.25);">
+            <div class="db-stat-ico"><i class="bi bi-people-fill"></i></div>
+            <div>
+                <div class="db-stat-val">@Model.TotalClients</div>
+                <div class="db-stat-lbl">Total Clients</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="db-stat d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 6px 24px rgba(16,185,129,.25);">
+            <div class="db-stat-ico"><i class="bi bi-patch-check-fill"></i></div>
+            <div>
+                <div class="db-stat-val">@Model.ActiveLicenses</div>
+                <div class="db-stat-lbl">Active Licences</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="db-stat d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 6px 24px rgba(239,68,68,.25);">
+            <div class="db-stat-ico"><i class="bi bi-x-circle-fill"></i></div>
+            <div>
+                <div class="db-stat-val">@Model.ExpiredLicenses</div>
+                <div class="db-stat-lbl">Expired Licences</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="db-stat d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 6px 24px rgba(245,158,11,.25);">
+            <div class="db-stat-ico"><i class="bi bi-exclamation-triangle-fill"></i></div>
+            <div>
+                <div class="db-stat-val">@Model.ExpiringThisMonth</div>
+                <div class="db-stat-lbl">Expiring This Month</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Stat Cards Row 2: Validations ── -->
 <div class="row g-3 mb-4">
-    <div class="col-sm-6 col-xl-3">
-        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">
-            <div class="stat-ico"><i class="bi bi-people-fill"></i></div>
+    <div class="col-sm-4">
+        <div class="db-stat d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);box-shadow:0 6px 24px rgba(14,165,233,.25);">
+            <div class="db-stat-ico"><i class="bi bi-activity"></i></div>
             <div>
-                <div class="stat-val">@Model.TotalClients</div>
-                <div class="stat-lbl">Total Clients</div>
+                <div class="db-stat-val">@Model.TotalValidations</div>
+                <div class="db-stat-lbl">Total Validations</div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#10b981,#059669);">
-            <div class="stat-ico"><i class="bi bi-patch-check-fill"></i></div>
+    <div class="col-sm-4">
+        <div class="db-stat d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#e11d48,#be123c);box-shadow:0 6px 24px rgba(225,29,72,.25);">
+            <div class="db-stat-ico"><i class="bi bi-shield-exclamation"></i></div>
             <div>
-                <div class="stat-val">@Model.ActiveLicenses</div>
-                <div class="stat-lbl">Active Licences</div>
+                <div class="db-stat-val">@Model.FailedValidations</div>
+                <div class="db-stat-lbl">Failed Validations</div>
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#ef4444,#dc2626);">
-            <div class="stat-ico"><i class="bi bi-x-circle-fill"></i></div>
+    <div class="col-sm-4">
+        <div class="db-stat d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#14b8a6,#0d9488);box-shadow:0 6px 24px rgba(20,184,166,.25);">
+            <div class="db-stat-ico"><i class="bi bi-calendar-check-fill"></i></div>
             <div>
-                <div class="stat-val">@Model.ExpiredLicenses</div>
-                <div class="stat-lbl">Expired Licences</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-xl-3">
-        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#f59e0b,#d97706);">
-            <div class="stat-ico"><i class="bi bi-exclamation-triangle-fill"></i></div>
-            <div>
-                <div class="stat-val">@Model.ExpiringThisMonth</div>
-                <div class="stat-lbl">Expiring This Month</div>
+                <div class="db-stat-val">@Model.TodayValidations</div>
+                <div class="db-stat-lbl">Today's Validations</div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Second row: Validation stats -->
+<!-- ── Tables Row: Recent Clients + Upcoming Expiries ── -->
 <div class="row g-3 mb-4">
-    <div class="col-sm-4">
-        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);">
-            <div class="stat-ico"><i class="bi bi-activity"></i></div>
-            <div>
-                <div class="stat-val">@Model.TotalValidations</div>
-                <div class="stat-lbl">Total Validations</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-4">
-        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#e11d48,#be123c);">
-            <div class="stat-ico"><i class="bi bi-shield-exclamation"></i></div>
-            <div>
-                <div class="stat-val">@Model.FailedValidations</div>
-                <div class="stat-lbl">Failed Validations</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-4">
-        <div class="stat-card d-flex align-items-center gap-3" style="background:linear-gradient(135deg,#14b8a6,#0d9488);">
-            <div class="stat-ico"><i class="bi bi-calendar-check-fill"></i></div>
-            <div>
-                <div class="stat-val">@Model.TodayValidations</div>
-                <div class="stat-lbl">Today's Validations</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Tables Row -->
-<div class="row g-3">
     <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <span><i class="bi bi-card-checklist me-2" style="color:#6366f1;"></i>Recent Clients</span>
-                <a asp-controller="ClientLicense" asp-action="Index" asp-route-productType="@selectedPT" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;">View All</a>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table tbl-clean mb-0">
-                        <thead>
-                            <tr>
-                                <th>Client</th>
-                                <th>Expiry</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var c in Model.RecentClients)
-                            {
-                                var isExpired = c.ExpiryDate < DateTime.Now;
-                                var badgeCls  = !c.IsActive ? "badge-neu" : isExpired ? "badge-err" : "badge-ok";
-                                var badgeTxt  = !c.IsActive ? "Inactive" : isExpired ? "Expired" : "Active";
-                                <tr>
-                                    <td>
-                                        <div class="fw-semibold" style="font-size:.85rem;">@c.ClientName</div>
-                                        <div class="text-muted" style="font-size:.75rem;">@c.ClientCode</div>
-                                    </td>
-                                    <td style="font-size:.82rem;">@c.ExpiryDate.ToString("dd MMM yyyy")</td>
-                                    <td><span class="badge @badgeCls rounded-pill px-2 py-1" style="font-size:.73rem;">@badgeTxt</span></td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+        <div class="db-card">
+            <div class="db-card-head">
+                <div class="db-card-title">
+                    <span class="db-ico" style="background:#ede9fe;color:#6366f1;"><i class="bi bi-card-checklist"></i></span>
+                    Recent Clients
                 </div>
+                <a asp-controller="ClientLicense" asp-action="Index" asp-route-productType="@selectedPT" class="db-view-btn">View All</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table db-table">
+                    <thead>
+                        <tr>
+                            <th class="ps-3">Client</th>
+                            <th>Expiry</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.RecentClients.Any())
+                        {
+                            <tr><td colspan="3"><div class="db-empty"><i class="bi bi-inbox"></i>No recent clients</div></td></tr>
+                        }
+                        @foreach (var c in Model.RecentClients)
+                        {
+                            var isExpired = c.ExpiryDate < DateTime.Now;
+                            var badgeCls  = !c.IsActive ? "db-badge-inactive" : isExpired ? "db-badge-expired" : "db-badge-active";
+                            var badgeTxt  = !c.IsActive ? "Inactive" : isExpired ? "Expired" : "Active";
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="db-client-name">@c.ClientName</div>
+                                    <span class="db-client-code">@c.ClientCode</span>
+                                </td>
+                                <td style="font-size:.82rem;color:#475569;">@c.ExpiryDate.ToString("dd MMM yyyy")</td>
+                                <td><span class="db-badge @badgeCls">@badgeTxt</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
     <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <span><i class="bi bi-calendar-event me-2" style="color:#f59e0b;"></i>Upcoming Expiries</span>
-                <a asp-controller="ClientLicense" asp-action="Index" asp-route-status="active" asp-route-productType="@selectedPT" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;">View All</a>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table tbl-clean mb-0">
-                        <thead>
-                            <tr>
-                                <th>Client</th>
-                                <th>Expiry Date</th>
-                                <th>Days Left</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @if (!Model.UpcomingExpiries.Any())
-                            {
-                                <tr><td colspan="3" class="text-center py-4 text-muted" style="font-size:.83rem;"><i class="bi bi-check2-circle me-1" style="color:#22c55e;"></i>No upcoming expiries</td></tr>
-                            }
-                            @foreach (var c in Model.UpcomingExpiries)
-                            {
-                                var daysLeft = (c.ExpiryDate - DateTime.Now).Days;
-                                var urgency  = daysLeft <= 7  ? "#ef4444"
-                                             : daysLeft <= 30 ? "#f59e0b"
-                                             : "#22c55e";
-                                var urgencyBg = daysLeft <= 7  ? "#fef2f2"
-                                              : daysLeft <= 30 ? "#fffbeb"
-                                              : "#f0fdf4";
-                                var amcExpired = c.AMC_Expireddate.HasValue && c.AMC_Expireddate < DateTime.Now;
-                                <tr>
-                                    <td>
-                                        <div class="fw-semibold" style="font-size:.85rem;">@c.ClientName</div>
-                                        <div style="font-size:.74rem;color:#6366f1;">@c.ClientCode</div>
-                                        @if (amcExpired)
-                                        {
-                                            <div style="font-size:.7rem;color:#f59e0b;"><i class="bi bi-exclamation-triangle-fill me-1"></i>AMC Expired</div>
-                                        }
-                                    </td>
-                                    <td style="font-size:.82rem;">@c.ExpiryDate.ToString("dd MMM yyyy")</td>
-                                    <td>
-                                        <span style="display:inline-block;background:@urgencyBg;color:@urgency;border-radius:20px;padding:.2rem .65rem;font-size:.75rem;font-weight:700;">
-                                            @(daysLeft == 0 ? "Today" : daysLeft == 1 ? "1 day" : $"{daysLeft} days")
-                                        </span>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+        <div class="db-card">
+            <div class="db-card-head">
+                <div class="db-card-title">
+                    <span class="db-ico" style="background:#fef3c7;color:#d97706;"><i class="bi bi-calendar-event"></i></span>
+                    Upcoming Expiries
                 </div>
+                <a asp-controller="ClientLicense" asp-action="Index" asp-route-status="active" asp-route-productType="@selectedPT" class="db-view-btn">View All</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table db-table">
+                    <thead>
+                        <tr>
+                            <th class="ps-3">Client</th>
+                            <th>Expiry Date</th>
+                            <th>Days Left</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.UpcomingExpiries.Any())
+                        {
+                            <tr><td colspan="3"><div class="db-empty"><i class="bi bi-check2-circle" style="color:#22c55e;"></i>No upcoming expiries</div></td></tr>
+                        }
+                        @foreach (var c in Model.UpcomingExpiries)
+                        {
+                            var daysLeft = (c.ExpiryDate - DateTime.Now).Days;
+                            var urgency  = daysLeft <= 7  ? "#ef4444" : daysLeft <= 30 ? "#f59e0b" : "#22c55e";
+                            var urgencyBg = daysLeft <= 7  ? "#fef2f2" : daysLeft <= 30 ? "#fffbeb" : "#f0fdf4";
+                            var amcExpired = c.AMC_Expireddate.HasValue && c.AMC_Expireddate < DateTime.Now;
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="db-client-name">@c.ClientName</div>
+                                    <span class="db-client-code">@c.ClientCode</span>
+                                    @if (amcExpired)
+                                    {
+                                        <div style="font-size:.68rem;color:#f59e0b;font-weight:600;margin-top:2px;"><i class="bi bi-exclamation-triangle-fill me-1"></i>AMC Expired</div>
+                                    }
+                                </td>
+                                <td style="font-size:.82rem;color:#475569;">@c.ExpiryDate.ToString("dd MMM yyyy")</td>
+                                <td>
+                                    <span class="db-urgency-pill" style="background:@urgencyBg;color:@urgency;">
+                                        @(daysLeft == 0 ? "Today" : daysLeft == 1 ? "1 day" : $"{daysLeft} days")
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -204,76 +275,71 @@
     var isCoreMember = (bool)(ViewBag.IsCoreMember ?? false);
 }
 
-<!-- Subscription Invoice Reminders -->
+<!-- ── Subscription Invoice Reminders ── -->
 @if (Model.SubscriptionReminders.Any())
 {
-<div class="row g-3 mt-1">
+<div class="row g-3">
     <div class="col-12">
-        <div class="card subscription-reminders-card">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <span>
-                    <i class="bi bi-bell-fill me-2" style="color:#f59e0b;"></i>
-                    <strong>Subscription Invoice Reminders</strong>
-                    <span class="badge rounded-pill ms-2" style="background:#fef9c3;color:#92400e;font-size:.73rem;">@Model.SubscriptionReminders.Count due within 5 days</span>
-                </span>
-                <a asp-controller="ClientDetails" asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;">View Clients</a>
+        <div class="db-card db-reminder-card subscription-reminders-card">
+            <div class="db-card-head">
+                <div class="db-card-title">
+                    <span class="db-ico" style="background:#fef3c7;color:#d97706;"><i class="bi bi-bell-fill"></i></span>
+                    Subscription Invoice Reminders
+                    <span class="badge rounded-pill ms-1" style="background:linear-gradient(135deg,#fef9c3,#fde68a);color:#92400e;font-size:.72rem;font-weight:700;">@Model.SubscriptionReminders.Count due within 5 days</span>
+                </div>
+                <a asp-controller="ClientDetails" asp-action="Index" class="db-view-btn">View Clients</a>
             </div>
             @Html.AntiForgeryToken()
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table tbl-clean mb-0">
-                        <thead>
+            <div class="table-responsive">
+                <table class="table db-table">
+                    <thead>
+                        <tr>
+                            <th class="ps-3">Client</th>
+                            <th>Product</th>
+                            <th>Frequency</th>
+                            <th>Base Price</th>
+                            <th>Next Renewal</th>
+                            <th>Due In</th>
+                            <th>Last Invoice No</th>
+                            @if (isCoreMember) { <th class="text-center">Action</th> }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in Model.SubscriptionReminders)
+                        {
+                            var urgency   = r.DaysUntilRenewal == 0 ? "#ef4444" : r.DaysUntilRenewal <= 2 ? "#f59e0b" : "#6366f1";
+                            var urgencyBg = r.DaysUntilRenewal == 0 ? "#fef2f2" : r.DaysUntilRenewal <= 2 ? "#fffbeb" : "#eef2ff";
+                            var dueLabel  = r.DaysUntilRenewal == 0 ? "Today" : r.DaysUntilRenewal == 1 ? "Tomorrow" : $"{r.DaysUntilRenewal} days";
                             <tr>
-                                <th class="ps-3">Client</th>
-                                <th>Product</th>
-                                <th>Frequency</th>
-                                <th>Base Price</th>
-                                <th>Next Renewal</th>
-                                <th>Due In</th>
-                                <th>Last Invoice No</th>
-                                @if (isCoreMember) { <th>Action</th> }
+                                <td class="ps-3">
+                                    <div class="db-client-name">@r.ClientName</div>
+                                    <span class="db-client-code">@r.ClientCode</span>
+                                </td>
+                                <td style="font-size:.83rem;color:#475569;">@r.ProductName</td>
+                                <td>
+                                    <span class="badge" style="background:linear-gradient(135deg,#e0e7ff,#c7d2fe);color:#4338ca;font-size:.72rem;font-weight:700;">@r.BillingFrequency</span>
+                                </td>
+                                <td style="font-size:.83rem;font-weight:700;color:#1e293b;">₹@r.BasePrice.ToString("N2")</td>
+                                <td style="font-size:.82rem;color:#475569;">@r.NextRenewalDate.ToString("dd MMM yyyy")</td>
+                                <td>
+                                    <span class="db-urgency-pill" style="background:@urgencyBg;color:@urgency;">@dueLabel</span>
+                                </td>
+                                <td style="font-size:.8rem;color:#64748b;">@(string.IsNullOrWhiteSpace(r.InvoiceNo) ? "—" : r.InvoiceNo)</td>
+                                @if (isCoreMember)
+                                {
+                                    <td class="text-center">
+                                        <button type="button"
+                                                class="btn btn-sm db-renew-btn renew-btn"
+                                                data-id="@r.PurchasedProductId"
+                                                onclick="markRenewed(this)">
+                                            <i class="bi bi-check2-circle me-1"></i>Renew
+                                        </button>
+                                    </td>
+                                }
                             </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var r in Model.SubscriptionReminders)
-                            {
-                                var urgency   = r.DaysUntilRenewal == 0 ? "#ef4444" : r.DaysUntilRenewal <= 2 ? "#f59e0b" : "#6366f1";
-                                var urgencyBg = r.DaysUntilRenewal == 0 ? "#fef2f2" : r.DaysUntilRenewal <= 2 ? "#fffbeb" : "#eef2ff";
-                                var dueLabel  = r.DaysUntilRenewal == 0 ? "Today" : r.DaysUntilRenewal == 1 ? "Tomorrow" : $"{r.DaysUntilRenewal} days";
-                                <tr>
-                                    <td class="ps-3">
-                                        <div class="fw-semibold" style="font-size:.85rem;">@r.ClientName</div>
-                                        <div style="font-size:.74rem;color:#6366f1;">@r.ClientCode</div>
-                                    </td>
-                                    <td style="font-size:.83rem;">@r.ProductName</td>
-                                    <td>
-                                        <span class="badge" style="background:#e0e7ff;color:#4338ca;font-size:.72rem;">@r.BillingFrequency</span>
-                                    </td>
-                                    <td style="font-size:.83rem;font-weight:600;">₹@r.BasePrice.ToString("N2")</td>
-                                    <td style="font-size:.82rem;">@r.NextRenewalDate.ToString("dd MMM yyyy")</td>
-                                    <td>
-                                        <span style="display:inline-block;background:@urgencyBg;color:@urgency;border-radius:20px;padding:.2rem .65rem;font-size:.75rem;font-weight:700;">
-                                            @dueLabel
-                                        </span>
-                                    </td>
-                                    <td style="font-size:.8rem;color:#64748b;">@(string.IsNullOrWhiteSpace(r.InvoiceNo) ? "—" : r.InvoiceNo)</td>
-                                    @if (isCoreMember)
-                                    {
-                                        <td>
-                                            <button type="button"
-                                                    class="btn btn-sm renew-btn"
-                                                    style="background:#d1fae5;color:#065f46;border:none;border-radius:8px;font-size:.76rem;font-weight:600;padding:.25rem .6rem;"
-                                                    data-id="@r.PurchasedProductId"
-                                                    onclick="markRenewed(this)">
-                                                <i class="bi bi-check2-circle me-1"></i>Renew
-                                            </button>
-                                        </td>
-                                    }
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

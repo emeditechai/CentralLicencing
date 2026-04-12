@@ -1,0 +1,215 @@
+@model IEnumerable<CentralLicenceApp.Models.ProjectModuleMaster>
+@{
+    ViewData["Title"] = "Project / Module Master";
+}
+
+<style>
+    .pm-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:1.75rem 2rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .pm-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:280px; height:280px; background:rgba(255,255,255,.06); border-radius:50%; }
+    .pm-hero h4 { color:#fff; font-weight:800; font-size:1.35rem; margin-bottom:.2rem; }
+    .pm-hero .pm-sub { color:rgba(255,255,255,.7); font-size:.83rem; }
+
+    .pm-stat { background:rgba(255,255,255,.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:.6rem 1rem; min-width:85px; text-align:center; }
+    .pm-stat-num { font-size:1.4rem; font-weight:800; color:#fff; line-height:1.2; }
+    .pm-stat-lbl { font-size:.65rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color:rgba(255,255,255,.7); }
+
+    .pm-card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9; overflow:hidden; }
+    .pm-table { margin-bottom:0; }
+    .pm-table thead { background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+    .pm-table thead th { font-size:.7rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.08em; padding:.75rem .85rem; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+    .pm-table tbody tr { transition:all .15s ease; border-bottom:1px solid #f8fafc; }
+    .pm-table tbody tr:hover { background:linear-gradient(90deg,#f5f3ff,#eff6ff); }
+    .pm-table td { vertical-align:middle; padding:.7rem .85rem; font-size:.85rem; color:#334155; }
+
+    .pm-badge-active { background:linear-gradient(135deg,#dcfce7,#bbf7d0); color:#166534; font-size:.72rem; font-weight:700; padding:4px 10px; border-radius:20px; }
+    .pm-badge-inactive { background:#f1f5f9; color:#64748b; font-size:.72rem; font-weight:700; padding:4px 10px; border-radius:20px; }
+
+    .pm-action-btn { width:30px; height:30px; border-radius:8px; border:1.5px solid #e2e8f0; background:#fff; display:inline-flex; align-items:center; justify-content:center; transition:all .18s; font-size:.8rem; color:#64748b; cursor:pointer; }
+    .pm-action-btn:hover { border-color:#818cf8; background:#f5f3ff; color:#6366f1; transform:translateY(-1px); }
+    .pm-action-btn-danger:hover { border-color:#f87171; background:#fef2f2; color:#ef4444; }
+    .pm-action-btn-toggle { border-color:#f59e0b; color:#d97706; }
+    .pm-action-btn-toggle:hover { background:#fffbeb; border-color:#d97706; }
+    .pm-action-btn-activate { border-color:#10b981; color:#059669; }
+    .pm-action-btn-activate:hover { background:#ecfdf5; border-color:#059669; }
+
+    .pm-add-card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9; max-width:600px; margin-top:1.5rem; }
+    .pm-add-card .card-header { background:linear-gradient(90deg,#f8fafc,#f5f3ff); font-weight:700; font-size:.88rem; padding:.75rem 1.25rem; border-bottom:1px solid #f1f5f9; color:#1e293b; }
+    .pm-add-card .card-body { padding:1.25rem; }
+    .pm-add-card .form-label { font-size:.78rem; font-weight:700; color:#475569; }
+    .pm-add-card .form-control { border-radius:10px; border:1.5px solid #e2e8f0; font-size:.85rem; }
+    .pm-add-card .form-control:focus { border-color:#818cf8; box-shadow:0 0 0 3px rgba(129,140,248,.15); }
+
+    .pm-save-btn { background:linear-gradient(135deg,#6366f1,#4f46e5); border:none; border-radius:10px; font-weight:700; font-size:.82rem; padding:.45rem 1.1rem; color:#fff; }
+    .pm-save-btn:hover { color:#fff; transform:translateY(-1px); box-shadow:0 4px 12px rgba(99,102,241,.35); }
+
+    .pm-empty { padding:3rem 1rem; text-align:center; }
+    .pm-empty i { font-size:3rem; color:#cbd5e1; display:block; margin-bottom:.75rem; }
+    .pm-empty span { color:#94a3b8; font-size:.9rem; }
+
+    .pm-edit-form { display:none; }
+    .pm-edit-form.active { display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; }
+    .pm-edit-form input, .pm-edit-form textarea { border-radius:8px; border:1.5px solid #e2e8f0; font-size:.82rem; padding:.3rem .5rem; }
+    .pm-edit-form input:focus, .pm-edit-form textarea:focus { border-color:#818cf8; box-shadow:0 0 0 2px rgba(129,140,248,.15); outline:none; }
+</style>
+
+@{
+    var all = Model.ToList();
+    var activeCount = all.Count(p => p.IsActive);
+    var inactiveCount = all.Count(p => !p.IsActive);
+}
+
+<!-- ── Hero ── -->
+<div class="pm-hero">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h4><i class="bi bi-folder2-open me-2" style="opacity:.85;"></i> Project / Module Master</h4>
+            <div class="pm-sub">Manage projects and modules referenced in task logs</div>
+        </div>
+        <div class="d-flex gap-2">
+            <div class="pm-stat"><div class="pm-stat-num">@all.Count</div><div class="pm-stat-lbl">Total</div></div>
+            <div class="pm-stat"><div class="pm-stat-num">@activeCount</div><div class="pm-stat-lbl">Active</div></div>
+            <div class="pm-stat"><div class="pm-stat-num">@inactiveCount</div><div class="pm-stat-lbl">Inactive</div></div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Table ── -->
+<div class="pm-card">
+    @if (!all.Any())
+    {
+        <div class="pm-empty">
+            <i class="bi bi-folder-x"></i>
+            <span>No projects or modules found. Add one below.</span>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table pm-table">
+                <thead>
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Status</th>
+                        <th class="text-center pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ var idx = 0; }
+                    @foreach (var p in all)
+                    {
+                        idx++;
+                        <tr id="row-@p.Id">
+                            <td class="ps-3 text-muted" style="font-size:.8rem;">@idx</td>
+                            <td>
+                                <span class="view-name-@p.Id fw-semibold">@p.Name</span>
+                                <form class="pm-edit-form" id="edit-form-@p.Id" asp-action="Edit" asp-route-id="@p.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="text" name="name" value="@p.Name" class="form-control form-control-sm" style="width:180px;" required placeholder="Name" />
+                                    <input type="text" name="description" value="@p.Description" class="form-control form-control-sm" style="width:220px;" placeholder="Description" />
+                                    <button type="submit" class="btn btn-sm btn-success py-0 px-2"><i class="bi bi-check-lg"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="cancelEdit(@p.Id)"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                            </td>
+                            <td>
+                                <span class="view-desc-@p.Id text-muted" style="font-size:.82rem;">@(p.Description ?? "—")</span>
+                            </td>
+                            <td>
+                                @if (p.IsActive)
+                                {
+                                    <span class="pm-badge-active">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="pm-badge-inactive">Inactive</span>
+                                }
+                            </td>
+                            <td class="text-center pe-3">
+                                <div class="d-flex gap-1 justify-content-center">
+                                    <button type="button" class="pm-action-btn" title="Edit" onclick="startEdit(@p.Id)"><i class="bi bi-pencil-square"></i></button>
+                                    <form asp-action="ToggleActive" asp-route-id="@p.Id" method="post" style="display:inline;">
+                                        @Html.AntiForgeryToken()
+                                        @if (p.IsActive)
+                                        {
+                                            <button type="submit" class="pm-action-btn pm-action-btn-toggle" title="Deactivate"><i class="bi bi-toggle-on"></i></button>
+                                        }
+                                        else
+                                        {
+                                            <button type="submit" class="pm-action-btn pm-action-btn-activate" title="Activate"><i class="bi bi-toggle-off"></i></button>
+                                        }
+                                    </form>
+                                    <form asp-action="Delete" asp-route-id="@p.Id" method="post" style="display:inline;" onsubmit="return confirmDelete(event, '@p.Name.Replace("'", "\\'")'))">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="pm-action-btn pm-action-btn-danger" title="Delete"><i class="bi bi-trash3"></i></button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<!-- ── Add New ── -->
+<div class="pm-add-card">
+    <div class="card-header">
+        <i class="bi bi-plus-circle me-1"></i> Add New Project / Module
+    </div>
+    <div class="card-body">
+        <form asp-action="Create" method="post">
+            @Html.AntiForgeryToken()
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Name <span class="text-danger">*</span></label>
+                    <input type="text" name="name" class="form-control form-control-sm" placeholder="e.g. CRM Module" required maxlength="200" />
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Description</label>
+                    <input type="text" name="description" class="form-control form-control-sm" placeholder="Brief description (optional)" maxlength="500" />
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-sm w-100 pm-save-btn">
+                        <i class="bi bi-plus-lg me-1"></i> Add Project
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function startEdit(id) {
+        document.querySelector('.view-name-' + id).classList.add('d-none');
+        document.querySelector('.view-desc-' + id).classList.add('d-none');
+        var form = document.getElementById('edit-form-' + id);
+        form.classList.add('active');
+    }
+
+    function cancelEdit(id) {
+        document.querySelector('.view-name-' + id).classList.remove('d-none');
+        document.querySelector('.view-desc-' + id).classList.remove('d-none');
+        var form = document.getElementById('edit-form-' + id);
+        form.classList.remove('active');
+    }
+
+    function confirmDelete(e, name) {
+        e.preventDefault();
+        Swal.fire({
+            ...swalTheme,
+            icon: 'warning',
+            title: 'Delete Project?',
+            html: 'Are you sure you want to delete <strong>' + name + '</strong>?',
+            showCancelButton: true,
+            confirmButtonText: 'Delete',
+            confirmButtonColor: '#ef4444'
+        }).then(function (r) {
+            if (r.isConfirmed) e.target.submit();
+        });
+        return false;
+    }
+</script>
+}

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CentralLicenceApp.Controllers
@@ -19,13 +20,15 @@ namespace CentralLicenceApp.Controllers
         private readonly IDataProtector _roleSelectionProtector;
         private readonly IDataProtector _passwordResetProtector;
         private readonly IEmailService _emailService;
+        private readonly IWebHostEnvironment _environment;
 
-        public AccountController(IUserRepository userRepo, IDataProtectionProvider dataProtectionProvider, IEmailService emailService)
+        public AccountController(IUserRepository userRepo, IDataProtectionProvider dataProtectionProvider, IEmailService emailService, IWebHostEnvironment environment)
         {
             _userRepo = userRepo;
             _roleSelectionProtector = dataProtectionProvider.CreateProtector("AccountController.PendingRoleSelection.v1");
             _passwordResetProtector = dataProtectionProvider.CreateProtector("AccountController.PasswordReset.v1");
             _emailService = emailService;
+            _environment = environment;
         }
 
         private static readonly HashSet<string> CrmOnlyRoles = new(StringComparer.OrdinalIgnoreCase)
@@ -380,6 +383,113 @@ namespace CentralLicenceApp.Controllers
                     .OrderBy(role => role.RoleName)
                     .ToList()
             };
+        }
+
+        // ── Change Profile Picture (self-service from topbar) ──
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ChangeProfilePicture(IFormFile? profileImage)
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out var userId))
+                return Json(new { success = false, message = "Session expired. Please log in again." });
+
+            if (profileImage == null || profileImage.Length == 0)
+                return Json(new { success = false, message = "Please select an image file." });
+
+            if (profileImage.Length > 2 * 1024 * 1024)
+                return Json(new { success = false, message = "Image must be under 2 MB." });
+
+            var extension = Path.GetExtension(profileImage.FileName).ToLowerInvariant();
+            var allowed = new HashSet<string> { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+            if (!allowed.Contains(extension))
+                return Json(new { success = false, message = "Only JPG, PNG, GIF, and WEBP images are allowed." });
+
+            var user = await _userRepo.GetByIdAsync(userId);
+            if (user == null)
+                return Json(new { success = false, message = "User not found." });
+
+            // Delete old profile picture
+            if (!string.IsNullOrWhiteSpace(user.ProfileImagePath))
+            {
+                var oldPath = Path.Combine(_environment.WebRootPath, user.ProfileImagePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                if (System.IO.File.Exists(oldPath))
+                    System.IO.File.Delete(oldPath);
+            }
+
+            // Save new image
+            var uploadsRoot = Path.Combine(_environment.WebRootPath, "uploads", "profile-pictures");
+            Directory.CreateDirectory(uploadsRoot);
+            var fileName = $"{Guid.NewGuid():N}{extension}";
+            var physicalPath = Path.Combine(uploadsRoot, fileName);
+            await using (var stream = System.IO.File.Create(physicalPath))
+            {
+                await profileImage.CopyToAsync(stream);
+            }
+
+            user.ProfileImagePath = $"/uploads/profile-pictures/{fileName}";
+            await _userRepo.UpdateAsync(user);
+
+            // Refresh claims so topbar updates immediately
+            await RefreshClaimsAsync(user);
+
+            return Json(new { success = true, message = "Profile picture updated!", imageUrl = user.ProfileImagePath });
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveProfilePicture()
+        {
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(userIdStr, out var userId))
+                return Json(new { success = false, message = "Session expired." });
+
+            var user = await _userRepo.GetByIdAsync(userId);
+            if (user == null)
+                return Json(new { success = false, message = "User not found." });
+
+            if (!string.IsNullOrWhiteSpace(user.ProfileImagePath))
+            {
+                var oldPath = Path.Combine(_environment.WebRootPath, user.ProfileImagePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                if (System.IO.File.Exists(oldPath))
+                    System.IO.File.Delete(oldPath);
+            }
+
+            user.ProfileImagePath = null;
+            await _userRepo.UpdateAsync(user);
+            await RefreshClaimsAsync(user);
+
+            return Json(new { success = true, message = "Profile picture removed." });
+        }
+
+        private async Task RefreshClaimsAsync(UserMaster user)
+        {
+            var activeRoleId = User.FindFirst("ActiveRoleId")?.Value;
+            var selectedRole = user.Roles.FirstOrDefault(r => r.Id.ToString() == activeRoleId)
+                ?? user.Roles.FirstOrDefault(r => r.Id == user.RoleId)
+                ?? user.Roles.FirstOrDefault();
+            var roleName = selectedRole?.RoleName ?? user.RoleName ?? "Staff";
+
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new(ClaimTypes.Name, user.Username),
+                new(ClaimTypes.Email, user.Email),
+                new("FullName", user.FullName ?? user.Username),
+                new(ClaimTypes.Role, roleName),
+                new("ActiveRoleId", (selectedRole?.Id ?? user.RoleId).ToString()),
+                new("ProfileImagePath", user.ProfileImagePath ?? string.Empty),
+            };
+
+            if (string.Equals(user.Username, "admin", StringComparison.OrdinalIgnoreCase))
+                claims.Add(new Claim("IsSuperAdmin", "true"));
+
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
         }
 
         private async Task SignInWithRoleAsync(UserMaster user, int roleId, bool rememberMe)

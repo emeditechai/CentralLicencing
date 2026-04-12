@@ -1,0 +1,278 @@
+@model CentralLicenceApp.Models.ViewModels.DailyTaskLogFormViewModel
+@{
+    ViewData["Title"] = Model.IsEdit ? "Edit Task" : "Create New Task";
+    var task = Model.Task;
+}
+
+<style>
+    .tf-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:1.75rem 2rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .tf-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:280px; height:280px; background:rgba(255,255,255,.06); border-radius:50%; pointer-events:none; }
+    .tf-hero h4 { color:#fff; font-weight:800; font-size:1.35rem; margin-bottom:.2rem; }
+    .tf-hero .tf-sub { color:rgba(255,255,255,.7); font-size:.83rem; }
+
+    .tf-card { background:#fff; border-radius:16px; box-shadow:0 2px 16px rgba(0,0,0,.05); border:1px solid #f1f5f9; max-width:860px; }
+    .tf-card .card-body { padding:2rem; }
+    .tf-section-lbl { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#6366f1; margin-bottom:.75rem; padding-bottom:.35rem; border-bottom:2px solid #ede9fe; }
+
+    .tf-card .form-label { font-size:.82rem; font-weight:700; color:#1e293b; }
+    .tf-card .form-control, .tf-card .form-select { border-radius:10px; border:1.5px solid #e2e8f0; font-size:.85rem; }
+    .tf-card .form-control:focus, .tf-card .form-select:focus { border-color:#818cf8; box-shadow:0 0 0 3px rgba(129,140,248,.15); }
+    .tf-card textarea.form-control { min-height:80px; }
+
+    .tf-btn-save { background:linear-gradient(135deg,#6366f1,#4f46e5); border:none; border-radius:12px; font-weight:700; padding:.55rem 1.5rem; font-size:.88rem; color:#fff; box-shadow:0 4px 14px rgba(99,102,241,.3); transition:all .2s; }
+    .tf-btn-save:hover { transform:translateY(-1px); box-shadow:0 6px 18px rgba(99,102,241,.4); color:#fff; }
+    .tf-btn-cancel { border-radius:12px; font-weight:600; font-size:.88rem; border:1.5px solid #e2e8f0; color:#64748b; padding:.55rem 1.25rem; }
+    .tf-btn-cancel:hover { border-color:#94a3b8; color:#1e293b; }
+
+    .tf-time-group { display:flex; align-items:center; gap:.5rem; }
+    .tf-time-group input { width:80px; text-align:center; }
+    .tf-time-group span { font-size:.82rem; font-weight:600; color:#64748b; }
+
+    .tf-ticket-results { position:absolute; z-index:50; background:#fff; border:1.5px solid #e2e8f0; border-radius:10px; box-shadow:0 8px 20px rgba(0,0,0,.1); max-height:200px; overflow-y:auto; width:100%; display:none; }
+    .tf-ticket-results .tf-ticket-item { padding:.55rem .85rem; cursor:pointer; font-size:.82rem; border-bottom:1px solid #f1f5f9; transition:background .12s; }
+    .tf-ticket-results .tf-ticket-item:hover { background:#f5f3ff; }
+    .tf-ticket-results .tf-ticket-item strong { color:#6366f1; }
+
+    .tf-quick-add { background:#f8fafc; border:1.5px dashed #e2e8f0; border-radius:10px; padding:.75rem 1rem; margin-top:.5rem; display:none; }
+    .tf-quick-add .btn { font-size:.78rem; padding:.3rem .8rem; border-radius:8px; }
+</style>
+
+<div class="tf-hero">
+    <div class="d-flex align-items-center gap-3" style="position:relative;z-index:1;">
+        <a asp-action="Index" class="btn btn-sm" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:10px;">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h4><i class="bi @(Model.IsEdit ? "bi-pencil-square" : "bi-journal-plus") me-2" style="opacity:.85;"></i>@(Model.IsEdit ? "Edit Task" : "Create New Task")</h4>
+            <div class="tf-sub">@(Model.IsEdit ? "Update the task details. Use Time Log to manage effort." : "Create a task and optionally log initial time.")</div>
+        </div>
+    </div>
+</div>
+
+<div class="tf-card">
+    <div class="card-body">
+        <form asp-action="@(Model.IsEdit ? "Edit" : "Create")" method="post">
+            @Html.AntiForgeryToken()
+            @if (Model.IsEdit)
+            {
+                <input type="hidden" name="Task.Id" value="@task.Id" />
+            }
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.83rem;"></div>
+
+            <!-- Section: Basic Info -->
+            <div class="tf-section-lbl"><i class="bi bi-info-circle me-1"></i> Basic Information</div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label class="form-label">Task Date <span class="text-danger">*</span></label>
+                    <input type="date" name="Task.TaskDate" value="@task.TaskDate.ToString("yyyy-MM-dd")" class="form-control" required />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Task Type <span class="text-danger">*</span></label>
+                    <select name="Task.TaskTypeId" id="taskTypeId" class="form-select" required>
+                        <option value="">-- Select --</option>
+                        @foreach (var tt in Model.TaskTypes)
+                        {
+                            <option value="@tt.Id" selected="@(task.TaskTypeId == tt.Id)">@tt.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Category <span class="text-danger">*</span></label>
+                    <select name="Task.TaskCategoryId" class="form-select" required>
+                        <option value="">-- Select --</option>
+                        @foreach (var c in Model.TaskCategories)
+                        {
+                            <option value="@c.Id" selected="@(task.TaskCategoryId == c.Id)">@c.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Task Title <span class="text-danger">*</span></label>
+                    <input type="text" name="Task.TaskTitle" value="@task.TaskTitle" class="form-control" placeholder="Brief description of the task" required maxlength="300" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Assign To</label>
+                    <select name="Task.AssignedToUserId" class="form-select">
+                        <option value="">-- Unassigned --</option>
+                        @foreach (var u in Model.AssignableUsers)
+                        {
+                            <option value="@u.Id" selected="@(task.AssignedToUserId == u.Id)">@u.FullName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Description</label>
+                    <textarea name="Task.Description" class="form-control" rows="3" placeholder="Detailed notes about what was done…">@task.Description</textarea>
+                </div>
+            </div>
+
+            <!-- Section: Reference -->
+            <div class="tf-section-lbl"><i class="bi bi-link-45deg me-1"></i> Reference (Optional)</div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6" id="ticketSection">
+                    <label class="form-label">Linked Ticket</label>
+                    <div style="position:relative;">
+                        <input type="text" id="ticketSearch" class="form-control" placeholder="Search ticket# or subject…"
+                               value="@(task.TicketId.HasValue ? $"{task.TicketNumber} — {task.TicketSubject}" : "")" autocomplete="off" />
+                        <input type="hidden" name="Task.TicketId" id="ticketIdHidden" value="@(task.TicketId?.ToString() ?? "")" />
+                        <div class="tf-ticket-results" id="ticketResults"></div>
+                    </div>
+                    @if (task.TicketId.HasValue)
+                    {
+                        <div class="mt-1">
+                            <span class="badge" style="background:#ede9fe;color:#6366f1;font-size:.72rem;"><i class="bi bi-ticket-perforated me-1"></i>@task.TicketNumber</span>
+                            <a href="javascript:void(0)" id="clearTicket" style="font-size:.72rem;color:#ef4444;margin-left:4px;"><i class="bi bi-x-circle"></i> clear</a>
+                        </div>
+                    }
+                </div>
+                <div class="col-md-6" id="projectSection">
+                    <label class="form-label">Project / Module</label>
+                    <select name="Task.ProjectModuleId" id="projectSelect" class="form-select">
+                        <option value="">-- None --</option>
+                        @foreach (var p in Model.Projects)
+                        {
+                            <option value="@p.Id" selected="@(task.ProjectModuleId == p.Id)">@p.Name</option>
+                        }
+                    </select>
+                    <div class="mt-1">
+                        <a href="javascript:void(0)" id="showQuickAddProject" style="font-size:.75rem;color:#6366f1;font-weight:600;"><i class="bi bi-plus-circle me-1"></i>Add New Project</a>
+                    </div>
+                    <div class="tf-quick-add" id="quickAddProject">
+                        <div class="d-flex gap-2">
+                            <input type="text" id="newProjectName" class="form-control form-control-sm" placeholder="Project name" style="border-radius:8px;" />
+                            <button type="button" class="btn btn-primary btn-sm" onclick="quickAddProject()"><i class="bi bi-check-lg"></i></button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('quickAddProject').style.display='none'"><i class="bi bi-x-lg"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section: Status & Time -->
+            <div class="tf-section-lbl"><i class="bi bi-clock me-1"></i> @(Model.IsEdit ? "Status" : "Status & Initial Time Log")</div>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">Status</label>
+                    <select name="Task.Status" class="form-select">
+                        @foreach (var s in new[] { "Pending", "Started", "In Progress", "On Hold", "Completed" })
+                        {
+                            <option value="@s" selected="@(task.Status == s)">@s</option>
+                        }
+                    </select>
+                </div>
+                @if (!Model.IsEdit)
+                {
+                    <div class="col-md-6">
+                        <label class="form-label">Initial Time <span class="text-muted" style="font-size:.72rem;font-weight:500;">(optional)</span></label>
+                        <div class="tf-time-group">
+                            <input type="number" id="timeHours" class="form-control" min="0" max="23" value="0" placeholder="0" />
+                            <span>hrs</span>
+                            <input type="number" id="timeMinutes" class="form-control" min="0" max="59" step="5" value="0" placeholder="0" />
+                            <span>min</span>
+                        </div>
+                        <input type="hidden" name="Task.TimeSpentMinutes" id="totalMinutesHidden" value="0" />
+                        <div class="form-text" style="font-size:.72rem;">Time will be added as the first time log entry.</div>
+                    </div>
+                }
+            </div>
+
+            <div class="d-flex gap-2 pt-2">
+                <button type="submit" class="tf-btn-save">
+                    <i class="bi @(Model.IsEdit ? "bi-check-circle" : "bi-save") me-1"></i>
+                    @(Model.IsEdit ? "Update Task" : "Save Task")
+                </button>
+                <a asp-action="Index" class="btn tf-btn-cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+    // ── Compute total minutes before submit (create mode only) ──
+    var timeHoursEl = document.getElementById('timeHours');
+    if (timeHoursEl) {
+        document.querySelector('form').addEventListener('submit', function () {
+            var h = parseInt(timeHoursEl.value) || 0;
+            var m = parseInt(document.getElementById('timeMinutes').value) || 0;
+            document.getElementById('totalMinutesHidden').value = h * 60 + m;
+        });
+    }
+
+    // ── Ticket autocomplete ──
+    var ticketSearch = document.getElementById('ticketSearch');
+    var ticketResults = document.getElementById('ticketResults');
+    var ticketTimer = null;
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str || ''));
+        return div.innerHTML;
+    }
+
+    if (ticketSearch) {
+        ticketSearch.addEventListener('input', function () {
+            clearTimeout(ticketTimer);
+            var q = this.value.trim();
+            if (q.length < 2) { ticketResults.style.display = 'none'; return; }
+            ticketTimer = setTimeout(function () {
+                fetch('@Url.Action("SearchTickets", "DailyTaskLog")?term=' + encodeURIComponent(q))
+                    .then(r => r.json())
+                    .then(function (data) {
+                        if (!data.length) { ticketResults.style.display = 'none'; return; }
+                        ticketResults.innerHTML = data.map(function (t) {
+                            return '<div class="tf-ticket-item" data-id="' + t.id + '" data-num="' + escapeHtml(t.ticketNumber) + '" data-sub="' + escapeHtml(t.subject) + '">'
+                                + '<strong>' + escapeHtml(t.ticketNumber) + '</strong> — ' + escapeHtml(t.subject) + '</div>';
+                        }).join('');
+                        ticketResults.style.display = 'block';
+                    });
+            }, 300);
+        });
+        ticketResults.addEventListener('click', function (e) {
+            var item = e.target.closest('.tf-ticket-item');
+            if (!item) return;
+            document.getElementById('ticketIdHidden').value = item.dataset.id;
+            ticketSearch.value = item.dataset.num + ' — ' + item.dataset.sub;
+            ticketResults.style.display = 'none';
+        });
+        document.addEventListener('click', function (e) {
+            if (!ticketSearch.contains(e.target) && !ticketResults.contains(e.target))
+                ticketResults.style.display = 'none';
+        });
+    }
+
+    var clearBtn = document.getElementById('clearTicket');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+            document.getElementById('ticketIdHidden').value = '';
+            ticketSearch.value = '';
+            this.parentElement.remove();
+        });
+    }
+
+    // ── Quick-add project ──
+    document.getElementById('showQuickAddProject')?.addEventListener('click', function () {
+        document.getElementById('quickAddProject').style.display = 'block';
+        document.getElementById('newProjectName').focus();
+    });
+    function quickAddProject() {
+        var name = document.getElementById('newProjectName').value.trim();
+        if (!name) return;
+        var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+        var fd = new FormData();
+        fd.append('name', name);
+        fd.append('__RequestVerificationToken', token);
+        fetch('@Url.Action("CreateProject", "DailyTaskLog")', { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(function (data) {
+                if (data.success) {
+                    var sel = document.getElementById('projectSelect');
+                    var opt = new Option(data.name, data.id, true, true);
+                    sel.add(opt);
+                    document.getElementById('quickAddProject').style.display = 'none';
+                    document.getElementById('newProjectName').value = '';
+                }
+            });
+    }
+</script>
+}

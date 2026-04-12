@@ -3,24 +3,146 @@
     ViewData["Title"] = "Client Licences" + (Model.ProductType != null ? " – " + Model.ProductType : "");
     var isAdmin = User.IsInRole("Administrator");
     var selectedPT = Model.ProductType ?? "";
+    var totalActive = Model.Licenses.Count(l => l.IsActive && l.ExpiryDate >= DateTime.Now);
+    var totalExpired = Model.Licenses.Count(l => l.ExpiryDate < DateTime.Now);
+    var totalInactive = Model.Licenses.Count(l => !l.IsActive);
 }
 
-<div class="d-flex align-items-center justify-content-between mb-4">
-    <div>
-        <h4 class="fw-bold mb-0" style="color:#1e293b;">Client Licences</h4>
-        @if (!string.IsNullOrEmpty(selectedPT))
-        {
-            <p class="text-muted mb-0" style="font-size:.82rem;">Showing data for <strong style="color:#6366f1;">@selectedPT</strong> &mdash; @Model.TotalCount licence(s)</p>
-        }
-        else
-        {
-            <p class="text-muted mb-0" style="font-size:.82rem;">@Model.TotalCount registered licence(s)</p>
-        }
+<style>
+    .cl-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .cl-hero::before { content:''; position:absolute; top:-40%; right:-10%; width:300px; height:300px; background:rgba(255,255,255,.06); border-radius:50%; pointer-events:none; }
+    .cl-hero::after { content:''; position:absolute; bottom:-30%; left:20%; width:200px; height:200px; background:rgba(255,255,255,.04); border-radius:50%; pointer-events:none; }
+    .cl-hero h4 { color:#fff; font-weight:800; font-size:1.5rem; letter-spacing:-.02em; margin-bottom:.25rem; }
+    .cl-hero .cl-sub { color:rgba(255,255,255,.75); font-size:.85rem; }
+
+    .cl-stat-pill { background:rgba(255,255,255,.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:.75rem 1.25rem; min-width:120px; text-align:center; transition:transform .18s ease; }
+    .cl-stat-pill:hover { transform:translateY(-2px); background:rgba(255,255,255,.22); }
+    .cl-stat-pill .cl-stat-num { font-size:1.6rem; font-weight:800; color:#fff; line-height:1.2; }
+    .cl-stat-pill .cl-stat-lbl { font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color:rgba(255,255,255,.7); }
+
+    .cl-filter-bar { background:#fff; border-radius:16px; box-shadow:0 2px 16px rgba(0,0,0,.05); border:1px solid #f1f5f9; padding:1rem 1.5rem; margin-bottom:1.5rem; }
+    .cl-filter-bar .form-control, .cl-filter-bar .form-select { border-radius:10px; border:1.5px solid #e2e8f0; font-size:.85rem; transition:border-color .2s; }
+    .cl-filter-bar .form-control:focus, .cl-filter-bar .form-select:focus { border-color:#818cf8; box-shadow:0 0 0 3px rgba(129,140,248,.15); }
+    .cl-filter-bar .input-group-text { background:#f8fafc; border:1.5px solid #e2e8f0; border-right:none; border-radius:10px 0 0 10px; }
+    .cl-filter-bar .input-group .form-control { border-left:none; border-radius:0 10px 10px 0; }
+
+    .cl-table-wrap { background:#fff; border-radius:18px; box-shadow:0 4px 24px rgba(0,0,0,.06); border:1px solid #f1f5f9; overflow:hidden; }
+    .cl-table { margin-bottom:0; }
+    .cl-table thead { background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+    .cl-table thead th { font-size:.7rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.08em; padding:.85rem .75rem; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+    .cl-table tbody tr { transition:all .18s ease; border-bottom:1px solid #f8fafc; }
+    .cl-table tbody tr:hover { background:linear-gradient(90deg,#f5f3ff,#eff6ff); transform:scale(1.002); }
+    .cl-table td { vertical-align:middle; padding:.85rem .75rem; font-size:.85rem; color:#334155; }
+
+    .cl-client-name { font-weight:700; font-size:.875rem; color:#1e293b; margin-bottom:1px; }
+    .cl-client-code { font-size:.72rem; font-weight:600; color:#818cf8; background:#f5f3ff; padding:1px 8px; border-radius:6px; display:inline-block; }
+    .cl-client-email { font-size:.72rem; color:#94a3b8; margin-top:2px; }
+
+    .cl-url-link { color:#6366f1; font-size:.8rem; word-break:break-all; text-decoration:none; transition:color .15s; }
+    .cl-url-link:hover { color:#4338ca; text-decoration:underline; }
+
+    .cl-badge { font-size:.72rem; font-weight:700; letter-spacing:.04em; padding:5px 12px; border-radius:20px; }
+    .cl-badge-active { background:linear-gradient(135deg,#dcfce7,#bbf7d0); color:#166534; }
+    .cl-badge-expired { background:linear-gradient(135deg,#fee2e2,#fecaca); color:#991b1b; }
+    .cl-badge-inactive { background:linear-gradient(135deg,#f1f5f9,#e2e8f0); color:#475569; }
+
+    .cl-date { font-size:.82rem; color:#475569; }
+    .cl-date-warn { font-size:.65rem; color:#ef4444; font-weight:600; margin-top:1px; }
+
+    .cl-action-btn { width:32px; height:32px; border-radius:8px; border:1.5px solid #e2e8f0; background:#fff; display:inline-flex; align-items:center; justify-content:center; transition:all .18s; font-size:.82rem; color:#64748b; }
+    .cl-action-btn:hover { border-color:#818cf8; background:#f5f3ff; color:#6366f1; transform:translateY(-1px); box-shadow:0 2px 8px rgba(99,102,241,.15); }
+    .cl-action-btn.active { border-color:#818cf8; background:#ede9fe; color:#6366f1; }
+
+    .cl-key-btn { background:linear-gradient(135deg,#f5f3ff,#ede9fe); border:1.5px solid #c7d2fe; color:#6366f1; }
+    .cl-key-btn:hover { background:linear-gradient(135deg,#ede9fe,#ddd6fe); border-color:#a5b4fc; }
+
+    .cl-pagination { padding:1rem 1.5rem; border-top:1px solid #f1f5f9; background:#fafbfc; }
+    .cl-pagination .page-link { border-radius:8px; margin:0 2px; border:1.5px solid #e2e8f0; color:#475569; font-size:.8rem; font-weight:600; padding:.35rem .7rem; transition:all .15s; }
+    .cl-pagination .page-item.active .page-link { background:linear-gradient(135deg,#6366f1,#4f46e5); border-color:transparent; color:#fff; box-shadow:0 2px 8px rgba(99,102,241,.3); }
+    .cl-pagination .page-link:hover { background:#f5f3ff; border-color:#818cf8; color:#6366f1; }
+
+    .cl-empty { padding:3.5rem 1rem; text-align:center; }
+    .cl-empty i { font-size:3rem; color:#cbd5e1; margin-bottom:.75rem; display:block; }
+    .cl-empty span { color:#94a3b8; font-size:.9rem; }
+
+    .cl-new-btn { background:linear-gradient(135deg,#6366f1,#4f46e5); border:none; border-radius:12px; font-weight:700; padding:.55rem 1.25rem; font-size:.85rem; box-shadow:0 4px 14px rgba(99,102,241,.35); transition:all .2s; }
+    .cl-new-btn:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(99,102,241,.45); background:linear-gradient(135deg,#818cf8,#6366f1); }
+
+    .cl-filter-btn { background:linear-gradient(135deg,#6366f1,#4f46e5); border:none; border-radius:10px; font-weight:600; font-size:.82rem; padding:.45rem 1.1rem; box-shadow:0 2px 8px rgba(99,102,241,.2); }
+    .cl-filter-btn:hover { box-shadow:0 4px 14px rgba(99,102,241,.35); }
+
+    .cl-contact { font-size:.82rem; color:#475569; font-weight:500; }
+    .cl-contact i { color:#94a3b8; margin-right:4px; font-size:.75rem; }
+
+    .cl-id-cell { font-size:.75rem; font-weight:700; color:#cbd5e1; }
+
+    @@media (max-width: 768px) {
+        .cl-hero { padding:1.25rem; border-radius:14px; }
+        .cl-hero h4 { font-size:1.15rem; }
+        .cl-stat-pill { min-width:90px; padding:.5rem .75rem; }
+        .cl-stat-pill .cl-stat-num { font-size:1.2rem; }
+    }
+</style>
+
+<!-- ── Hero Header ── -->
+<div class="cl-hero">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3" style="position:relative;z-index:1;">
+        <div>
+            <h4><i class="bi bi-shield-lock-fill me-2" style="opacity:.85;"></i>Client Licences</h4>
+            @if (!string.IsNullOrEmpty(selectedPT))
+            {
+                <div class="cl-sub">Showing data for <strong style="color:#fff;">@selectedPT</strong> &mdash; @Model.TotalCount licence(s)</div>
+            }
+            else
+            {
+                <div class="cl-sub">@Model.TotalCount registered licence(s) across all products</div>
+            }
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="cl-stat-pill">
+                <div class="cl-stat-num">@Model.TotalCount</div>
+                <div class="cl-stat-lbl">Total</div>
+            </div>
+            <div class="cl-stat-pill">
+                <div class="cl-stat-num">@totalActive</div>
+                <div class="cl-stat-lbl"><i class="bi bi-check-circle-fill me-1" style="font-size:.6rem;"></i>Active</div>
+            </div>
+            <div class="cl-stat-pill">
+                <div class="cl-stat-num">@totalExpired</div>
+                <div class="cl-stat-lbl"><i class="bi bi-exclamation-triangle-fill me-1" style="font-size:.6rem;"></i>Expired</div>
+            </div>
+            @if (isAdmin)
+            {
+                <a asp-action="Create" asp-route-productType="@selectedPT" class="btn btn-light cl-new-btn" style="background:rgba(255,255,255,.95)!important;color:#6366f1!important;">
+                    <i class="bi bi-plus-lg me-1"></i> New Licence
+                </a>
+            }
+        </div>
     </div>
-    <div class="d-flex align-items-center gap-3">
-        <form method="get" class="d-flex align-items-center gap-2">
-            <label class="fw-semibold mb-0" style="font-size:.82rem;color:#64748b;white-space:nowrap;">Product Type</label>
-            <select name="productType" class="form-select form-select-sm" style="min-width:160px;border-radius:10px;"
+</div>
+
+<!-- ── Filter Bar ── -->
+<div class="cl-filter-bar">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-4 col-sm-6">
+            <label class="form-label mb-1" style="font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;">Search</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search text-muted" style="font-size:.82rem;"></i></span>
+                <input type="text" name="search" value="@Model.SearchTerm" class="form-control" placeholder="Client name, code or email…" />
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-4">
+            <label class="form-label mb-1" style="font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All Status</option>
+                <option value="active"   selected="@(Model.StatusFilter=="active")">Active</option>
+                <option value="expired"  selected="@(Model.StatusFilter=="expired")">Expired</option>
+                <option value="inactive" selected="@(Model.StatusFilter=="inactive")">Inactive</option>
+            </select>
+        </div>
+        <div class="col-md-3 col-sm-4">
+            <label class="form-label mb-1" style="font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;">Product Type</label>
+            <select name="productType" class="form-select"
                     onchange="this.form.submit()">
                 <option value="">All Products</option>
                 @foreach (var pt in Model.AvailableProductTypes)
@@ -28,198 +150,210 @@
                     <option value="@pt" selected="@(selectedPT == pt)">@pt</option>
                 }
             </select>
-            @if (!string.IsNullOrEmpty(selectedPT))
-            {
-                <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;white-space:nowrap;">Clear</a>
-            }
-        </form>
-        @if (isAdmin)
-        {
-            <a asp-action="Create" asp-route-productType="@selectedPT" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;">
-                <i class="bi bi-plus-lg me-1"></i> New Licence
-            </a>
-        }
-    </div>
-</div>
-
-<!-- Filters -->
-<div class="card mb-4">
-    <div class="card-body py-3">
-        <form method="get" class="row g-2 align-items-end">
-            <input type="hidden" name="productType" value="@selectedPT" />
-            <div class="col-sm-5">
-                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Search</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="text" name="search" value="@Model.SearchTerm" class="form-control border-start-0" placeholder="Client name, code or email…" style="border-radius:0 10px 10px 0;" />
-                </div>
-            </div>
-            <div class="col-sm-3">
-                <label class="form-label mb-1" style="font-size:.78rem;font-weight:600;color:#64748b;">Status</label>
-                <select name="status" class="form-select" style="border-radius:10px;">
-                    <option value="">All Status</option>
-                    <option value="active"   selected="@(Model.StatusFilter=="active")">Active</option>
-                    <option value="expired"  selected="@(Model.StatusFilter=="expired")">Expired</option>
-                    <option value="inactive" selected="@(Model.StatusFilter=="inactive")">Inactive</option>
-                </select>
-            </div>
-            <div class="col-sm-auto">
-                <button type="submit" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;">
-                    <i class="bi bi-funnel me-1"></i> Filter
-                </button>
-                <a asp-action="Index" asp-route-productType="@selectedPT" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
-            </div>
-        </form>
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table tbl-clean mb-0">
-                <thead>
-                    <tr>
-                        <th class="ps-3">#</th>
-                        <th>Client</th>
-                        <th>Contact</th>
-                        <th>App URL</th>
-                        <th>License Key</th>
-                        <th>Start Date</th>
-                        <th>Expiry Date</th>
-                        <th>AMC Expiry</th>
-                        <th>Status</th>
-                        <th class="pe-3">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (!Model.Licenses.Any())
-                    {
-                        <tr><td colspan="10" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No records found</td></tr>
-                    }
-                    @foreach (var lic in Model.Licenses)
-                    {
-                        var isExpired = lic.ExpiryDate < DateTime.Now;
-                        var badgeCls  = !lic.IsActive ? "badge-neu" : isExpired ? "badge-err" : "badge-ok";
-                        var badgeTxt  = !lic.IsActive ? "Inactive" : isExpired ? "Expired" : "Active";
-                        var amcExpired = lic.AMC_Expireddate.HasValue && lic.AMC_Expireddate < DateTime.Now;
-                        <tr>
-                            <td class="ps-3" style="color:#94a3b8;font-size:.8rem;">@lic.Id</td>
-                            <td>
-                                <div class="fw-semibold" style="font-size:.875rem;">@lic.ClientName</div>
-                                <div style="font-size:.75rem;color:#6366f1;">@lic.ClientCode</div>
-                                @if (!string.IsNullOrEmpty(lic.EmailID))
-                                {
-                                    <div style="font-size:.73rem;color:#94a3b8;">@lic.EmailID</div>
-                                }
-                            </td>
-                            <td style="font-size:.85rem;">@lic.ContactNumber</td>
-                            <td style="font-size:.82rem;">
-                                @if (!string.IsNullOrEmpty(lic.AppUrl))
-                                {
-                                    <a href="@lic.AppUrl" target="_blank" rel="noopener noreferrer" style="color:#6366f1;word-break:break-all;">@lic.AppUrl</a>
-                                }
-                                else
-                                { <span class="text-muted">—</span> }
-                            </td>
-                            <td>
-                                <button type="button"
-                                        onclick="showLicenseKey('@Html.Raw(lic.LicenseKey?.Replace("'", "\\'"))', '@lic.ClientName')"
-                                        title="View License Key"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        style="border-radius:7px;border-color:#e2e8f0;font-size:.78rem;">
-                                    <i class="bi bi-eye" style="color:#6366f1;"></i>
-                                </button>
-                            </td>
-                            <td style="font-size:.82rem;">@lic.Startdate.ToString("dd MMM yyyy")</td>
-                            <td style="font-size:.82rem;">
-                                @lic.ExpiryDate.ToString("dd MMM yyyy")
-                                @if (isExpired)
-                                {
-                                    <div style="font-size:.7rem;color:#ef4444;">Expired</div>
-                                }
-                            </td>
-                            <td style="font-size:.82rem;">
-                                @if (lic.AMC_Expireddate.HasValue)
-                                {
-                                    <span class="@(amcExpired ? "text-danger" : "")">@lic.AMC_Expireddate.Value.ToString("dd MMM yyyy")</span>
-                                }
-                                else
-                                { <span class="text-muted">—</span> }
-                            </td>
-                            <td><span class="badge @badgeCls rounded-pill px-2 py-1" style="font-size:.73rem;">@badgeTxt</span></td>
-                            <td class="pe-3">
-                                <div class="d-flex gap-1">
-                                    <a asp-action="Details" asp-route-id="@lic.Id" class="btn btn-sm btn-outline-primary" title="Details" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-eye"></i></a>
-                                    @if (isAdmin)
-                                    {
-                                        <a asp-action="Edit" asp-route-id="@lic.Id" class="btn btn-sm btn-outline-secondary" title="Edit" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
-                                    }
-                                    @{
-                                        var hasDetails = Model.ClientCodesWithDetails.Contains(lic.ClientCode ?? "");
-                                    }
-                                    <a asp-controller="ClientDetails" asp-action="Upsert"
-                                       asp-route-clientCode="@lic.ClientCode"
-                                       asp-route-productType="@Model.ProductType"
-                                       class="btn btn-sm @(hasDetails ? "btn-info" : "btn-outline-info")"
-                                       title="@(hasDetails ? "Edit Client Details" : "Add Client Details")"
-                                       style="border-radius:7px;border-color:#e2e8f0;">
-                                        <i class="bi bi-person-lines-fill"></i>
-                                    </a>
-                                    @if (isAdmin)
-                                    {
-                                        <button type="button" class="btn btn-sm @(lic.IsDisplayAlerts ? "btn-warning" : "btn-outline-warning")" title="Maintenance Alerts" style="border-radius:7px;border-color:#e2e8f0;" onclick="openMaintenanceAlert(@lic.Id)">
-                                            <i class="bi bi-bell"></i>
-                                        </button>
-                                    }
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
         </div>
-
-        <!-- Pagination -->
-        @if (Model.TotalPages > 1)
-        {
-            <div class="d-flex align-items-center justify-content-between px-3 py-3 border-top" style="font-size:.82rem;">
-                <span class="text-muted">Showing @((Model.PageNumber - 1) * Model.PageSize + 1)–@(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalCount)) of @Model.TotalCount</span>
-                <nav>
-                    <ul class="pagination pagination-sm mb-0">
-                        @for (int p = 1; p <= Model.TotalPages; p++)
-                        {
-                            <li class="page-item @(p == Model.PageNumber ? "active" : "")">
-                                <a class="page-link" asp-action="Index" asp-route-page="@p" asp-route-search="@Model.SearchTerm" asp-route-status="@Model.StatusFilter" asp-route-productType="@Model.ProductType">@p</a>
-                            </li>
-                        }
-                    </ul>
-                </nav>
+        <div class="col-md-auto col-sm-4">
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary cl-filter-btn">
+                    <i class="bi bi-funnel-fill me-1"></i> Filter
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary" style="border-radius:10px;font-size:.82rem;font-weight:600;border-color:#e2e8f0;">
+                    <i class="bi bi-x-lg me-1"></i> Clear
+                </a>
             </div>
-        }
+        </div>
+    </form>
+</div>
+
+<!-- ── Table ── -->
+<div class="cl-table-wrap">
+    <div class="table-responsive">
+        <table class="table cl-table">
+            <thead>
+                <tr>
+                    <th class="ps-3" style="width:40px;">#</th>
+                    <th>Client</th>
+                    <th>Contact</th>
+                    <th>App URL</th>
+                    <th style="width:80px;">License Key</th>
+                    <th>Start Date</th>
+                    <th>Expiry Date</th>
+                    <th>AMC Expiry</th>
+                    <th style="width:80px;">Status</th>
+                    <th class="pe-3 text-center" style="width:160px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Licenses.Any())
+                {
+                    <tr>
+                        <td colspan="10">
+                            <div class="cl-empty">
+                                <i class="bi bi-inbox"></i>
+                                <span>No licence records found matching your criteria</span>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                @foreach (var lic in Model.Licenses)
+                {
+                    var isExpired = lic.ExpiryDate < DateTime.Now;
+                    var badgeCls  = !lic.IsActive ? "cl-badge-inactive" : isExpired ? "cl-badge-expired" : "cl-badge-active";
+                    var badgeTxt  = !lic.IsActive ? "Inactive" : isExpired ? "Expired" : "Active";
+                    var amcExpired = lic.AMC_Expireddate.HasValue && lic.AMC_Expireddate < DateTime.Now;
+                    <tr>
+                        <td class="ps-3 cl-id-cell">@lic.Id</td>
+                        <td>
+                            <div class="cl-client-name">@lic.ClientName</div>
+                            <span class="cl-client-code">@lic.ClientCode</span>
+                            @if (!string.IsNullOrEmpty(lic.EmailID))
+                            {
+                                <div class="cl-client-email"><i class="bi bi-envelope" style="font-size:.65rem;"></i> @lic.EmailID</div>
+                            }
+                        </td>
+                        <td>
+                            <span class="cl-contact"><i class="bi bi-telephone-fill"></i>@lic.ContactNumber</span>
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(lic.AppUrl))
+                            {
+                                <a href="@lic.AppUrl" target="_blank" rel="noopener noreferrer" class="cl-url-link">
+                                    <i class="bi bi-box-arrow-up-right me-1" style="font-size:.7rem;"></i>@lic.AppUrl
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted" style="font-size:.82rem;">—</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <button type="button"
+                                    onclick="showLicenseKey('@Html.Raw(lic.LicenseKey?.Replace("'", "\\'"))', '@lic.ClientName')"
+                                    title="View License Key"
+                                    class="cl-action-btn cl-key-btn">
+                                <i class="bi bi-key-fill"></i>
+                            </button>
+                        </td>
+                        <td class="cl-date">@lic.Startdate.ToString("dd MMM yyyy")</td>
+                        <td>
+                            <span class="cl-date">@lic.ExpiryDate.ToString("dd MMM yyyy")</span>
+                            @if (isExpired)
+                            {
+                                <div class="cl-date-warn"><i class="bi bi-exclamation-circle-fill me-1"></i>Expired</div>
+                            }
+                        </td>
+                        <td>
+                            @if (lic.AMC_Expireddate.HasValue)
+                            {
+                                <span class="cl-date @(amcExpired ? "text-danger fw-semibold" : "")">@lic.AMC_Expireddate.Value.ToString("dd MMM yyyy")</span>
+                                @if (amcExpired)
+                                {
+                                    <div class="cl-date-warn"><i class="bi bi-exclamation-circle-fill me-1"></i>Overdue</div>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted" style="font-size:.82rem;">—</span>
+                            }
+                        </td>
+                        <td>
+                            <span class="cl-badge @badgeCls">@badgeTxt</span>
+                        </td>
+                        <td class="pe-3">
+                            <div class="d-flex gap-1 justify-content-center">
+                                <a asp-action="Details" asp-route-id="@lic.Id" class="cl-action-btn" title="Details">
+                                    <i class="bi bi-eye-fill"></i>
+                                </a>
+                                @if (isAdmin)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@lic.Id" class="cl-action-btn" title="Edit">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+                                }
+                                @{
+                                    var hasDetails = Model.ClientCodesWithDetails.Contains(lic.ClientCode ?? "");
+                                }
+                                <a asp-controller="ClientDetails" asp-action="Upsert"
+                                   asp-route-clientCode="@lic.ClientCode"
+                                   asp-route-productType="@Model.ProductType"
+                                   class="cl-action-btn @(hasDetails ? "active" : "")"
+                                   title="@(hasDetails ? "Edit Client Details" : "Add Client Details")">
+                                    <i class="bi bi-person-lines-fill"></i>
+                                </a>
+                                @if (isAdmin)
+                                {
+                                    <button type="button" class="cl-action-btn @(lic.IsDisplayAlerts ? "active" : "")" title="Maintenance Alerts" onclick="openMaintenanceAlert(@lic.Id)">
+                                        <i class="bi bi-bell-fill"></i>
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="cl-pagination d-flex align-items-center justify-content-between">
+            <span class="text-muted" style="font-size:.8rem;font-weight:500;">
+                Showing <strong>@((Model.PageNumber - 1) * Model.PageSize + 1)–@(Math.Min(Model.PageNumber * Model.PageSize, Model.TotalCount))</strong> of <strong>@Model.TotalCount</strong> licences
+            </span>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    @if (Model.PageNumber > 1)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" asp-action="Index" asp-route-page="@(Model.PageNumber - 1)" asp-route-search="@Model.SearchTerm" asp-route-status="@Model.StatusFilter" asp-route-productType="@Model.ProductType">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                    }
+                    @for (int p = 1; p <= Model.TotalPages; p++)
+                    {
+                        <li class="page-item @(p == Model.PageNumber ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-page="@p" asp-route-search="@Model.SearchTerm" asp-route-status="@Model.StatusFilter" asp-route-productType="@Model.ProductType">@p</a>
+                        </li>
+                    }
+                    @if (Model.PageNumber < Model.TotalPages)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" asp-action="Index" asp-route-page="@(Model.PageNumber + 1)" asp-route-search="@Model.SearchTerm" asp-route-status="@Model.StatusFilter" asp-route-productType="@Model.ProductType">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        </div>
+    }
 </div>
 
 <!-- License Key Modal -->
 <div class="modal fade" id="licenseKeyModal" tabindex="-1" aria-labelledby="licenseKeyModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 20px 60px rgba(0,0,0,.15);">
-            <div class="modal-header" style="border-bottom:1px solid #f1f5f9;padding:1.25rem 1.5rem;">
-                <h6 class="modal-title fw-bold mb-0" id="licenseKeyModalLabel" style="color:#1e293b;">
-                    <i class="bi bi-key-fill me-2" style="color:#6366f1;"></i>License Key
+        <div class="modal-content" style="border-radius:20px;border:none;box-shadow:0 25px 60px rgba(0,0,0,.18);overflow:hidden;">
+            <div class="modal-header" style="border-bottom:none;padding:1.5rem 1.75rem 0;background:linear-gradient(135deg,#f5f3ff,#ede9fe);">
+                <h6 class="modal-title fw-bold mb-0" id="licenseKeyModalLabel" style="color:#1e293b;font-size:1rem;">
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:linear-gradient(135deg,#6366f1,#4f46e5);border-radius:10px;margin-right:10px;">
+                        <i class="bi bi-key-fill" style="color:#fff;font-size:.9rem;"></i>
+                    </span>
+                    License Key
                 </h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" style="padding:1.5rem;">
-                <div class="text-muted mb-2" style="font-size:.78rem;" id="lkModalClientName"></div>
-                <div class="p-3 rounded-3 text-center" style="background:#f8fafc;border:1px dashed #e2e8f0;">
-                    <code id="lkModalKey" style="font-size:.82rem;font-weight:600;word-break:break-all;color:#6366f1;"></code>
+            <div class="modal-body" style="padding:1.5rem 1.75rem;">
+                <div class="text-muted mb-2" style="font-size:.78rem;font-weight:500;" id="lkModalClientName"></div>
+                <div class="p-3 rounded-3 position-relative" style="background:linear-gradient(135deg,#f8fafc,#f1f5f9);border:1.5px dashed #c7d2fe;">
+                    <code id="lkModalKey" style="font-size:.85rem;font-weight:700;word-break:break-all;color:#6366f1;letter-spacing:.02em;"></code>
                 </div>
             </div>
-            <div class="modal-footer" style="border-top:1px solid #f1f5f9;padding:.75rem 1.5rem;">
-                <button type="button" onclick="copyModalKey(this)" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
-                    <i class="bi bi-copy me-1"></i> Copy
+            <div class="modal-footer" style="border-top:1px solid #f1f5f9;padding:1rem 1.75rem;">
+                <button type="button" onclick="copyModalKey(this)" class="btn btn-sm" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:10px;font-weight:600;padding:6px 18px;">
+                    <i class="bi bi-copy me-1"></i> Copy Key
                 </button>
-                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal" style="border-radius:8px;">Close</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600;">Close</button>
             </div>
         </div>
     </div>
@@ -228,50 +362,53 @@
 <!-- Maintenance Alert Modal -->
 <div class="modal fade" id="maintenanceAlertModal" tabindex="-1" aria-labelledby="maintenanceAlertModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 20px 60px rgba(0,0,0,.15);">
-            <div class="modal-header" style="border-bottom:1px solid #f1f5f9;padding:1.25rem 1.5rem;">
-                <h6 class="modal-title fw-bold mb-0" id="maintenanceAlertModalLabel" style="color:#1e293b;">
-                    <i class="bi bi-bell-fill me-2" style="color:#f59e0b;"></i>Set Maintenance Alert
+        <div class="modal-content" style="border-radius:20px;border:none;box-shadow:0 25px 60px rgba(0,0,0,.18);overflow:hidden;">
+            <div class="modal-header" style="border-bottom:none;padding:1.5rem 1.75rem 0;background:linear-gradient(135deg,#fffbeb,#fef3c7);">
+                <h6 class="modal-title fw-bold mb-0" id="maintenanceAlertModalLabel" style="color:#1e293b;font-size:1rem;">
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:10px;margin-right:10px;">
+                        <i class="bi bi-bell-fill" style="color:#fff;font-size:.9rem;"></i>
+                    </span>
+                    Maintenance Alert
                 </h6>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body" style="padding:1.5rem;">
+            <div class="modal-body" style="padding:1.5rem 1.75rem;">
                 <input type="hidden" id="maLicenseId" />
-                <div class="form-check form-switch mb-3">
-                    <input class="form-check-input" type="checkbox" id="maIsDisplayAlerts" onchange="toggleAlertFields()">
-                    <label class="form-check-label fw-semibold" for="maIsDisplayAlerts">Enable Maintenance Alert</label>
+                <div class="form-check form-switch mb-3 p-3 rounded-3" style="background:#f8fafc;border:1.5px solid #e2e8f0;">
+                    <input class="form-check-input" type="checkbox" id="maIsDisplayAlerts" onchange="toggleAlertFields()" style="margin-top:.35rem;">
+                    <label class="form-check-label fw-bold ms-2" for="maIsDisplayAlerts" style="font-size:.88rem;">Enable Maintenance Alert</label>
                 </div>
                 <div id="maFieldsContainer">
                     <div class="row mb-3">
                         <div class="col-6">
-                            <label for="maAlertStartDate" class="form-label" style="font-size:.82rem;">Start Date</label>
-                            <input type="date" class="form-control form-control-sm" id="maAlertStartDate" disabled>
+                            <label for="maAlertStartDate" class="form-label" style="font-size:.78rem;font-weight:600;color:#64748b;">Start Date</label>
+                            <input type="date" class="form-control form-control-sm" id="maAlertStartDate" disabled style="border-radius:10px;border:1.5px solid #e2e8f0;">
                         </div>
                         <div class="col-6">
-                            <label for="maAlertStartTime" class="form-label" style="font-size:.82rem;">Start Time</label>
-                            <input type="time" class="form-control form-control-sm" id="maAlertStartTime" disabled>
+                            <label for="maAlertStartTime" class="form-label" style="font-size:.78rem;font-weight:600;color:#64748b;">Start Time</label>
+                            <input type="time" class="form-control form-control-sm" id="maAlertStartTime" disabled style="border-radius:10px;border:1.5px solid #e2e8f0;">
                         </div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
-                            <label for="maAlertEndDate" class="form-label" style="font-size:.82rem;">End Date</label>
-                            <input type="date" class="form-control form-control-sm" id="maAlertEndDate" disabled>
+                            <label for="maAlertEndDate" class="form-label" style="font-size:.78rem;font-weight:600;color:#64748b;">End Date</label>
+                            <input type="date" class="form-control form-control-sm" id="maAlertEndDate" disabled style="border-radius:10px;border:1.5px solid #e2e8f0;">
                         </div>
                         <div class="col-6">
-                            <label for="maAlertEndTime" class="form-label" style="font-size:.82rem;">End Time</label>
-                            <input type="time" class="form-control form-control-sm" id="maAlertEndTime" disabled>
+                            <label for="maAlertEndTime" class="form-label" style="font-size:.78rem;font-weight:600;color:#64748b;">End Time</label>
+                            <input type="time" class="form-control form-control-sm" id="maAlertEndTime" disabled style="border-radius:10px;border:1.5px solid #e2e8f0;">
                         </div>
                     </div>
                     <div class="mb-2">
-                        <label for="maAlertMessage" class="form-label" style="font-size:.82rem;">Alert Message</label>
-                        <textarea class="form-control form-control-sm" id="maAlertMessage" rows="3" placeholder="Enter maintenance alert message..." disabled></textarea>
+                        <label for="maAlertMessage" class="form-label" style="font-size:.78rem;font-weight:600;color:#64748b;">Alert Message</label>
+                        <textarea class="form-control form-control-sm" id="maAlertMessage" rows="3" placeholder="Enter maintenance alert message…" disabled style="border-radius:10px;border:1.5px solid #e2e8f0;"></textarea>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer" style="border-top:1px solid #f1f5f9;padding:.75rem 1.5rem;">
-                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal" style="border-radius:8px;">Cancel</button>
-                <button type="button" class="btn btn-sm btn-primary" onclick="saveMaintenanceAlert()" style="border-radius:8px;">
-                    <i class="bi bi-check2 me-1"></i> Save
+            <div class="modal-footer" style="border-top:1px solid #f1f5f9;padding:1rem 1.75rem;">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal" style="border-radius:10px;font-weight:600;">Cancel</button>
+                <button type="button" class="btn btn-sm" onclick="saveMaintenanceAlert()" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:10px;font-weight:600;padding:6px 18px;">
+                    <i class="bi bi-check2 me-1"></i> Save Alert
                 </button>
             </div>
         </div>

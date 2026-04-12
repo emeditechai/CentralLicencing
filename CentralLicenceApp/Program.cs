@@ -57,6 +57,10 @@ builder.Services.AddScoped<ITicketPriorityRepository>(_ => new TicketPriorityRep
 builder.Services.AddScoped<IHelpDeskTicketRepository>(_ => new HelpDeskTicketRepository(connStr));
 builder.Services.AddScoped<ITicketReportRepository>(_ => new TicketReportRepository(connStr));
 builder.Services.AddScoped<IFinancialYearMasterRepository>(_ => new FinancialYearMasterRepository(connStr));
+builder.Services.AddScoped<IDailyTaskLogRepository>(_ => new DailyTaskLogRepository(connStr));
+builder.Services.AddScoped<IProjectModuleRepository>(_ => new ProjectModuleRepository(connStr));
+builder.Services.AddScoped<ITaskTypeMasterRepository>(_ => new TaskTypeMasterRepository(connStr));
+builder.Services.AddScoped<ITaskCategoryMasterRepository>(_ => new TaskCategoryMasterRepository(connStr));
 builder.Services.AddScoped<IClientDetailsReportExportService, ClientDetailsReportExportService>();
 builder.Services.AddScoped<IExpenseReportExportService, ExpenseReportExportService>();
 builder.Services.AddScoped<ISettlementReportExportService, SettlementReportExportService>();
@@ -172,6 +176,18 @@ using (var scope = app.Services.CreateScope())
         scope.ServiceProvider.GetRequiredService<IConfiguration>(),
         scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>());
     await seeder.SeedAsync();
+
+    // Ensure DailyTaskLog tables exist
+    try
+    {
+        var taskLogRepo = scope.ServiceProvider.GetRequiredService<IDailyTaskLogRepository>();
+        await taskLogRepo.EnsureTablesAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(ex, "DailyTaskLog table seeding encountered an error (non-blocking).");
+    }
 }
 
 app.Run();
