@@ -82,6 +82,16 @@
                             <span class="er-mini-value">@(string.IsNullOrWhiteSpace(Model.Request.EmployeeRemarks) ? "-" : Model.Request.EmployeeRemarks)</span>
                         </div>
                     </div>
+                    @if (Model.Request.SettlementNotRequired)
+                    {
+                        <div class="col-12">
+                            <div class="er-mini-stat">
+                                <span class="badge bg-info text-dark" style="font-size:.78rem;">
+                                    <i class="bi bi-check-circle me-1"></i>Settlement not required — Company Expense (Auto-settled)
+                                </span>
+                            </div>
+                        </div>
+                    }
                     @if (Model.Request.ReimbursementStartedAt.HasValue)
                     {
                         <div class="col-md-6">

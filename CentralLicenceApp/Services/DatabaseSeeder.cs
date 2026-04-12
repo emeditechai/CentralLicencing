@@ -849,7 +849,8 @@ namespace CentralLicenceApp.Services
                 [SettlementMode] NVARCHAR(30) NULL,
                 [SettlementReferenceNo] NVARCHAR(100) NULL,
                 [SettlementRemarks] NVARCHAR(500) NULL,
-                [SettlementReceiptNumber] NVARCHAR(40) NULL
+                [SettlementReceiptNumber] NVARCHAR(40) NULL,
+                [SettlementNotRequired] BIT NOT NULL DEFAULT 0
               );
             END
             ELSE
@@ -881,6 +882,9 @@ namespace CentralLicenceApp.Services
                 ALTER TABLE [dbo].[ExpenseRequest] ADD CONSTRAINT [FK_ExpenseRequest_ReimbursementStartedBy] FOREIGN KEY ([ReimbursementStartedById]) REFERENCES [dbo].[UserMaster]([Id]);
               IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_ExpenseRequest_SettledBy')
                 ALTER TABLE [dbo].[ExpenseRequest] ADD CONSTRAINT [FK_ExpenseRequest_SettledBy] FOREIGN KEY ([SettledById]) REFERENCES [dbo].[UserMaster]([Id]);
+
+              IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('ExpenseRequest') AND name = 'SettlementNotRequired')
+                ALTER TABLE [dbo].[ExpenseRequest] ADD [SettlementNotRequired] BIT NOT NULL DEFAULT 0;
             END
 
             IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='ExpenseRequestLine')

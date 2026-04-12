@@ -276,9 +276,9 @@ namespace CentralLicenceApp.Repositories
             await ((SqlConnection)conn).OpenAsync();
             var sql = @"
                 INSERT INTO ExpenseRequest
-                    (RequestNumber, EmployeeId, ApproverId, PurposeOfTravel, EmployeeRemarks, Status, TotalAmount, ItemCount, CreatedAt, FinancialYearId)
+                    (RequestNumber, EmployeeId, ApproverId, PurposeOfTravel, EmployeeRemarks, Status, TotalAmount, ItemCount, CreatedAt, FinancialYearId, SettlementNotRequired)
                 VALUES
-                    ('', @EmployeeId, @ApproverId, @PurposeOfTravel, @EmployeeRemarks, @Status, 0, 0, @CreatedAt, @FinancialYearId);
+                    ('', @EmployeeId, @ApproverId, @PurposeOfTravel, @EmployeeRemarks, @Status, 0, 0, @CreatedAt, @FinancialYearId, @SettlementNotRequired);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
             request.CreatedAt = DateTime.Now;
@@ -299,7 +299,8 @@ namespace CentralLicenceApp.Repositories
             var rows = await conn.ExecuteAsync(@"
                 UPDATE ExpenseRequest
                 SET PurposeOfTravel = @PurposeOfTravel,
-                    EmployeeRemarks = @EmployeeRemarks
+                    EmployeeRemarks = @EmployeeRemarks,
+                    SettlementNotRequired = @SettlementNotRequired
                 WHERE Id = @Id AND EmployeeId = @EmployeeId AND Status = @Status",
                 new
                 {
@@ -307,6 +308,7 @@ namespace CentralLicenceApp.Repositories
                     request.EmployeeId,
                     request.PurposeOfTravel,
                     request.EmployeeRemarks,
+                    request.SettlementNotRequired,
                     Status = ExpenseRequestStatus.Draft
                 });
             return rows > 0;
@@ -611,6 +613,60 @@ namespace CentralLicenceApp.Repositories
             if (rows > 0)
             {
                 await AddHistoryAsync(conn, tx, requestId, actionByUserId, "Settled", settlementRemarks ?? $"Settled amount {settlementAmount:N2} via {settlementMode}.");
+            }
+
+            tx.Commit();
+            return rows > 0;
+        }
+
+        public async Task<bool> AutoSettleAsync(int requestId, int actionByUserId)
+        {
+            using var conn = CreateConnection();
+            await ((SqlConnection)conn).OpenAsync();
+            using var tx = conn.BeginTransaction();
+
+            var request = await conn.QuerySingleOrDefaultAsync<ExpenseRequest>(
+                "SELECT * FROM ExpenseRequest WHERE Id = @Id",
+                new { Id = requestId },
+                tx);
+
+            if (request == null || !string.Equals(request.Status, ExpenseRequestStatus.Approved, StringComparison.OrdinalIgnoreCase))
+            {
+                tx.Rollback();
+                return false;
+            }
+
+            var receiptNumber = $"SET-{DateTime.Now:yyyyMMdd}-{requestId:0000}";
+            var now = DateTime.Now;
+
+            var rows = await conn.ExecuteAsync(@"
+                UPDATE ExpenseRequest
+                SET Status = @Settled,
+                    ReimbursementStartedAt = @Now,
+                    ReimbursementStartedById = @ActionByUserId,
+                    ReimbursementRemarks = 'Settlement not required – Company expense (Auto-settled)',
+                    SettlementDate = CAST(@Now AS DATE),
+                    SettledAt = @Now,
+                    SettledById = @ActionByUserId,
+                    SettlementAmount = TotalAmount,
+                    SettlementMode = 'N/A',
+                    SettlementReferenceNo = 'AUTO',
+                    SettlementRemarks = 'Auto-settled: Settlement not required (Company expense)',
+                    SettlementReceiptNumber = @SettlementReceiptNumber
+                WHERE Id = @Id AND Status = @Approved",
+                new
+                {
+                    Settled = ExpenseRequestStatus.Settled,
+                    Now = now,
+                    ActionByUserId = actionByUserId,
+                    SettlementReceiptNumber = receiptNumber,
+                    Id = requestId,
+                    Approved = ExpenseRequestStatus.Approved
+                }, tx);
+
+            if (rows > 0)
+            {
+                await AddHistoryAsync(conn, tx, requestId, actionByUserId, "Auto Settled", "Settlement not required – Company expense. Auto-settled on approval.");
             }
 
             tx.Commit();

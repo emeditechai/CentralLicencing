@@ -28,6 +28,9 @@ namespace CentralLicenceApp.Models.ViewModels
         [Display(Name = "Note or comment for approvers")]
         [StringLength(500)]
         public string? EmployeeRemarks { get; set; }
+
+        [Display(Name = "Settlement does not required")]
+        public bool SettlementNotRequired { get; set; }
     }
 
     public class ExpenseRequestLineFormViewModel

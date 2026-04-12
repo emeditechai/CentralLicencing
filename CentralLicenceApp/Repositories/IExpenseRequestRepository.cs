@@ -33,5 +33,6 @@ namespace CentralLicenceApp.Repositories
         Task<bool> RejectAsync(int requestId, int actionByUserId, string? remarks);
         Task<bool> StartReimbursementAsync(int requestId, int actionByUserId, string remarks);
         Task<bool> SettleAsync(int requestId, int actionByUserId, DateTime settlementDate, decimal settlementAmount, string settlementMode, string settlementReferenceNo, string? settlementRemarks);
+        Task<bool> AutoSettleAsync(int requestId, int actionByUserId);
     }
 }

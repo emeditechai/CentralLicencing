@@ -124,7 +124,8 @@ public ExpenseRequestController(IExpenseRequestRepository requestRepo, IUserRepo
                 ApproverId = currentUser.IsCoreMember ? currentUser.Id : currentUser.ManagerId,
                 PurposeOfTravel = vm.PurposeOfTravel.Trim(),
                 EmployeeRemarks = string.IsNullOrWhiteSpace(vm.EmployeeRemarks) ? null : vm.EmployeeRemarks.Trim(),
-                FinancialYearId = await _fyRepo.GetCurrentFYIdAsync()
+                FinancialYearId = await _fyRepo.GetCurrentFYIdAsync(),
+                SettlementNotRequired = vm.SettlementNotRequired
             };
 
             var requestId = await _requestRepo.CreateDraftAsync(request);
@@ -163,6 +164,7 @@ public ExpenseRequestController(IExpenseRequestRepository requestRepo, IUserRepo
 
             request.PurposeOfTravel = vm.PurposeOfTravel.Trim();
             request.EmployeeRemarks = string.IsNullOrWhiteSpace(vm.EmployeeRemarks) ? null : vm.EmployeeRemarks.Trim();
+            request.SettlementNotRequired = vm.SettlementNotRequired;
             await _requestRepo.UpdateDraftAsync(request);
             TempData["Success"] = "Draft request updated.";
             return RedirectToAction(nameof(Manage), new { id = vm.Id });
@@ -336,13 +338,21 @@ public ExpenseRequestController(IExpenseRequestRepository requestRepo, IUserRepo
                 await _expenseBrowserNotificationService.NotifyExpenseRequestSubmittedAsync(submittedRequest, currentUser);
             }
 
+            // Auto-settle if core member (auto-approved) and settlement not required
+            if (currentUser.IsCoreMember && request.SettlementNotRequired && submittedRequest != null)
+            {
+                await _requestRepo.AutoSettleAsync(id, currentUser.Id);
+            }
+
             if (submittedRequest != null && await IsExpenseEmailNotificationEnabledAsync())
             {
                 await SendCoreMemberSubmissionNotificationsAsync(submittedRequest);
             }
 
             TempData["Success"] = currentUser.IsCoreMember
-                ? "Request auto approved because the employee is marked as Core Member."
+                ? (request.SettlementNotRequired
+                    ? "Request auto-approved and auto-settled (Company expense)."
+                    : "Request auto approved because the employee is marked as Core Member.")
                 : "Request submitted for manager approval.";
             return RedirectToAction(nameof(Index));
         }
@@ -399,7 +409,17 @@ public ExpenseRequestController(IExpenseRequestRepository requestRepo, IUserRepo
 
             await _requestRepo.ApproveAsync(vm.RequestId, currentUser.Id, vm.Remarks?.Trim());
             await _expenseBrowserNotificationService.NotifyExpenseRequestApprovedAsync(request, currentUser);
-            TempData["Success"] = $"Request {request.RequestNumber} approved.";
+
+            // Auto-settle if "Settlement not required" was checked
+            if (request.SettlementNotRequired)
+            {
+                await _requestRepo.AutoSettleAsync(vm.RequestId, currentUser.Id);
+                TempData["Success"] = $"Request {request.RequestNumber} approved and auto-settled (Company expense).";
+            }
+            else
+            {
+                TempData["Success"] = $"Request {request.RequestNumber} approved.";
+            }
             return RedirectToAction(nameof(Approvals));
         }
 
@@ -607,7 +627,8 @@ public ExpenseRequestController(IExpenseRequestRepository requestRepo, IUserRepo
                 {
                     Id = request.Id,
                     PurposeOfTravel = request.PurposeOfTravel,
-                    EmployeeRemarks = request.EmployeeRemarks
+                    EmployeeRemarks = request.EmployeeRemarks,
+                    SettlementNotRequired = request.SettlementNotRequired
                 },
                 NewLine = await BuildLineFormAsync(new ExpenseRequestLineFormViewModel { RequestId = request.Id }),
                 ReimbursementForm = new ReimbursementStartViewModel { RequestId = request.Id },

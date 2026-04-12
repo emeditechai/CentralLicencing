@@ -27,6 +27,17 @@
                     <textarea asp-for="EmployeeRemarks" rows="4" class="form-control" style="border-radius:10px;"></textarea>
                     <span asp-validation-for="EmployeeRemarks" class="text-danger small"></span>
                 </div>
+                <div class="col-12">
+                    <div class="form-check mt-1">
+                        <input asp-for="SettlementNotRequired" class="form-check-input" type="checkbox" id="chkSettlementNotRequired" />
+                        <label class="form-check-label fw-semibold" for="chkSettlementNotRequired" style="font-size:.82rem;">
+                            Settlement does not required
+                        </label>
+                    </div>
+                    <small class="text-muted" style="font-size:.76rem;">
+                        <i class="bi bi-info-circle me-1"></i>If checked, this expense will be auto-settled (Company's own expense — no reimbursement required).
+                    </small>
+                </div>
             </div>
             <div class="alert alert-info mt-3 py-2 px-3 rounded-3" style="font-size:.8rem;">
                 <i class="bi bi-info-circle me-1"></i>
