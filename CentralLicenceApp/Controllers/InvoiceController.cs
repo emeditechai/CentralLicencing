@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CentralLicenceApp.Models;
@@ -8,6 +9,7 @@ using CentralLicenceApp.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace CentralLicenceApp.Controllers
 {
@@ -27,6 +29,7 @@ namespace CentralLicenceApp.Controllers
         private readonly IServiceScopeFactory      _scopeFactory;
         private readonly ITermsConditionTemplateRepository _termsRepo;
     private readonly IFinancialYearMasterRepository _fyRepo;
+        private readonly ILogger<InvoiceController> _logger;
 
         public InvoiceController(
             IInvoiceRepository        invoiceRepo,
@@ -41,7 +44,8 @@ namespace CentralLicenceApp.Controllers
             IDocumentPdfService       pdfService,
             IServiceScopeFactory      scopeFactory,
 ITermsConditionTemplateRepository termsRepo,
-        IFinancialYearMasterRepository fyRepo)
+        IFinancialYearMasterRepository fyRepo,
+            ILogger<InvoiceController> logger)
     {
         _invoiceRepo     = invoiceRepo;
         _quotationRepo   = quotationRepo;
@@ -56,6 +60,7 @@ ITermsConditionTemplateRepository termsRepo,
         _scopeFactory    = scopeFactory;
         _termsRepo       = termsRepo;
         _fyRepo          = fyRepo;
+        _logger          = logger;
         }
 
         // GET /Invoice
@@ -387,7 +392,7 @@ ITermsConditionTemplateRepository termsRepo,
 
             await _invoiceRepo.UpdateStatusAsync(id, status);
 
-            // When marking as Sent: fire-and-forget PDF generation + email
+            // When marking as Sent: generate PDF inline (needs HTTP context), then email in background
             if (status == "Sent")
             {
                 var inv = await _invoiceRepo.GetByIdAsync(id);
@@ -397,33 +402,52 @@ ITermsConditionTemplateRepository termsRepo,
                     var partyEmail = party?.Email;
                     if (!string.IsNullOrWhiteSpace(partyEmail))
                     {
-                        var partyName  = party!.PartyName;
-                        var capturedId = id;
-                        _ = Task.Run(async () =>
+                        try
                         {
-                            await using var scope = _scopeFactory.CreateAsyncScope();
-                            var pdf   = scope.ServiceProvider.GetRequiredService<IDocumentPdfService>();
-                            var email = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                            try
+                            // Generate PDF inline — ViewRenderService needs HTTP context
+                            var (pdfBytes, savedPath) = await _pdfService.GenerateInvoicePdfAsync(inv);
+                            var attachFileName = $"Invoice_{inv.InvoiceNo.Replace("/", "-")}.pdf";
+                            var placeholders = BuildInvoicePlaceholders(inv);
+                            var resolved = await _emailService.ResolveTemplateAsync("INVOICE_SENT", placeholders);
+                            string subject, body;
+                            if (resolved != null)
                             {
-                                var (pdfBytes, _) = await pdf.GenerateInvoicePdfAsync(inv);
-                                var fileName = $"Invoice_{inv.InvoiceNo.Replace("/", "-")}.pdf";
-                                var placeholders = BuildInvoicePlaceholders(inv);
-                                var resolved = await email.ResolveTemplateAsync("INVOICE_SENT", placeholders);
-                                if (resolved != null)
-                                {
-                                    await email.SendWithAttachmentAsync(partyEmail, partyName, resolved.Value.Subject, resolved.Value.Body, pdfBytes, fileName, "Invoice");
-                                }
-                                else
-                                {
-                                    var subject = $"Invoice {inv.InvoiceNo} from {inv.PartyName}";
-                                    var body = BuildInvoiceEmailBody(inv);
-                                    await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, fileName, "Invoice");
-                                }
+                                subject = resolved.Value.Subject;
+                                body    = resolved.Value.Body;
                             }
-                            catch { /* background failure — logged by email service */ }
-                        });
-                        TempData["Success"] = $"Invoice marked as <strong>Sent</strong>. Email is being delivered to <strong>{partyEmail}</strong> in background.";
+                            else
+                            {
+                                subject = $"Invoice {inv.InvoiceNo} from {inv.PartyName}";
+                                body    = BuildInvoiceEmailBody(inv);
+                            }
+
+                            // Send email in background — PDF bytes are already in memory
+                            var partyName = party!.PartyName;
+                            _ = Task.Run(async () =>
+                            {
+                                await using var scope = _scopeFactory.CreateAsyncScope();
+                                var email = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                                try
+                                {
+                                    await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, attachFileName, "Invoice");
+                                }
+                                catch (Exception ex)
+                                {
+                                    var log = scope.ServiceProvider.GetRequiredService<ILogger<InvoiceController>>();
+                                    log.LogError(ex, "Background invoice email failed for {InvoiceNo} to {Email}", inv.InvoiceNo, partyEmail);
+                                }
+                                finally
+                                {
+                                    // Clean up the saved PDF file
+                                    try { if (System.IO.File.Exists(savedPath)) System.IO.File.Delete(savedPath); } catch { }
+                                }
+                            });
+                            TempData["Success"] = $"Invoice marked as <strong>Sent</strong>. Email is being delivered to <strong>{partyEmail}</strong> in background.";
+                        }
+                        catch (Exception ex)
+                        {
+                            TempData["Warning"] = $"Invoice marked as <strong>Sent</strong> but PDF generation failed: {ex.Message}";
+                        }
                     }
                     else
                     {
@@ -459,33 +483,51 @@ ITermsConditionTemplateRepository termsRepo,
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            var partyName  = party!.PartyName;
-            var capturedInv = inv;
-            _ = Task.Run(async () =>
+            try
             {
-                await using var scope = _scopeFactory.CreateAsyncScope();
-                var pdf   = scope.ServiceProvider.GetRequiredService<IDocumentPdfService>();
-                var email = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                try
+                // Generate PDF inline — ViewRenderService needs HTTP context
+                var (pdfBytes, savedPath) = await _pdfService.GenerateInvoicePdfAsync(inv);
+                var attachFileName = $"Invoice_{inv.InvoiceNo.Replace("/", "-")}.pdf";
+                var placeholders = BuildInvoicePlaceholders(inv);
+                var resolved = await _emailService.ResolveTemplateAsync("INVOICE_SENT", placeholders);
+                string subject, body;
+                if (resolved != null)
                 {
-                    var (pdfBytes, _) = await pdf.GenerateInvoicePdfAsync(capturedInv);
-                    var fileName = $"Invoice_{capturedInv.InvoiceNo.Replace("/", "-")}.pdf";
-                    var placeholders = BuildInvoicePlaceholders(capturedInv);
-                    var resolved = await email.ResolveTemplateAsync("INVOICE_SENT", placeholders);
-                    if (resolved != null)
-                    {
-                        await email.SendWithAttachmentAsync(partyEmail, partyName, resolved.Value.Subject, resolved.Value.Body, pdfBytes, fileName, "Invoice");
-                    }
-                    else
-                    {
-                        var subject = $"Invoice {capturedInv.InvoiceNo} from {capturedInv.PartyName}";
-                        var body = BuildInvoiceEmailBody(capturedInv);
-                        await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, fileName, "Invoice");
-                    }
+                    subject = resolved.Value.Subject;
+                    body    = resolved.Value.Body;
                 }
-                catch { /* background failure */ }
-            });
-            TempData["Success"] = $"Email is being delivered to <strong>{partyEmail}</strong> in background.";
+                else
+                {
+                    subject = $"Invoice {inv.InvoiceNo} from {inv.PartyName}";
+                    body    = BuildInvoiceEmailBody(inv);
+                }
+
+                // Send email in background — PDF bytes are already in memory
+                var partyName = party!.PartyName;
+                _ = Task.Run(async () =>
+                {
+                    await using var scope = _scopeFactory.CreateAsyncScope();
+                    var email = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                    try
+                    {
+                        await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, attachFileName, "Invoice");
+                    }
+                    catch (Exception ex2)
+                    {
+                        var log = scope.ServiceProvider.GetRequiredService<ILogger<InvoiceController>>();
+                        log.LogError(ex2, "Background invoice resend email failed for {InvoiceNo} to {Email}", inv.InvoiceNo, partyEmail);
+                    }
+                    finally
+                    {
+                        try { if (System.IO.File.Exists(savedPath)) System.IO.File.Delete(savedPath); } catch { }
+                    }
+                });
+                TempData["Success"] = $"Email is being delivered to <strong>{partyEmail}</strong> in background.";
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"PDF generation failed: {ex.Message}";
+            }
 
             return RedirectToAction(nameof(Details), new { id });
         }

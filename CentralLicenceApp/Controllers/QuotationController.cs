@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CentralLicenceApp.Models;
@@ -8,6 +9,7 @@ using CentralLicenceApp.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace CentralLicenceApp.Controllers
 {
@@ -24,6 +26,7 @@ namespace CentralLicenceApp.Controllers
         private readonly IServiceScopeFactory   _scopeFactory;
         private readonly ITermsConditionTemplateRepository _termsRepo;
     private readonly IFinancialYearMasterRepository _fyRepo;
+        private readonly ILogger<QuotationController> _logger;
 
         public QuotationController(
             IQuotationRepository quotationRepo,
@@ -35,7 +38,8 @@ namespace CentralLicenceApp.Controllers
             IDocumentPdfService    pdfService,
             IServiceScopeFactory   scopeFactory,
 ITermsConditionTemplateRepository termsRepo,
-        IFinancialYearMasterRepository fyRepo)
+        IFinancialYearMasterRepository fyRepo,
+            ILogger<QuotationController> logger)
     {
         _quotationRepo   = quotationRepo;
         _invoiceRepo     = invoiceRepo;
@@ -47,6 +51,7 @@ ITermsConditionTemplateRepository termsRepo,
         _scopeFactory    = scopeFactory;
         _termsRepo       = termsRepo;
         _fyRepo          = fyRepo;
+        _logger          = logger;
         }
 
         // GET /Quotation
@@ -308,7 +313,7 @@ ITermsConditionTemplateRepository termsRepo,
         {
             await _quotationRepo.UpdateStatusAsync(id, status);
 
-            // When marking as Sent: fire-and-forget PDF generation + email
+            // When marking as Sent: generate PDF and email inline so errors are visible
             if (status == "Sent")
             {
                 var q = await _quotationRepo.GetByIdAsync(id);
@@ -318,32 +323,51 @@ ITermsConditionTemplateRepository termsRepo,
                     var partyEmail = party?.Email;
                     if (!string.IsNullOrWhiteSpace(partyEmail))
                     {
-                        var partyName = party!.PartyName;
-                        _ = Task.Run(async () =>
+                        try
                         {
-                            await using var scope = _scopeFactory.CreateAsyncScope();
-                            var pdf   = scope.ServiceProvider.GetRequiredService<IDocumentPdfService>();
-                            var email = scope.ServiceProvider.GetRequiredService<IEmailService>();
-                            try
+                            // Generate PDF inline — ViewRenderService needs HTTP context
+                            var (pdfBytes, savedPath) = await _pdfService.GenerateQuotationPdfAsync(q);
+                            var attachFileName = $"Quotation_{q.QuotationNo.Replace("/", "-")}.pdf";
+                            var placeholders = BuildQuotationPlaceholders(q);
+                            var resolved = await _emailService.ResolveTemplateAsync("QUOTATION_SENT", placeholders);
+                            string subject, body;
+                            if (resolved != null)
                             {
-                                var (pdfBytes, _) = await pdf.GenerateQuotationPdfAsync(q);
-                                var fileName = $"Quotation_{q.QuotationNo.Replace("/", "-")}.pdf";
-                                var placeholders = BuildQuotationPlaceholders(q);
-                                var resolved = await email.ResolveTemplateAsync("QUOTATION_SENT", placeholders);
-                                if (resolved != null)
-                                {
-                                    await email.SendWithAttachmentAsync(partyEmail, partyName, resolved.Value.Subject, resolved.Value.Body, pdfBytes, fileName, "Quotation");
-                                }
-                                else
-                                {
-                                    var subject = $"Quotation {q.QuotationNo} from {q.PartyName}";
-                                    var body = BuildQuotationEmailBody(q);
-                                    await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, fileName, "Quotation");
-                                }
+                                subject = resolved.Value.Subject;
+                                body    = resolved.Value.Body;
                             }
-                            catch { /* background failure */ }
-                        });
-                        TempData["Success"] = $"Quotation marked as <strong>Sent</strong>. Email is being delivered to <strong>{partyEmail}</strong> in background.";
+                            else
+                            {
+                                subject = $"Quotation {q.QuotationNo} from {q.PartyName}";
+                                body    = BuildQuotationEmailBody(q);
+                            }
+
+                            // Send email in background — PDF bytes are already in memory
+                            var partyName = party!.PartyName;
+                            _ = Task.Run(async () =>
+                            {
+                                await using var scope = _scopeFactory.CreateAsyncScope();
+                                var email = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                                try
+                                {
+                                    await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, attachFileName, "Quotation");
+                                }
+                                catch (Exception ex)
+                                {
+                                    var log = scope.ServiceProvider.GetRequiredService<ILogger<QuotationController>>();
+                                    log.LogError(ex, "Background quotation email failed for {QuotationNo} to {Email}", q.QuotationNo, partyEmail);
+                                }
+                                finally
+                                {
+                                    try { if (System.IO.File.Exists(savedPath)) System.IO.File.Delete(savedPath); } catch { }
+                                }
+                            });
+                            TempData["Success"] = $"Quotation marked as <strong>Sent</strong>. Email is being delivered to <strong>{partyEmail}</strong> in background.";
+                        }
+                        catch (Exception ex)
+                        {
+                            TempData["Warning"] = $"Quotation marked as <strong>Sent</strong> but PDF generation failed: {ex.Message}";
+                        }
                     }
                     else
                     {
@@ -358,6 +382,71 @@ ITermsConditionTemplateRepository termsRepo,
             else
             {
                 TempData["Success"] = $"Quotation status updated to <strong>{status}</strong>.";
+            }
+
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        // POST /Quotation/ResendMail/5
+        [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator")]
+        public async Task<IActionResult> ResendMail(int id)
+        {
+            var q = await _quotationRepo.GetByIdAsync(id);
+            if (q == null) return NotFound();
+
+            var party = await _partyRepo.GetByIdAsync(q.PartyId);
+            var partyEmail = party?.Email;
+            if (string.IsNullOrWhiteSpace(partyEmail))
+            {
+                TempData["Warning"] = "No email address on file for this party. Mail not sent.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            try
+            {
+                // Generate PDF inline — ViewRenderService needs HTTP context
+                var (pdfBytes, savedPath) = await _pdfService.GenerateQuotationPdfAsync(q);
+                var attachFileName = $"Quotation_{q.QuotationNo.Replace("/", "-")}.pdf";
+                var placeholders = BuildQuotationPlaceholders(q);
+                var resolved = await _emailService.ResolveTemplateAsync("QUOTATION_SENT", placeholders);
+                string subject, body;
+                if (resolved != null)
+                {
+                    subject = resolved.Value.Subject;
+                    body    = resolved.Value.Body;
+                }
+                else
+                {
+                    subject = $"Quotation {q.QuotationNo} from {q.PartyName}";
+                    body    = BuildQuotationEmailBody(q);
+                }
+
+                // Send email in background — PDF bytes are already in memory
+                var partyName = party!.PartyName;
+                _ = Task.Run(async () =>
+                {
+                    await using var scope = _scopeFactory.CreateAsyncScope();
+                    var email = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                    try
+                    {
+                        await email.SendWithAttachmentAsync(partyEmail, partyName, subject, body, pdfBytes, attachFileName, "Quotation");
+                    }
+                    catch (Exception ex2)
+                    {
+                        var log = scope.ServiceProvider.GetRequiredService<ILogger<QuotationController>>();
+                        log.LogError(ex2, "Background quotation resend email failed for {QuotationNo} to {Email}", q.QuotationNo, partyEmail);
+                    }
+                    finally
+                    {
+                        try { if (System.IO.File.Exists(savedPath)) System.IO.File.Delete(savedPath); } catch { }
+                    }
+                });
+                TempData["Success"] = $"Email is being delivered to <strong>{partyEmail}</strong> in background.";
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = $"PDF generation failed: {ex.Message}";
             }
 
             return RedirectToAction(nameof(Details), new { id });
