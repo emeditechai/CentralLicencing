@@ -3,8 +3,10 @@ using CentralLicenceApp.Models;
 using CentralLicenceApp.Models.ViewModels;
 using CentralLicenceApp.Repositories;
 using CentralLicenceApp.Services;
+using CentralLicenceApp.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace CentralLicenceApp.Controllers
 {
@@ -20,6 +22,7 @@ namespace CentralLicenceApp.Controllers
         private readonly IUserRepository _userRepo;
         private readonly IWebHostEnvironment _env;
     private readonly IFinancialYearMasterRepository _fyRepo;
+        private readonly IHubContext<TicketNotificationHub> _ticketHub;
 
         public HelpDeskTicketController(
             IHelpDeskTicketRepository ticketRepo,
@@ -30,7 +33,8 @@ namespace CentralLicenceApp.Controllers
             ITicketBrowserNotificationService ticketNotificationService,
             IUserRepository userRepo,
 IWebHostEnvironment env,
-        IFinancialYearMasterRepository fyRepo)
+        IFinancialYearMasterRepository fyRepo,
+            IHubContext<TicketNotificationHub> ticketHub)
     {
         _ticketRepo = ticketRepo;
         _categoryRepo = categoryRepo;
@@ -41,6 +45,7 @@ IWebHostEnvironment env,
         _userRepo = userRepo;
         _env = env;
         _fyRepo = fyRepo;
+        _ticketHub = ticketHub;
         }
 
         private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -252,6 +257,11 @@ IWebHostEnvironment env,
                 CanAct = canAct
             };
 
+            // SLA info for timer display
+            var priority = await _priorityRepo.GetByIdAsync(ticket.PriorityId);
+            ViewBag.SlaResponseHours = priority?.SlaResponseHours ?? 0;
+            ViewBag.SlaResolutionHours = priority?.SlaResolutionHours ?? 0;
+
             return View(vm);
         }
 
@@ -324,6 +334,18 @@ IWebHostEnvironment env,
             var senderName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "Unknown";
             _ = _ticketEmailService.NotifyNewReplyAsync(ticket, senderName, replyMessage.Trim(), message.IsInternal);
             _ = _ticketNotificationService.NotifyNewReplyAsync(ticket, senderName, replyMessage.Trim(), message.IsInternal);
+
+            // Real-time SignalR broadcast to ticket group
+            await _ticketHub.Clients.Group($"ticket-{ticketId}").SendAsync("NewReply", new
+            {
+                messageId,
+                ticketId,
+                senderName,
+                senderId = userId,
+                message = replyMessage.Trim(),
+                isInternal = message.IsInternal,
+                createdAt = DateTime.Now.ToString("dd MMM yyyy, hh:mm tt")
+            });
 
             // Client marked ticket as closed
             if (markAsClosed && !IsAgentOrAdmin && ticket.CreatedById == userId)
@@ -431,6 +453,17 @@ IWebHostEnvironment env,
             // Send email notification for status change
             _ = _ticketEmailService.NotifyStatusChangedAsync(ticket, oldStatus, newStatus);
             _ = _ticketNotificationService.NotifyStatusChangedAsync(ticket, oldStatus, newStatus);
+
+            // Real-time SignalR broadcast to ticket group
+            var changer = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "Unknown";
+            await _ticketHub.Clients.Group($"ticket-{ticketId}").SendAsync("StatusChanged", new
+            {
+                ticketId,
+                oldStatus,
+                newStatus,
+                changedBy = changer,
+                changedAt = DateTime.Now.ToString("dd MMM yyyy, hh:mm tt")
+            });
 
             TempData["Success"] = $"Ticket status changed to <strong>{newStatus}</strong>.";
             return RedirectToAction(nameof(Details), new { id = ticketId });
@@ -589,6 +622,41 @@ IWebHostEnvironment env,
                 FileSize = file.Length,
                 UploadedById = userId
             });
+        }
+
+        // ── Canned Responses API ──
+        [HttpGet]
+        [Authorize(Roles = "Administrator,Ticket Admin,Ticket Agent")]
+        public async Task<IActionResult> GetCannedResponses()
+        {
+            var responses = await _ticketRepo.GetCannedResponsesAsync(CurrentUserId);
+            return Json(responses.Select(r => new { r.Id, r.Title, r.Content }));
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator,Ticket Admin,Ticket Agent")]
+        public async Task<IActionResult> SaveCannedResponse(string title, string content)
+        {
+            if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(content))
+                return BadRequest("Title and content are required.");
+
+            var response = new TicketCannedResponse
+            {
+                Title = title.Trim(),
+                Content = content.Trim(),
+                CreatedById = CurrentUserId,
+                IsGlobal = User.IsInRole("Administrator")
+            };
+            await _ticketRepo.AddCannedResponseAsync(response);
+            return Json(new { success = true });
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator,Ticket Admin,Ticket Agent")]
+        public async Task<IActionResult> DeleteCannedResponse(int id)
+        {
+            await _ticketRepo.DeleteCannedResponseAsync(id, CurrentUserId);
+            return Json(new { success = true });
         }
     }
 }

@@ -35,5 +35,10 @@ namespace CentralLicenceApp.Repositories
 
         // Agents
         Task<IEnumerable<AgentOption>> GetAgentsAsync();
+
+        // Canned Responses
+        Task<IEnumerable<TicketCannedResponse>> GetCannedResponsesAsync(int userId);
+        Task<int> AddCannedResponseAsync(TicketCannedResponse response);
+        Task<bool> DeleteCannedResponseAsync(int id, int userId);
     }
 }

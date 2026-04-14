@@ -255,5 +255,35 @@ namespace CentralLicenceApp.Repositories
                   AND r.RoleName IN ('Ticket Agent','Ticket Admin')
                 ORDER BY u.FullName");
         }
+
+        // ── Canned Responses ──
+        public async Task<IEnumerable<TicketCannedResponse>> GetCannedResponsesAsync(int userId)
+        {
+            using var conn = CreateConnection();
+            return await conn.QueryAsync<TicketCannedResponse>(
+                @"SELECT * FROM TicketCannedResponse
+                  WHERE IsActive = 1 AND (IsGlobal = 1 OR CreatedById = @UserId)
+                  ORDER BY Title",
+                new { UserId = userId });
+        }
+
+        public async Task<int> AddCannedResponseAsync(TicketCannedResponse response)
+        {
+            using var conn = CreateConnection();
+            response.CreatedAt = DateTime.Now;
+            return await conn.ExecuteScalarAsync<int>(
+                @"INSERT INTO TicketCannedResponse (Title, Content, CreatedById, IsGlobal, IsActive, CreatedAt)
+                  VALUES (@Title, @Content, @CreatedById, @IsGlobal, @IsActive, @CreatedAt);
+                  SELECT CAST(SCOPE_IDENTITY() AS INT);", response);
+        }
+
+        public async Task<bool> DeleteCannedResponseAsync(int id, int userId)
+        {
+            using var conn = CreateConnection();
+            var rows = await conn.ExecuteAsync(
+                "UPDATE TicketCannedResponse SET IsActive = 0 WHERE Id = @Id AND (CreatedById = @UserId OR IsGlobal = 1)",
+                new { Id = id, UserId = userId });
+            return rows > 0;
+        }
     }
 }

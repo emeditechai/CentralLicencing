@@ -16,7 +16,67 @@
     var isClosed = ticket.Status == "Closed";
 }
 
-<div class="d-flex align-items-center gap-3 mb-4">
+<style>
+/* ── Ticket Details: Professional & Responsive ── */
+:root { --tkd-bg:#ffffff; --tkd-bg-alt:#f8fafc; --tkd-text:#1e293b; --tkd-text-muted:#64748b; --tkd-border:#e2e8f0; --tkd-card-bg:#ffffff; --tkd-card-shadow:0 1px 3px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.03); --tkd-card-shadow-hover:0 4px 14px rgba(0,0,0,.07); --tkd-accent:#4f46e5; --tkd-accent-light:#e0e7ff; --tkd-input-bg:#ffffff; --tkd-input-border:#d1d5db; }
+[data-theme="dark"] { --tkd-bg:#0f172a; --tkd-bg-alt:#1e293b; --tkd-text:#e2e8f0; --tkd-text-muted:#94a3b8; --tkd-border:#334155; --tkd-card-bg:#1e293b; --tkd-card-shadow:0 1px 3px rgba(0,0,0,.3); --tkd-card-shadow-hover:0 4px 14px rgba(0,0,0,.4); --tkd-accent:#818cf8; --tkd-accent-light:#312e81; --tkd-input-bg:#0f172a; --tkd-input-border:#475569; }
+[data-theme="dark"] .tkd-page { color:var(--tkd-text); }
+[data-theme="dark"] .tkd-page .card { background:var(--tkd-card-bg) !important; border-color:var(--tkd-border) !important; }
+[data-theme="dark"] .tkd-page .form-control,[data-theme="dark"] .tkd-page .form-select { background:var(--tkd-input-bg);color:var(--tkd-text);border-color:var(--tkd-input-border); }
+[data-theme="dark"] .tkd-page .text-muted { color:var(--tkd-text-muted) !important; }
+[data-theme="dark"] .tkd-page .modal-content { background:var(--tkd-card-bg);color:var(--tkd-text); }
+[data-theme="dark"] .tkd-page .modal-header,[data-theme="dark"] .tkd-page .modal-footer { background:var(--tkd-bg-alt) !important;border-color:var(--tkd-border) !important; }
+.tkd-page .card { border:none; border-radius:14px; box-shadow:var(--tkd-card-shadow); transition:box-shadow .2s ease; }
+.tkd-page .card:hover { box-shadow:var(--tkd-card-shadow-hover); }
+@@media (min-width:992px) { .tkd-sidebar { position:sticky; top:1rem; } }
+.tkd-page .tkd-msg { transition:transform .15s ease,box-shadow .15s ease; }
+.tkd-page .tkd-msg:hover { transform:translateY(-1px); box-shadow:var(--tkd-card-shadow-hover) !important; }
+.tkd-reply textarea:focus,.tkd-reply .form-control:focus { box-shadow:0 0 0 3px rgba(79,70,229,.12); border-color:#a5b4fc; }
+.tkd-timeline { position:relative; padding-left:22px; }
+.tkd-timeline::before { content:''; position:absolute; left:6px; top:4px; bottom:4px; width:2px; background:linear-gradient(to bottom,#c7d2fe,#e2e8f0); border-radius:2px; }
+.tkd-timeline-item { position:relative; padding-bottom:.75rem; }
+.tkd-timeline-item::before { content:''; position:absolute; left:-19px; top:6px; width:8px; height:8px; border-radius:50%; background:#6366f1; border:2px solid #e0e7ff; }
+.tkd-timeline-item:last-child { padding-bottom:0; }
+@@media (max-width:575.98px) { .tkd-page .card-body { padding:.875rem !important; } .tkd-page h4 { font-size:1.1rem !important; } }
+@@media (max-width:767.98px) { .tkd-page .badge { font-size:.7rem !important; } }
+.tkd-sidebar::-webkit-scrollbar { width:4px; }
+.tkd-sidebar::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:4px; }
+/* Drop zone */
+.tkd-dropzone { border:2px dashed var(--tkd-border,#d1d5db); border-radius:12px; padding:1.5rem; text-align:center; transition:all .2s ease; cursor:pointer; background:var(--tkd-bg-alt,#f8fafc); }
+.tkd-dropzone:hover,.tkd-dropzone.drag-over { border-color:var(--tkd-accent,#4f46e5); background:var(--tkd-accent-light,#e0e7ff); }
+.tkd-dropzone .file-list { text-align:left; margin-top:.5rem; }
+.tkd-dropzone .file-item { display:flex; align-items:center; gap:.5rem; padding:.25rem .5rem; font-size:.8rem; background:var(--tkd-card-bg,#fff); border-radius:6px; margin-top:.25rem; }
+.tkd-dropzone .file-item .remove-file { cursor:pointer; color:#ef4444; font-weight:700; }
+/* Typing indicator */
+.tkd-typing { font-size:.8rem; color:var(--tkd-text-muted,#64748b); padding:.25rem 0; min-height:1.4rem; }
+.tkd-typing .dots { display:inline-flex; gap:2px; }
+.tkd-typing .dots span { width:5px; height:5px; border-radius:50%; background:var(--tkd-accent,#4f46e5); animation:tkd-bounce .6s infinite alternate; }
+.tkd-typing .dots span:nth-child(2) { animation-delay:.15s; }
+.tkd-typing .dots span:nth-child(3) { animation-delay:.3s; }
+@@keyframes tkd-bounce { to { opacity:.3; transform:translateY(-4px); } }
+/* SLA timer */
+.tkd-sla { display:flex; align-items:center; gap:.5rem; padding:.5rem .75rem; border-radius:8px; font-size:.8rem; font-weight:600; }
+.tkd-sla.on-track { background:#dcfce7; color:#16a34a; }
+.tkd-sla.warning { background:#fef3c7; color:#d97706; }
+.tkd-sla.breached { background:#fee2e2; color:#dc2626; }
+/* Canned responses */
+.tkd-canned-list { max-height:200px; overflow-y:auto; }
+.tkd-canned-item { padding:.5rem .75rem; border-radius:8px; cursor:pointer; font-size:.82rem; border:1px solid transparent; transition:all .15s ease; }
+.tkd-canned-item:hover { background:var(--tkd-accent-light,#e0e7ff); border-color:var(--tkd-accent,#4f46e5); }
+/* Read receipt */
+.tkd-read-receipt { font-size:.7rem; color:var(--tkd-text-muted,#94a3b8); display:flex; align-items:center; gap:3px; }
+/* Dark mode toggle */
+.tkd-theme-toggle { cursor:pointer; background:none; border:1px solid var(--tkd-border,#e2e8f0); border-radius:8px; padding:4px 10px; font-size:.82rem; color:var(--tkd-text,#1e293b); transition:all .15s; }
+.tkd-theme-toggle:hover { background:var(--tkd-accent-light,#e0e7ff); }
+/* Markdown preview */
+.tkd-md-toolbar { display:flex; gap:2px; padding:4px; border-bottom:1px solid var(--tkd-border,#e2e8f0); background:var(--tkd-bg-alt,#f8fafc); border-radius:10px 10px 0 0; }
+.tkd-md-toolbar button { background:none; border:none; padding:4px 8px; border-radius:4px; font-size:.82rem; cursor:pointer; color:var(--tkd-text,#334155); }
+.tkd-md-toolbar button:hover { background:var(--tkd-accent-light,#e0e7ff); }
+.tkd-md-toolbar button.active { background:var(--tkd-accent,#4f46e5); color:#fff; }
+</style>
+
+<div class="tkd-page">
+<div class="tkd-header d-flex align-items-center gap-3 mb-4">
     @if (Model.IsAgent)
     {
         <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
@@ -26,18 +86,33 @@
         <a asp-action="MyTickets" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;"><i class="bi bi-arrow-left"></i></a>
     }
     <div class="flex-fill">
-        <div class="d-flex align-items-center gap-2">
-            <h4 class="fw-bold mb-0" style="color:#1e293b;">@ticket.TicketNumber</h4>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h4 class="fw-bold mb-0" style="color:var(--tkd-text,#1e293b);">@ticket.TicketNumber</h4>
             <span class="badge rounded-pill px-2 py-1" style="font-size:.75rem;@statusClass">@ticket.Status</span>
             <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:@(ticket.PriorityColor ?? "#6b7280")20;color:@(ticket.PriorityColor ?? "#6b7280");">@ticket.PriorityName</span>
+            <button type="button" class="tkd-theme-toggle ms-auto" id="themeToggle" title="Toggle Dark Mode">
+                <i class="bi bi-moon-stars" id="themeIcon"></i>
+            </button>
         </div>
         <p class="text-muted mb-0" style="font-size:.85rem;">@ticket.Subject</p>
+        @if (!isClosed)
+        {
+            <div id="slaTimer" class="tkd-sla mt-2 d-none"
+                 data-created="@ticket.CreatedAt.ToString("o")"
+                 data-first-response="@(ticket.FirstResponseAt?.ToString("o") ?? "")"
+                 data-resolved="@(ticket.ResolvedAt?.ToString("o") ?? "")"
+                 data-sla-response="@(ViewBag.SlaResponseHours ?? 0)"
+                 data-sla-resolution="@(ViewBag.SlaResolutionHours ?? 0)">
+                <i class="bi bi-clock"></i>
+                <span id="slaText"></span>
+            </div>
+        }
     </div>
 </div>
 
 <div class="row g-4">
     <!-- Left: Conversation -->
-    <div class="col-lg-8">
+    <div class="col-lg-8 order-2 order-lg-1">
         <!-- Original Description -->
         <div class="card mb-3">
             <div class="card-body p-4">
@@ -91,7 +166,7 @@
             var isInternalNote = msg.IsInternal;
             var bgColor = isInternalNote ? "#fffbeb" : (isOwn ? "#f8fafc" : "#ffffff");
             var borderColor = isInternalNote ? "#fbbf24" : "#e2e8f0";
-            <div class="card mb-2" style="border-left:3px solid @borderColor;background:@bgColor;">
+            <div class="card tkd-msg mb-2" style="border-left:3px solid @borderColor;background:@bgColor;">
                 <div class="card-body p-3">
                     <div class="d-flex align-items-start gap-3">
                         <div class="avatar-sm d-flex align-items-center justify-content-center rounded-circle text-white fw-bold" style="width:34px;height:34px;min-width:34px;background:@(isInternalNote ? "#f59e0b" : "#6d28d9");font-size:.8rem;">
@@ -136,28 +211,63 @@
             </div>
         }
 
+        <!-- Typing Indicator -->
+        <div id="typingIndicator" class="tkd-typing d-none mt-2">
+            <div class="dots"><span></span><span></span><span></span></div>
+            <span id="typingUser"></span> is typing…
+        </div>
+
         <!-- Reply Form -->
         @if (!isClosed && (Model.CanAct || (!Model.IsAgent && ticket.CreatedById == currentUserId)))
         {
-            <div class="card mt-3">
+            <div class="card tkd-reply mt-3">
                 <div class="card-body p-4">
-                    <h6 class="fw-bold mb-3" style="font-size:.9rem;"><i class="bi bi-reply me-1"></i> Post a Reply</h6>
-                    <form asp-action="Reply" method="post" enctype="multipart/form-data">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="fw-bold mb-0" style="font-size:.9rem;"><i class="bi bi-reply me-1"></i> Post a Reply</h6>
+                        @if (Model.IsAgent)
+                        {
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary" type="button" id="cannedBtn" data-bs-toggle="dropdown" style="border-radius:8px;font-size:.78rem;">
+                                    <i class="bi bi-lightning me-1"></i> Canned Responses
+                                </button>
+                                <div class="dropdown-menu p-2" style="min-width:280px;max-height:260px;overflow-y:auto;border-radius:10px;" id="cannedMenu">
+                                    <div class="text-muted text-center py-2" style="font-size:.8rem;" id="cannedLoading">Loading…</div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <form asp-action="Reply" method="post" enctype="multipart/form-data" id="replyForm">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="ticketId" value="@ticket.Id" />
 
-                        <div class="mb-3">
-                            <textarea name="replyMessage" class="form-control" rows="4" style="border-radius:10px;" placeholder="Type your reply..."></textarea>
+                        <!-- Markdown Toolbar -->
+                        <div class="tkd-md-toolbar">
+                            <button type="button" data-md="bold" title="Bold (Ctrl+B)"><i class="bi bi-type-bold"></i></button>
+                            <button type="button" data-md="italic" title="Italic (Ctrl+I)"><i class="bi bi-type-italic"></i></button>
+                            <button type="button" data-md="code" title="Code"><i class="bi bi-code-slash"></i></button>
+                            <button type="button" data-md="link" title="Link"><i class="bi bi-link-45deg"></i></button>
+                            <button type="button" data-md="list" title="List"><i class="bi bi-list-ul"></i></button>
+                            <button type="button" id="mdPreviewBtn" title="Preview"><i class="bi bi-eye"></i></button>
                         </div>
 
-                        <div class="mb-3">
-                            <input type="file" name="replyAttachments" class="form-control form-control-sm" style="border-radius:8px;" multiple />
+                        <div class="mb-0 position-relative">
+                            <textarea name="replyMessage" id="replyMessage" class="form-control" rows="4" style="border-radius:0 0 10px 10px;border-top:none;" placeholder="Type your reply… (Ctrl+Enter to send)"></textarea>
+                            <div id="mdPreview" class="d-none p-3" style="min-height:120px;border:1px solid var(--tkd-border,#e2e8f0);border-top:none;border-radius:0 0 10px 10px;background:var(--tkd-bg,#fff);"></div>
                         </div>
 
-                        <div class="d-flex align-items-center gap-3">
-                            <button type="submit" class="btn text-white px-4" style="background:#180a3c;border:none;border-radius:10px;">
+                        <!-- Drop Zone -->
+                        <div id="dropZone" class="tkd-dropzone mt-2">
+                            <i class="bi bi-cloud-arrow-up" style="font-size:1.4rem;color:var(--tkd-text-muted,#94a3b8);"></i>
+                            <span>Drag & drop files here or <label for="fileInput" style="color:var(--tkd-accent,#4f46e5);cursor:pointer;text-decoration:underline;">browse</label></span>
+                            <input type="file" name="replyAttachments" id="fileInput" class="d-none" multiple />
+                        </div>
+                        <div id="fileList" class="file-list mt-1"></div>
+
+                        <div class="d-flex align-items-center gap-3 mt-3">
+                            <button type="submit" class="btn text-white px-4" style="background:#180a3c;border:none;border-radius:10px;" id="sendBtn">
                                 <i class="bi bi-send me-1"></i> Send Reply
                             </button>
+                            <span class="text-muted" style="font-size:.72rem;"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send</span>
                             @if (Model.IsAgent && Model.CanAct)
                             {
                                 <div class="form-check">
@@ -202,7 +312,24 @@
     </div>
 
     <!-- Right: Ticket Info & Actions -->
-    <div class="col-lg-4">
+    <div class="col-lg-4 order-1 order-lg-2">
+        <!-- Mobile: Quick summary bar -->
+        <div class="d-lg-none mb-3">
+            <div class="card">
+                <div class="card-body py-2 px-3">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="badge rounded-pill px-2 py-1" style="font-size:.75rem;@statusClass">@ticket.Status</span>
+                        <span class="badge rounded-pill px-2 py-1" style="font-size:.73rem;background:@(ticket.PriorityColor ?? "#6b7280")20;color:@(ticket.PriorityColor ?? "#6b7280");">@ticket.PriorityName</span>
+                        <span class="text-muted" style="font-size:.78rem;"><i class="bi bi-folder2 me-1"></i>@ticket.CategoryName</span>
+                        <span class="text-muted ms-auto" style="font-size:.78rem;"><i class="bi bi-person me-1"></i>@(ticket.AssignedToName ?? "Unassigned")</span>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary w-100 mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#ticketSidebarCollapse" aria-expanded="false" style="border-radius:8px;font-size:.8rem;">
+                        <i class="bi bi-chevron-down me-1"></i> View Full Details & Actions
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="ticketSidebarCollapse" class="collapse d-lg-block tkd-sidebar">
         <!-- Ticket Info -->
         <div class="card mb-3">
             <div class="card-body p-3">
@@ -331,11 +458,10 @@
             <div class="card">
                 <div class="card-body p-3">
                     <h6 class="fw-bold mb-3" style="font-size:.85rem;color:#64748b;"><i class="bi bi-clock-history me-1"></i> Activity Log</h6>
-                    <div style="max-height:300px;overflow-y:auto;">
+                    <div class="tkd-timeline" style="max-height:300px;overflow-y:auto;">
                         @foreach (var log in Model.AuditLogs)
                         {
-                            <div class="d-flex gap-2 mb-2 pb-2" style="border-bottom:1px solid #f1f5f9;">
-                                <div style="width:6px;height:6px;min-width:6px;background:#94a3b8;border-radius:50%;margin-top:7px;"></div>
+                            <div class="tkd-timeline-item">
                                 <div>
                                     <div style="font-size:.8rem;color:#334155;">
                                         <span class="fw-semibold">@log.PerformedByName</span> — @log.Action
@@ -356,7 +482,9 @@
                 </div>
             </div>
         }
+        </div>
     </div>
+</div>
 </div>
 
 <!-- Status Note Modal (Resolved / Closed) -->
@@ -415,128 +543,614 @@
 }
 
 @section Scripts {
+<script src="/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
 <script>
-// ── Attachment preview ──
-function openPreview(url, fileName) {
-    var ext = fileName.split('.').pop().toLowerCase();
-    var content = document.getElementById('previewContent');
-    document.getElementById('previewModalLabel').textContent = fileName;
-
-    var dlUrl = url.replace('/PreviewAttachment/', '/DownloadAttachment/');
-    document.getElementById('previewDownloadLink').href = dlUrl;
-
-    var imageExts = ['jpg','jpeg','png','gif','webp','bmp','svg'];
-    var videoExts = ['mp4','webm'];
-
-    if (imageExts.includes(ext)) {
-        content.innerHTML = '<img src="' + url + '" style="max-width:100%;max-height:78vh;object-fit:contain;" />';
-    } else if (ext === 'pdf') {
-        content.innerHTML = '<iframe src="' + url + '" style="width:100%;height:78vh;border:none;"></iframe>';
-    } else if (videoExts.includes(ext)) {
-        content.innerHTML = '<video controls style="max-width:100%;max-height:78vh;"><source src="' + url + '" /></video>';
-    } else {
-        content.innerHTML = '<iframe src="' + url + '" style="width:100%;height:78vh;border:none;background:#fff;"></iframe>';
-    }
-
-    var modal = new bootstrap.Modal(document.getElementById('previewModal'));
-    modal.show();
-}
-
-document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
-    document.getElementById('previewContent').innerHTML = '';
-});
-
-// ── Status Note Modal (Resolved / Closed) ──
-var _pendingFormId = null;
-var _pendingStatus = null;
-
-function openStatusNoteModal(status, formId) {
-    _pendingStatus = status;
-    _pendingFormId = formId;
-    document.getElementById('statusNoteTarget').textContent = status;
-    document.getElementById('statusNoteModalTitle').innerHTML = '<i class="bi bi-chat-left-text me-1"></i> Add Note — ' + status;
-    document.getElementById('statusNoteText').value = '';
-    document.getElementById('statusNoteError').classList.add('d-none');
-    document.getElementById('statusNoteText').classList.remove('is-invalid');
-    var modal = new bootstrap.Modal(document.getElementById('statusNoteModal'));
-    modal.show();
-    setTimeout(function() { document.getElementById('statusNoteText').focus(); }, 300);
-}
-
-document.getElementById('statusNoteConfirmBtn').addEventListener('click', function() {
-    var note = document.getElementById('statusNoteText').value.trim();
-    if (!note) {
-        document.getElementById('statusNoteError').classList.remove('d-none');
-        document.getElementById('statusNoteText').classList.add('is-invalid');
-        document.getElementById('statusNoteText').focus();
-        return;
-    }
-
-    // Set the hidden note field on the correct form and submit
-    if (_pendingFormId === 'statusForm') {
-        document.getElementById('agentStatusNote').value = note;
-        document.getElementById('statusForm').submit();
-    } else if (_pendingFormId === 'clientCloseForm') {
-        document.getElementById('clientStatusNote').value = note;
-        document.getElementById('clientCloseForm').submit();
-    }
-});
-
-document.getElementById('statusNoteText').addEventListener('input', function() {
-    if (this.value.trim()) {
-        document.getElementById('statusNoteError').classList.add('d-none');
-        this.classList.remove('is-invalid');
-    }
-});
-
-// ── Agent status form: intercept Resolved / Closed ──
 (function() {
-    var form = document.getElementById('statusForm');
-    if (!form) return;
+    'use strict';
 
-    form.addEventListener('submit', function(e) {
-        var selected = document.getElementById('statusSelect').value;
-        if (selected === 'Resolved' || selected === 'Closed') {
-            // If note not yet filled, open modal
-            if (!document.getElementById('agentStatusNote').value.trim()) {
+    // ── Constants ──
+    var TICKET_ID = @ticket.Id;
+    var CURRENT_USER_ID = @currentUserId;
+    var CURRENT_USER_NAME = '@(User.FindFirstValue(ClaimTypes.Name) ?? "User")';
+    var IS_AGENT = @(Model.IsAgent ? "true" : "false");
+    var IS_CLOSED = @(isClosed ? "true" : "false");
+
+    // ═══════════════════════════════════════════════════════
+    // 1. DARK MODE TOGGLE
+    // ═══════════════════════════════════════════════════════
+    var themeToggle = document.getElementById('themeToggle');
+    var themeIcon = document.getElementById('themeIcon');
+    function applyTheme(dark) {
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        if (themeIcon) themeIcon.className = dark ? 'bi bi-sun' : 'bi bi-moon-stars';
+        localStorage.setItem('tkd-theme', dark ? 'dark' : 'light');
+    }
+    if (themeToggle) {
+        var savedTheme = localStorage.getItem('tkd-theme');
+        if (savedTheme === 'dark') applyTheme(true);
+        themeToggle.addEventListener('click', function() {
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            applyTheme(!isDark);
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 2. SIGNALR REAL-TIME UPDATES
+    // ═══════════════════════════════════════════════════════
+    var connection = new signalR.HubConnectionBuilder()
+        .withUrl('/hubs/ticket-notifications')
+        .withAutomaticReconnect()
+        .build();
+
+    connection.start().then(function() {
+        connection.invoke('JoinTicketGroup', TICKET_ID);
+        // Mark as read on load
+        connection.invoke('MarkAsRead', TICKET_ID);
+    }).catch(function(err) {
+        console.warn('SignalR connection failed:', err);
+    });
+
+    // ── New Reply (real-time append) ──
+    connection.on('NewReply', function(data) {
+        if (data.senderId === CURRENT_USER_ID) return; // already shown via form submit
+        if (data.isInternal && !IS_AGENT) return;
+        appendMessage(data);
+        scrollToBottom();
+        connection.invoke('MarkAsRead', TICKET_ID);
+    });
+
+    // ── Status Changed ──
+    connection.on('StatusChanged', function(data) {
+        var badges = document.querySelectorAll('.tkd-header .badge');
+        if (badges.length > 0) {
+            var statusMap = {
+                'Open': 'background:#dbeafe;color:#2563eb;',
+                'In Progress': 'background:#fef3c7;color:#d97706;',
+                'Waiting for Client': 'background:#e0f2fe;color:#0891b2;',
+                'Resolved': 'background:#dcfce7;color:#16a34a;',
+                'Closed': 'background:#f1f5f9;color:#64748b;'
+            };
+            badges[0].textContent = data.newStatus;
+            badges[0].setAttribute('style', 'font-size:.75rem;' + (statusMap[data.newStatus] || statusMap['Open']));
+        }
+        showToast(data.changedBy + ' changed status to ' + data.newStatus);
+    });
+
+    // ── Typing Indicator ──
+    var typingIndicator = document.getElementById('typingIndicator');
+    var typingUser = document.getElementById('typingUser');
+    var typingTimeout = null;
+
+    connection.on('UserTyping', function(data) {
+        if (data.userId === CURRENT_USER_ID) return;
+        if (typingIndicator) {
+            typingUser.textContent = data.userName || 'Someone';
+            typingIndicator.classList.remove('d-none');
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(function() {
+                typingIndicator.classList.add('d-none');
+            }, 3000);
+        }
+    });
+
+    // ── Read Receipt ──
+    connection.on('TicketRead', function(data) {
+        if (data.userId === CURRENT_USER_ID) return;
+        var receipt = document.getElementById('lastReadReceipt');
+        if (receipt) {
+            receipt.innerHTML = '<i class="bi bi-check2-all"></i> Seen by ' + (data.userName || 'someone');
+            receipt.classList.remove('d-none');
+        }
+    });
+
+    function appendMessage(data) {
+        var thread = document.querySelector('.tkd-msg')?.parentElement;
+        if (!thread) return;
+        var isInternal = data.isInternal;
+        var bgColor = isInternal ? '#fffbeb' : '#f8fafc';
+        var borderColor = isInternal ? '#fbbf24' : '#e2e8f0';
+        var avatarBg = isInternal ? '#f59e0b' : '#6d28d9';
+        var initial = data.senderName && data.senderName.length > 0 ? data.senderName[0].toUpperCase() : 'U';
+        var now = new Date(data.createdAt || Date.now());
+        var timeStr = now.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) + ', ' + now.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:true});
+        var internalBadge = isInternal ? '<span class="badge rounded-pill" style="font-size:.63rem;background:#fef3c7;color:#b45309;">Internal Note</span>' : '';
+
+        var html = '<div class="card tkd-msg mb-2" style="border-left:3px solid ' + borderColor + ';background:' + bgColor + ';">' +
+            '<div class="card-body p-3"><div class="d-flex align-items-start gap-3">' +
+            '<div class="avatar-sm d-flex align-items-center justify-content-center rounded-circle text-white fw-bold" style="width:34px;height:34px;min-width:34px;background:' + avatarBg + ';font-size:.8rem;">' + initial + '</div>' +
+            '<div class="flex-fill"><div class="d-flex align-items-center gap-2 mb-1">' +
+            '<span class="fw-semibold" style="font-size:.84rem;">' + escapeHtml(data.senderName) + '</span>' +
+            '<span class="text-muted" style="font-size:.73rem;">' + timeStr + '</span>' + internalBadge +
+            '</div><div style="font-size:.86rem;line-height:1.6;color:#334155;white-space:pre-wrap;">' + escapeHtml(data.message) + '</div>' +
+            '</div></div></div></div>';
+
+        var typingEl = document.getElementById('typingIndicator');
+        if (typingEl) typingEl.insertAdjacentHTML('beforebegin', html);
+        else thread.insertAdjacentHTML('beforeend', html);
+    }
+
+    function scrollToBottom() {
+        var msgs = document.querySelectorAll('.tkd-msg');
+        if (msgs.length > 0) msgs[msgs.length - 1].scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    function escapeHtml(s) {
+        if (!s) return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    function showToast(msg) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: msg, showConfirmButton: false, timer: 3000, timerProgressBar: true });
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 3. TYPING INDICATOR (send)
+    // ═══════════════════════════════════════════════════════
+    var replyTextarea = document.getElementById('replyMessage');
+    var sendTypingTimer = null;
+    var canSendTyping = true;
+
+    if (replyTextarea && connection) {
+        replyTextarea.addEventListener('input', function() {
+            if (!canSendTyping) return;
+            canSendTyping = false;
+            connection.invoke('SendTyping', TICKET_ID).catch(function(){});
+            sendTypingTimer = setTimeout(function() { canSendTyping = true; }, 2000);
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 4. DRAG & DROP FILE UPLOAD
+    // ═══════════════════════════════════════════════════════
+    var dropZone = document.getElementById('dropZone');
+    var fileInput = document.getElementById('fileInput');
+    var fileListEl = document.getElementById('fileList');
+    var selectedFiles = [];
+
+    if (dropZone && fileInput) {
+        ['dragenter','dragover'].forEach(function(evt) {
+            dropZone.addEventListener(evt, function(e) { e.preventDefault(); dropZone.classList.add('drag-over'); });
+        });
+        ['dragleave','drop'].forEach(function(evt) {
+            dropZone.addEventListener(evt, function(e) { e.preventDefault(); dropZone.classList.remove('drag-over'); });
+        });
+        dropZone.addEventListener('drop', function(e) {
+            addFiles(e.dataTransfer.files);
+        });
+        fileInput.addEventListener('change', function() {
+            addFiles(fileInput.files);
+            fileInput.value = '';
+        });
+    }
+
+    function addFiles(fileList) {
+        for (var i = 0; i < fileList.length; i++) {
+            if (fileList[i].size > 25 * 1024 * 1024) {
+                showToast('File "' + fileList[i].name + '" exceeds 25MB limit');
+                continue;
+            }
+            selectedFiles.push(fileList[i]);
+        }
+        renderFileList();
+    }
+
+    function renderFileList() {
+        if (!fileListEl) return;
+        fileListEl.innerHTML = '';
+        selectedFiles.forEach(function(f, idx) {
+            var size = f.size < 1024 ? f.size + ' B' : (f.size < 1048576 ? (f.size / 1024).toFixed(1) + ' KB' : (f.size / 1048576).toFixed(1) + ' MB');
+            var el = document.createElement('div');
+            el.className = 'file-item';
+            el.innerHTML = '<i class="bi bi-paperclip"></i><span class="flex-fill text-truncate" style="font-size:.8rem;">' + escapeHtml(f.name) + '</span><span class="text-muted" style="font-size:.72rem;">' + size + '</span><button type="button" class="remove-file" data-idx="' + idx + '"><i class="bi bi-x"></i></button>';
+            fileListEl.appendChild(el);
+        });
+        // Wire remove buttons
+        fileListEl.querySelectorAll('.remove-file').forEach(function(btn) {
+            btn.addEventListener('click', function() { selectedFiles.splice(parseInt(btn.dataset.idx), 1); renderFileList(); });
+        });
+        // Sync to form — replace the file input with dynamic DataTransfer
+        syncFilesToInput();
+    }
+
+    function syncFilesToInput() {
+        if (!fileInput) return;
+        try {
+            var dt = new DataTransfer();
+            selectedFiles.forEach(function(f) { dt.items.add(f); });
+            fileInput.files = dt.files;
+        } catch(e) { /* DataTransfer unsupported in older browsers */ }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 5. MARKDOWN TOOLBAR + PREVIEW
+    // ═══════════════════════════════════════════════════════
+    var mdPreviewEl = document.getElementById('mdPreview');
+    var mdPreviewBtn = document.getElementById('mdPreviewBtn');
+    var isPreviewing = false;
+
+    document.querySelectorAll('.tkd-md-toolbar button[data-md]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            if (!replyTextarea) return;
+            var sel = { start: replyTextarea.selectionStart, end: replyTextarea.selectionEnd };
+            var text = replyTextarea.value;
+            var selected = text.substring(sel.start, sel.end);
+            var insert = '';
+            switch(btn.dataset.md) {
+                case 'bold':   insert = '**' + (selected || 'bold text') + '**'; break;
+                case 'italic': insert = '_' + (selected || 'italic text') + '_'; break;
+                case 'code':   insert = selected.includes('\n') ? '```\n' + (selected || 'code') + '\n```' : '`' + (selected || 'code') + '`'; break;
+                case 'link':   insert = '[' + (selected || 'text') + '](url)'; break;
+                case 'list':   insert = (selected ? selected.split('\n').map(function(l){ return '- ' + l; }).join('\n') : '- item'); break;
+            }
+            replyTextarea.value = text.substring(0, sel.start) + insert + text.substring(sel.end);
+            replyTextarea.focus();
+            replyTextarea.selectionStart = sel.start;
+            replyTextarea.selectionEnd = sel.start + insert.length;
+        });
+    });
+
+    if (mdPreviewBtn) {
+        mdPreviewBtn.addEventListener('click', function() {
+            isPreviewing = !isPreviewing;
+            mdPreviewBtn.classList.toggle('active', isPreviewing);
+            if (isPreviewing && replyTextarea && mdPreviewEl) {
+                mdPreviewEl.innerHTML = renderMarkdown(replyTextarea.value);
+                replyTextarea.classList.add('d-none');
+                mdPreviewEl.classList.remove('d-none');
+            } else {
+                if (replyTextarea) replyTextarea.classList.remove('d-none');
+                if (mdPreviewEl) mdPreviewEl.classList.add('d-none');
+            }
+        });
+    }
+
+    function renderMarkdown(text) {
+        if (!text) return '<span class="text-muted">Nothing to preview</span>';
+        var html = escapeHtml(text);
+        html = html.replace(/```([\s\S]*?)```/g, '<pre style="background:var(--tkd-bg-alt,#f1f5f9);padding:.75rem;border-radius:6px;font-size:.82rem;overflow-x:auto;">$1</pre>');
+        html = html.replace(/`([^`]+)`/g, '<code style="background:var(--tkd-bg-alt,#f1f5f9);padding:1px 4px;border-radius:3px;">$1</code>');
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        html = html.replace(/^- (.+)/gm, '<li>$1</li>');
+        html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+        html = html.replace(/\n/g, '<br>');
+        return '<div style="font-size:.86rem;line-height:1.65;">' + html + '</div>';
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 6. KEYBOARD SHORTCUTS
+    // ═══════════════════════════════════════════════════════
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+Enter / Cmd+Enter => submit reply
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            var form = document.getElementById('replyForm');
+            if (form && replyTextarea && replyTextarea.value.trim()) {
+                form.submit();
                 e.preventDefault();
-                openStatusNoteModal(selected, 'statusForm');
             }
         }
-    });
-})();
-
-// ── Client "Mark as Closed" checkbox validation ──
-(function() {
-    var chk = document.getElementById('chkMarkClosed');
-    if (!chk) return;
-
-    var warning = document.getElementById('closeWarning');
-    var textarea = chk.closest('form').querySelector('textarea[name="replyMessage"]');
-
-    chk.addEventListener('change', function() {
-        if (chk.checked) {
-            warning.classList.remove('d-none');
-            textarea.setAttribute('required', 'required');
-            textarea.placeholder = 'Please provide a closing comment...';
-        } else {
-            warning.classList.add('d-none');
-            textarea.removeAttribute('required');
-            textarea.placeholder = 'Type your reply...';
-        }
-    });
-
-    chk.closest('form').addEventListener('submit', function(e) {
-        if (chk.checked && !textarea.value.trim()) {
+        // Escape => clear textarea focus
+        if (e.key === 'Escape' && document.activeElement === replyTextarea) {
+            replyTextarea.blur();
             e.preventDefault();
-            textarea.focus();
-            textarea.classList.add('is-invalid');
+        }
+        // Ctrl+B => bold
+        if ((e.ctrlKey || e.metaKey) && e.key === 'b' && document.activeElement === replyTextarea) {
+            e.preventDefault();
+            var btn = document.querySelector('.tkd-md-toolbar button[data-md="bold"]');
+            if (btn) btn.click();
+        }
+        // Ctrl+I => italic
+        if ((e.ctrlKey || e.metaKey) && e.key === 'i' && document.activeElement === replyTextarea) {
+            e.preventDefault();
+            var btn2 = document.querySelector('.tkd-md-toolbar button[data-md="italic"]');
+            if (btn2) btn2.click();
         }
     });
 
-    textarea.addEventListener('input', function() {
-        if (textarea.value.trim()) textarea.classList.remove('is-invalid');
+    // ═══════════════════════════════════════════════════════
+    // 7. CANNED RESPONSES
+    // ═══════════════════════════════════════════════════════
+    var cannedMenu = document.getElementById('cannedMenu');
+    var cannedBtn = document.getElementById('cannedBtn');
+    var cannedLoaded = false;
+
+    if (cannedBtn) {
+        cannedBtn.addEventListener('click', function() {
+            if (cannedLoaded) return;
+            fetch('/HelpDeskTicket/GetCannedResponses')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    cannedLoaded = true;
+                    if (!cannedMenu) return;
+                    cannedMenu.innerHTML = '';
+                    if (!data || data.length === 0) {
+                        cannedMenu.innerHTML = '<div class="text-muted text-center py-2" style="font-size:.8rem;">No canned responses yet</div>';
+                    } else {
+                        data.forEach(function(item) {
+                            var el = document.createElement('div');
+                            el.className = 'tkd-canned-item d-flex align-items-center justify-content-between';
+                            el.innerHTML = '<div><div class="fw-semibold">' + escapeHtml(item.title) + '</div><div class="text-muted" style="font-size:.72rem;">' + escapeHtml((item.content || '').substring(0, 60)) + '</div></div>' +
+                                '<button type="button" class="btn btn-sm text-danger p-0 ms-2 canned-del" data-id="' + item.id + '" title="Delete"><i class="bi bi-trash3"></i></button>';
+                            el.querySelector('.fw-semibold').parentElement.style.cursor = 'pointer';
+                            el.querySelector('.fw-semibold').parentElement.addEventListener('click', function() {
+                                if (replyTextarea) { replyTextarea.value += item.content; replyTextarea.focus(); }
+                            });
+                            el.querySelector('.canned-del').addEventListener('click', function(ev) {
+                                ev.stopPropagation();
+                                deleteCannedResponse(item.id, el);
+                            });
+                            cannedMenu.appendChild(el);
+                        });
+                    }
+                    // Add "Save current as canned" button
+                    var saveDiv = document.createElement('div');
+                    saveDiv.className = 'border-top mt-2 pt-2';
+                    saveDiv.innerHTML = '<button type="button" class="btn btn-sm btn-outline-primary w-100" style="font-size:.78rem;border-radius:8px;" id="saveCannedBtn"><i class="bi bi-plus-circle me-1"></i> Save Current as Canned</button>';
+                    cannedMenu.appendChild(saveDiv);
+                    document.getElementById('saveCannedBtn').addEventListener('click', function() { saveCannedResponse(); });
+                })
+                .catch(function() {
+                    if (cannedMenu) cannedMenu.innerHTML = '<div class="text-danger text-center py-2" style="font-size:.8rem;">Failed to load</div>';
+                });
+        });
+    }
+
+    function saveCannedResponse() {
+        if (!replyTextarea || !replyTextarea.value.trim()) {
+            showToast('Type a reply first, then save it as canned.');
+            return;
+        }
+        var title = prompt('Enter a title for this canned response:');
+        if (!title || !title.trim()) return;
+
+        var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+        fetch('/HelpDeskTicket/SaveCannedResponse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token || '' },
+            body: JSON.stringify({ title: title.trim(), content: replyTextarea.value.trim() })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success) { showToast('Canned response saved!'); cannedLoaded = false; }
+            else showToast('Failed to save');
+        })
+        .catch(function() { showToast('Error saving canned response'); });
+    }
+
+    function deleteCannedResponse(id, el) {
+        if (!confirm('Delete this canned response?')) return;
+        var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+        fetch('/HelpDeskTicket/DeleteCannedResponse?id=' + id, {
+            method: 'POST',
+            headers: { 'RequestVerificationToken': token || '' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            if (res.success && el) el.remove();
+            else showToast('Failed to delete');
+        })
+        .catch(function() { showToast('Error deleting canned response'); });
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 8. SLA TIMER
+    // ═══════════════════════════════════════════════════════
+    var slaTimer = document.getElementById('slaTimer');
+    var slaText = document.getElementById('slaText');
+
+    if (slaTimer && slaText) {
+        var slaResponseHours = parseFloat(slaTimer.dataset.slaResponse) || 0;
+        var slaResolutionHours = parseFloat(slaTimer.dataset.slaResolution) || 0;
+        var createdAt = new Date(slaTimer.dataset.created);
+        var firstResponse = slaTimer.dataset.firstResponse ? new Date(slaTimer.dataset.firstResponse) : null;
+        var resolvedAt = slaTimer.dataset.resolved ? new Date(slaTimer.dataset.resolved) : null;
+
+        if (slaResponseHours > 0 || slaResolutionHours > 0) {
+            slaTimer.classList.remove('d-none');
+            updateSla();
+            setInterval(updateSla, 1000);
+        }
+
+        function updateSla() {
+            var now = new Date();
+            // Phase 1: Waiting for first response
+            if (!firstResponse && slaResponseHours > 0) {
+                var deadline = new Date(createdAt.getTime() + slaResponseHours * 3600000);
+                var remaining = deadline - now;
+                if (remaining <= 0) {
+                    slaTimer.className = 'tkd-sla mt-2 breached';
+                    slaText.textContent = 'Response SLA breached!';
+                } else if (remaining < 3600000) {
+                    slaTimer.className = 'tkd-sla mt-2 warning';
+                    slaText.textContent = 'Response due in ' + formatDuration(remaining);
+                } else {
+                    slaTimer.className = 'tkd-sla mt-2 on-track';
+                    slaText.textContent = 'Response due in ' + formatDuration(remaining);
+                }
+                return;
+            }
+            // Phase 2: Waiting for resolution
+            if (!resolvedAt && slaResolutionHours > 0) {
+                var resDeadline = new Date(createdAt.getTime() + slaResolutionHours * 3600000);
+                var resRemaining = resDeadline - now;
+                if (resRemaining <= 0) {
+                    slaTimer.className = 'tkd-sla mt-2 breached';
+                    slaText.textContent = 'Resolution SLA breached!';
+                } else if (resRemaining < 3600000) {
+                    slaTimer.className = 'tkd-sla mt-2 warning';
+                    slaText.textContent = 'Resolution due in ' + formatDuration(resRemaining);
+                } else {
+                    slaTimer.className = 'tkd-sla mt-2 on-track';
+                    slaText.textContent = 'Resolution due in ' + formatDuration(resRemaining);
+                }
+                return;
+            }
+            // All SLA met
+            slaTimer.className = 'tkd-sla mt-2 on-track';
+            slaText.textContent = 'SLA met ✓';
+        }
+
+        function formatDuration(ms) {
+            var totalSec = Math.floor(ms / 1000);
+            var h = Math.floor(totalSec / 3600);
+            var m = Math.floor((totalSec % 3600) / 60);
+            var s = totalSec % 60;
+            if (h > 24) {
+                var d = Math.floor(h / 24);
+                return d + 'd ' + (h % 24) + 'h';
+            }
+            return (h > 0 ? h + 'h ' : '') + m + 'm ' + s + 's';
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 9. READ RECEIPT (indicator below last message)
+    // ═══════════════════════════════════════════════════════
+    (function() {
+        var msgs = document.querySelectorAll('.tkd-msg');
+        if (msgs.length > 0) {
+            var lastMsg = msgs[msgs.length - 1];
+            var receipt = document.createElement('div');
+            receipt.id = 'lastReadReceipt';
+            receipt.className = 'tkd-read-receipt d-none mt-1 mb-2';
+            lastMsg.insertAdjacentElement('afterend', receipt);
+        }
+    })();
+
+    // ═══════════════════════════════════════════════════════
+    // EXISTING: Attachment preview
+    // ═══════════════════════════════════════════════════════
+    window.openPreview = function(url, fileName) {
+        var ext = fileName.split('.').pop().toLowerCase();
+        var content = document.getElementById('previewContent');
+        document.getElementById('previewModalLabel').textContent = fileName;
+
+        var dlUrl = url.replace('/PreviewAttachment/', '/DownloadAttachment/');
+        document.getElementById('previewDownloadLink').href = dlUrl;
+
+        var imageExts = ['jpg','jpeg','png','gif','webp','bmp','svg'];
+        var videoExts = ['mp4','webm'];
+
+        if (imageExts.includes(ext)) {
+            content.innerHTML = '<img src="' + url + '" style="max-width:100%;max-height:78vh;object-fit:contain;" />';
+        } else if (ext === 'pdf') {
+            content.innerHTML = '<iframe src="' + url + '" style="width:100%;height:78vh;border:none;"></iframe>';
+        } else if (videoExts.includes(ext)) {
+            content.innerHTML = '<video controls style="max-width:100%;max-height:78vh;"><source src="' + url + '" /></video>';
+        } else {
+            content.innerHTML = '<iframe src="' + url + '" style="width:100%;height:78vh;border:none;background:#fff;"></iframe>';
+        }
+
+        var modal = new bootstrap.Modal(document.getElementById('previewModal'));
+        modal.show();
+    };
+
+    document.getElementById('previewModal').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('previewContent').innerHTML = '';
     });
+
+    // ═══════════════════════════════════════════════════════
+    // EXISTING: Status Note Modal (Resolved / Closed)
+    // ═══════════════════════════════════════════════════════
+    var _pendingFormId = null;
+    var _pendingStatus = null;
+
+    window.openStatusNoteModal = function(status, formId) {
+        _pendingStatus = status;
+        _pendingFormId = formId;
+        document.getElementById('statusNoteTarget').textContent = status;
+        document.getElementById('statusNoteModalTitle').innerHTML = '<i class="bi bi-chat-left-text me-1"></i> Add Note — ' + status;
+        document.getElementById('statusNoteText').value = '';
+        document.getElementById('statusNoteError').classList.add('d-none');
+        document.getElementById('statusNoteText').classList.remove('is-invalid');
+        var modal = new bootstrap.Modal(document.getElementById('statusNoteModal'));
+        modal.show();
+        setTimeout(function() { document.getElementById('statusNoteText').focus(); }, 300);
+    };
+
+    var confirmBtn = document.getElementById('statusNoteConfirmBtn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+            var note = document.getElementById('statusNoteText').value.trim();
+            if (!note) {
+                document.getElementById('statusNoteError').classList.remove('d-none');
+                document.getElementById('statusNoteText').classList.add('is-invalid');
+                document.getElementById('statusNoteText').focus();
+                return;
+            }
+            if (_pendingFormId === 'statusForm') {
+                document.getElementById('agentStatusNote').value = note;
+                document.getElementById('statusForm').submit();
+            } else if (_pendingFormId === 'clientCloseForm') {
+                document.getElementById('clientStatusNote').value = note;
+                document.getElementById('clientCloseForm').submit();
+            }
+        });
+    }
+
+    var statusNoteText = document.getElementById('statusNoteText');
+    if (statusNoteText) {
+        statusNoteText.addEventListener('input', function() {
+            if (this.value.trim()) {
+                document.getElementById('statusNoteError').classList.add('d-none');
+                this.classList.remove('is-invalid');
+            }
+        });
+    }
+
+    // ── Agent status form: intercept Resolved / Closed ──
+    (function() {
+        var form = document.getElementById('statusForm');
+        if (!form) return;
+        form.addEventListener('submit', function(e) {
+            var selected = document.getElementById('statusSelect').value;
+            if (selected === 'Resolved' || selected === 'Closed') {
+                if (!document.getElementById('agentStatusNote').value.trim()) {
+                    e.preventDefault();
+                    openStatusNoteModal(selected, 'statusForm');
+                }
+            }
+        });
+    })();
+
+    // ── Client "Mark as Closed" checkbox validation ──
+    (function() {
+        var chk = document.getElementById('chkMarkClosed');
+        if (!chk) return;
+        var warning = document.getElementById('closeWarning');
+        var textarea = chk.closest('form').querySelector('textarea[name="replyMessage"]');
+
+        chk.addEventListener('change', function() {
+            if (chk.checked) {
+                warning.classList.remove('d-none');
+                textarea.setAttribute('required', 'required');
+                textarea.placeholder = 'Please provide a closing comment...';
+            } else {
+                warning.classList.add('d-none');
+                textarea.removeAttribute('required');
+                textarea.placeholder = 'Type your reply… (Ctrl+Enter to send)';
+            }
+        });
+
+        chk.closest('form').addEventListener('submit', function(e) {
+            if (chk.checked && !textarea.value.trim()) {
+                e.preventDefault();
+                textarea.focus();
+                textarea.classList.add('is-invalid');
+            }
+        });
+
+        textarea.addEventListener('input', function() {
+            if (textarea.value.trim()) textarea.classList.remove('is-invalid');
+        });
+    })();
+
 })();
 </script>
 }
