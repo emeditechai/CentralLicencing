@@ -24,6 +24,13 @@ namespace CentralLicenceApp.Controllers
             return View(parties.ToList());
         }
 
+        public async Task<IActionResult> Details(int id)
+        {
+            var party = await _repo.GetByIdAsync(id);
+            if (party == null) return NotFound();
+            return View(party);
+        }
+
         public IActionResult Create()
         {
             return View(new PartyMasterFormViewModel());

@@ -31,6 +31,8 @@ namespace CentralLicenceApp.Models
         public string? ManagerName { get; set; }
         public string? ProfileImagePath { get; set; }
         public string? DigitalSignaturePath { get; set; }
+        public int? ClientId { get; set; }
+        public string? ClientName { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public DateTime? DateOfJoining { get; set; }
         public bool IsActive { get; set; } = true;

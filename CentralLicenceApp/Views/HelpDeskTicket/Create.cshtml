@@ -13,19 +13,19 @@
 
 <div class="card" style="max-width:680px;">
     <div class="card-body p-4">
-        <form asp-action="Create" method="post" enctype="multipart/form-data">
+        <form asp-action="Create" method="post" enctype="multipart/form-data" id="createTicketForm">
             @Html.AntiForgeryToken()
             <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 px-3 rounded-3 mb-3" style="font-size:.83rem;"></div>
 
             <div class="row g-3">
                 <div class="col-12">
-                    <label asp-for="Subject" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <input asp-for="Subject" class="form-control" style="border-radius:10px;" placeholder="Brief title of your issue" />
+                    <label asp-for="Subject" class="form-label fw-semibold" style="font-size:.82rem;">Subject <span class="text-danger">*</span></label>
+                    <input asp-for="Subject" class="form-control" style="border-radius:10px;" placeholder="Brief title of your issue" required />
                     <span asp-validation-for="Subject" class="text-danger small"></span>
                 </div>
                 <div class="col-md-6">
-                    <label asp-for="CategoryId" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <select asp-for="CategoryId" class="form-select" style="border-radius:10px;" id="categorySelect">
+                    <label asp-for="CategoryId" class="form-label fw-semibold" style="font-size:.82rem;">Category <span class="text-danger">*</span></label>
+                    <select asp-for="CategoryId" class="form-select" style="border-radius:10px;" id="categorySelect" required>
                         <option value="">-- Select Category --</option>
                         @foreach (var c in Model.Categories)
                         {
@@ -35,14 +35,14 @@
                     <span asp-validation-for="CategoryId" class="text-danger small"></span>
                 </div>
                 <div class="col-md-6">
-                    <label asp-for="SubCategoryId" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <label asp-for="SubCategoryId" class="form-label fw-semibold" style="font-size:.82rem;">Sub Category</label>
                     <select asp-for="SubCategoryId" class="form-select" style="border-radius:10px;" id="subCategorySelect">
                         <option value="">-- Select Sub Category --</option>
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label asp-for="PriorityId" class="form-label fw-semibold" style="font-size:.82rem;"></label>
-                    <select asp-for="PriorityId" class="form-select" style="border-radius:10px;">
+                    <label asp-for="PriorityId" class="form-label fw-semibold" style="font-size:.82rem;">Priority <span class="text-danger">*</span></label>
+                    <select asp-for="PriorityId" class="form-select" style="border-radius:10px;" required>
                         <option value="">-- Select Priority --</option>
                         @foreach (var p in Model.Priorities)
                         {
@@ -52,7 +52,7 @@
                     <span asp-validation-for="PriorityId" class="text-danger small"></span>
                 </div>
                 <div class="col-12">
-                    <label asp-for="Description" class="form-label fw-semibold" style="font-size:.82rem;"></label>
+                    <label asp-for="Description" class="form-label fw-semibold" style="font-size:.82rem;">Description</label>
                     <textarea asp-for="Description" class="form-control" rows="6" style="border-radius:10px;" placeholder="Describe your issue in detail..."></textarea>
                     <span asp-validation-for="Description" class="text-danger small"></span>
                 </div>
@@ -76,6 +76,7 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+    // ── Cascading sub-category dropdown ──
     document.getElementById('categorySelect').addEventListener('change', function () {
         var catId = this.value;
         var subSelect = document.getElementById('subCategorySelect');
@@ -93,5 +94,47 @@
                 });
             });
     });
+
+    // ── Client-side mandatory validation ──
+    (function () {
+        var form = document.getElementById('createTicketForm');
+        if (!form) return;
+
+        var rules = [
+            { field: 'Subject',    message: 'Subject is required.' },
+            { field: 'CategoryId', message: 'Please select a category.' },
+            { field: 'PriorityId', message: 'Please select a priority.' }
+        ];
+
+        function clearError(el) {
+            el.classList.remove('is-invalid');
+            var fb = el.parentElement.querySelector('.field-validation-error, .invalid-feedback');
+            if (fb) { fb.textContent = ''; fb.classList.remove('field-validation-error'); }
+        }
+
+        function showError(el, msg) {
+            el.classList.add('is-invalid');
+            var span = el.parentElement.querySelector('span[data-valmsg-for], span.text-danger');
+            if (span) { span.textContent = msg; span.classList.add('field-validation-error'); }
+        }
+
+        rules.forEach(function (r) {
+            var el = form.querySelector('[name="' + r.field + '"]');
+            if (el) el.addEventListener('input', function () { clearError(el); });
+            if (el) el.addEventListener('change', function () { clearError(el); });
+        });
+
+        form.addEventListener('submit', function (e) {
+            var hasError = false;
+            rules.forEach(function (r) {
+                var el = form.querySelector('[name="' + r.field + '"]');
+                if (!el) return;
+                var val = el.value.trim();
+                if (!val || val === '0') { showError(el, r.message); hasError = true; }
+                else { clearError(el); }
+            });
+            if (hasError) e.preventDefault();
+        });
+    })();
     </script>
 }

@@ -92,6 +92,10 @@
                                 </td>
                                 <td class="pe-3">
                                     <div class="d-flex gap-2">
+                                        <a asp-action="Details" asp-route-id="@item.Id"
+                                           class="btn btn-sm btn-outline-info" style="border-radius:8px;font-size:.78rem;">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
                                         <a asp-action="Edit" asp-route-id="@item.Id"
                                            class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;">
                                             <i class="bi bi-pencil"></i>

@@ -123,6 +123,12 @@ namespace CentralLicenceApp.Models.ViewModels
         // Current user info
         public bool IsAgent { get; set; }
         public bool IsAdmin { get; set; }
+
+        /// <summary>
+        /// True when the current user can reply, change status, or assign.
+        /// False = view-only (ticket info + conversation visible, actions hidden).
+        /// </summary>
+        public bool CanAct { get; set; }
     }
 
     public class AgentOption

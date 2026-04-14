@@ -51,9 +51,9 @@ IWebHostEnvironment env,
         [Authorize(Roles = "Administrator,Ticket Admin,Ticket Agent")]
         public async Task<IActionResult> Index(string? status, string? priority, int? category, int? assignedTo, DateTime? from, DateTime? to)
         {
-            // Ticket Agents only see tickets assigned to them
+            // Ticket Agents see tickets currently or previously assigned to them
             var allTickets = User.IsInRole("Ticket Agent") && !User.IsInRole("Ticket Admin") && !User.IsInRole("Administrator")
-                ? (await _ticketRepo.GetByAssigneeAsync(CurrentUserId)).ToList()
+                ? (await _ticketRepo.GetTicketsForAgentAsync(CurrentUserId)).ToList()
                 : (await _ticketRepo.GetAllAsync()).ToList();
 
             var fromDate = from?.Date;
@@ -212,9 +212,28 @@ IWebHostEnvironment env,
             if (ticket == null) return NotFound();
 
             var userId = CurrentUserId;
+            var isAdmin = User.IsInRole("Administrator");
+            var isTicketAdmin = User.IsInRole("Ticket Admin");
+            var isTicketAgent = User.IsInRole("Ticket Agent");
+
             // Clients can only view their own tickets
             if (!IsAgentOrAdmin && ticket.CreatedById != userId)
                 return Forbid();
+
+            // Determine CanAct:
+            // - Administrator: always can act
+            // - Ticket Admin: can act on unassigned tickets OR tickets assigned to them
+            // - Ticket Agent: can act only if ticket is currently assigned to them
+            // Rule: whoever the ticket is last assigned to gets full access
+            bool canAct;
+            if (isAdmin)
+                canAct = true;
+            else if (isTicketAdmin && !isAdmin)
+                canAct = ticket.AssignedToId == null || ticket.AssignedToId == userId;
+            else if (isTicketAgent)
+                canAct = ticket.AssignedToId == userId;
+            else
+                canAct = false; // clients — handled separately in the view
 
             var messages = (await _ticketRepo.GetMessagesAsync(id)).ToList();
             var attachments = (await _ticketRepo.GetAttachmentsAsync(id)).ToList();
@@ -229,7 +248,8 @@ IWebHostEnvironment env,
                 AuditLogs = auditLogs,
                 Agents = agents,
                 IsAgent = IsAgentOrAdmin,
-                IsAdmin = User.IsInRole("Administrator") || User.IsInRole("Ticket Admin")
+                IsAdmin = isAdmin || isTicketAdmin,
+                CanAct = canAct
             };
 
             return View(vm);
@@ -245,6 +265,23 @@ IWebHostEnvironment env,
             var userId = CurrentUserId;
             if (!IsAgentOrAdmin && ticket.CreatedById != userId)
                 return Forbid();
+
+            // Server-side CanAct check for agents/admins
+            if (IsAgentOrAdmin && !User.IsInRole("Administrator"))
+            {
+                var isTicketAdmin = User.IsInRole("Ticket Admin");
+                var isTicketAgent = User.IsInRole("Ticket Agent");
+
+                bool canAct = isTicketAdmin ? (ticket.AssignedToId == null || ticket.AssignedToId == userId)
+                            : isTicketAgent ? ticket.AssignedToId == userId
+                            : false;
+
+                if (!canAct)
+                {
+                    TempData["Error"] = "You can only view this ticket. Reply is not allowed.";
+                    return RedirectToAction(nameof(Details), new { id = ticketId });
+                }
+            }
 
             // If client wants to close, reply message is mandatory
             if (markAsClosed && !IsAgentOrAdmin && string.IsNullOrWhiteSpace(replyMessage))
@@ -322,6 +359,24 @@ IWebHostEnvironment env,
             if (ticket == null) return NotFound();
 
             var userId = CurrentUserId;
+
+            // Server-side CanAct check for agents/admins
+            if (IsAgentOrAdmin && !User.IsInRole("Administrator"))
+            {
+                var isTicketAdmin = User.IsInRole("Ticket Admin");
+                var isTicketAgent = User.IsInRole("Ticket Agent");
+
+                bool canAct = isTicketAdmin ? (ticket.AssignedToId == null || ticket.AssignedToId == userId)
+                            : isTicketAgent ? ticket.AssignedToId == userId
+                            : false;
+
+                if (!canAct)
+                {
+                    TempData["Error"] = "You can only view this ticket. Status change is not allowed.";
+                    return RedirectToAction(nameof(Details), new { id = ticketId });
+                }
+            }
+
             var validStatuses = new[] { "Open", "In Progress", "Waiting for Client", "Resolved", "Closed" };
             if (!validStatuses.Contains(newStatus))
             {
@@ -390,6 +445,24 @@ IWebHostEnvironment env,
             if (ticket == null) return NotFound();
 
             var userId = CurrentUserId;
+
+            // Server-side CanAct check for agents/admins
+            if (!User.IsInRole("Administrator"))
+            {
+                var isTicketAdmin = User.IsInRole("Ticket Admin");
+                var isTicketAgent = User.IsInRole("Ticket Agent");
+
+                bool canAct = isTicketAdmin ? (ticket.AssignedToId == null || ticket.AssignedToId == userId)
+                            : isTicketAgent ? ticket.AssignedToId == userId
+                            : false;
+
+                if (!canAct)
+                {
+                    TempData["Error"] = "You can only view this ticket. Assignment is not allowed.";
+                    return RedirectToAction(nameof(Details), new { id = ticketId });
+                }
+            }
+
             var oldAssignee = ticket.AssignedToName ?? "Unassigned";
 
             await _ticketRepo.AssignAsync(ticketId, agentId);

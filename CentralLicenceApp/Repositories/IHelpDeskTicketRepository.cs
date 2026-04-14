@@ -9,6 +9,10 @@ namespace CentralLicenceApp.Repositories
         Task<IEnumerable<HelpDeskTicket>> GetAllAsync();
         Task<IEnumerable<HelpDeskTicket>> GetByCreatorAsync(int userId);
         Task<IEnumerable<HelpDeskTicket>> GetByAssigneeAsync(int userId);
+        /// <summary>
+        /// Returns tickets currently assigned to the user OR previously assigned (found via audit log).
+        /// </summary>
+        Task<IEnumerable<HelpDeskTicket>> GetTicketsForAgentAsync(int userId);
         Task<HelpDeskTicket?> GetByIdAsync(int id);
         Task<int> CreateAsync(HelpDeskTicket ticket);
         Task<bool> UpdateStatusAsync(int ticketId, string status, DateTime? resolvedAt, DateTime? closedAt);

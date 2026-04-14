@@ -27,11 +27,12 @@ namespace CentralLicenceApp.Controllers
         private readonly IEmployeeDepartmentRepository _departmentRepo;
         private readonly IEmployeeDesignationRepository _designationRepo;
         private readonly IEmployeeTypeRepository _employeeTypeRepo;
+        private readonly IPartyMasterRepository _partyMasterRepo;
         private readonly IEmailService _emailService;
         private readonly IWebHostEnvironment _environment;
         private readonly ILogger<UserController> _logger;
 
-        public UserController(IUserRepository userRepo, IRoleRepository roleRepo, ILocationRepository locationRepo, IEmployeeDepartmentRepository departmentRepo, IEmployeeDesignationRepository designationRepo, IEmployeeTypeRepository employeeTypeRepo, IEmailService emailService, IWebHostEnvironment environment, ILogger<UserController> logger)
+        public UserController(IUserRepository userRepo, IRoleRepository roleRepo, ILocationRepository locationRepo, IEmployeeDepartmentRepository departmentRepo, IEmployeeDesignationRepository designationRepo, IEmployeeTypeRepository employeeTypeRepo, IPartyMasterRepository partyMasterRepo, IEmailService emailService, IWebHostEnvironment environment, ILogger<UserController> logger)
         {
             _userRepo = userRepo;
             _roleRepo = roleRepo;
@@ -39,6 +40,7 @@ namespace CentralLicenceApp.Controllers
             _departmentRepo = departmentRepo;
             _designationRepo = designationRepo;
             _employeeTypeRepo = employeeTypeRepo;
+            _partyMasterRepo = partyMasterRepo;
             _emailService = emailService;
             _environment = environment;
             _logger = logger;
@@ -95,7 +97,8 @@ namespace CentralLicenceApp.Controllers
                 Managers  = (await _userRepo.GetEmployeesAsync()).ToList(),
                 Departments = (await _departmentRepo.GetAllActiveAsync()).ToList(),
                 Designations = (await _designationRepo.GetAllActiveAsync()).ToList(),
-                EmployeeTypes = (await _employeeTypeRepo.GetAllActiveAsync()).ToList()
+                EmployeeTypes = (await _employeeTypeRepo.GetAllActiveAsync()).ToList(),
+                Clients = (await _partyMasterRepo.GetAllActiveAsync()).ToList()
             };
             return View(vm);
         }
@@ -109,6 +112,7 @@ namespace CentralLicenceApp.Controllers
             vm.Departments = (await _departmentRepo.GetAllActiveAsync()).ToList();
             vm.Designations = (await _designationRepo.GetAllActiveAsync()).ToList();
             vm.EmployeeTypes = (await _employeeTypeRepo.GetAllActiveAsync()).ToList();
+            vm.Clients = (await _partyMasterRepo.GetAllActiveAsync()).ToList();
 
             if (string.IsNullOrWhiteSpace(vm.Password))
                 ModelState.AddModelError("Password", "Password is required for new users.");
@@ -149,6 +153,7 @@ namespace CentralLicenceApp.Controllers
                 RoleId        = vm.RoleIds.First(),
                 AssignedRoleIds = vm.RoleIds.Distinct().ToList(),
                 LocationId    = vm.LocationId,
+                ClientId      = vm.ClientId,
                 DepartmentId  = vm.IsEmployee ? vm.DepartmentId : null,
                 DesignationId = vm.IsEmployee ? vm.DesignationId : null,
                 EmployeeTypeId = vm.IsEmployee ? vm.EmployeeTypeId : null,
@@ -201,12 +206,14 @@ namespace CentralLicenceApp.Controllers
                 ExistingSignaturePath = user.DigitalSignaturePath,
                 IsActive     = user.IsActive,
                 DisableActiveToggle = isSelfEdit,
+                ClientId     = user.ClientId,
                 Roles        = (await _roleRepo.GetAllAsync()).ToList(),
                 Locations    = (await _locationRepo.GetAllActiveAsync()).ToList(),
                 Managers     = (await _userRepo.GetEmployeesAsync()).ToList(),
                 Departments = (await _departmentRepo.GetAllActiveAsync()).ToList(),
                 Designations = (await _designationRepo.GetAllActiveAsync()).ToList(),
-                EmployeeTypes = (await _employeeTypeRepo.GetAllActiveAsync()).ToList()
+                EmployeeTypes = (await _employeeTypeRepo.GetAllActiveAsync()).ToList(),
+                Clients = (await _partyMasterRepo.GetAllActiveAsync()).ToList()
             };
             return View(vm);
         }
@@ -220,6 +227,7 @@ namespace CentralLicenceApp.Controllers
             vm.Departments = (await _departmentRepo.GetAllActiveAsync()).ToList();
             vm.Designations = (await _designationRepo.GetAllActiveAsync()).ToList();
             vm.EmployeeTypes = (await _employeeTypeRepo.GetAllActiveAsync()).ToList();
+            vm.Clients = (await _partyMasterRepo.GetAllActiveAsync()).ToList();
 
             var currentUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var isSelfEdit = currentUserIdClaim == id.ToString();
@@ -272,6 +280,7 @@ namespace CentralLicenceApp.Controllers
             existing.RoleId       = vm.RoleIds.First();
             existing.AssignedRoleIds = vm.RoleIds.Distinct().ToList();
             existing.LocationId   = vm.LocationId;
+            existing.ClientId     = vm.ClientId;
             existing.DepartmentId = vm.IsEmployee ? vm.DepartmentId : null;
             existing.DesignationId = vm.IsEmployee ? vm.DesignationId : null;
             existing.EmployeeTypeId = vm.IsEmployee ? vm.EmployeeTypeId : null;

@@ -29,7 +29,8 @@ namespace CentralLicenceApp.Repositories
                       d.DepartmentName,
                       g.DesignationName,
                                             et.TypeName AS EmployeeTypeName,
-                       m.FullName AS ManagerName
+                       m.FullName AS ManagerName,
+                       p.PartyName AS ClientName
                 FROM UserMaster u
                 INNER JOIN RoleMaster r ON u.RoleId = r.Id
                 LEFT JOIN LocationMaster l ON u.LocationId = l.Id
@@ -37,6 +38,7 @@ namespace CentralLicenceApp.Repositories
                   LEFT JOIN EmployeeDesignationMaster g ON u.DesignationId = g.Id
                                     LEFT JOIN EmployeeTypeMaster et ON u.EmployeeTypeId = et.Id
                 LEFT JOIN UserMaster m ON u.ManagerId = m.Id
+                LEFT JOIN PartyMaster p ON u.ClientId = p.Id
                 ORDER BY u.CreatedAt DESC")).ToList();
             await PopulateRolesAsync(conn, users);
             return users;
@@ -53,7 +55,8 @@ namespace CentralLicenceApp.Repositories
                 LEFT JOIN EmployeeDepartmentMaster d ON u.DepartmentId = d.Id
                 LEFT JOIN EmployeeDesignationMaster g ON u.DesignationId = g.Id
                 LEFT JOIN EmployeeTypeMaster et ON u.EmployeeTypeId = et.Id
-                LEFT JOIN UserMaster m ON u.ManagerId = m.Id";
+                LEFT JOIN UserMaster m ON u.ManagerId = m.Id
+                LEFT JOIN PartyMaster p ON u.ClientId = p.Id";
 
             var filters = new List<string>();
             var parameters = new DynamicParameters();
@@ -99,7 +102,8 @@ namespace CentralLicenceApp.Repositories
                        d.DepartmentName,
                        g.DesignationName,
                        et.TypeName AS EmployeeTypeName,
-                       m.FullName AS ManagerName
+                       m.FullName AS ManagerName,
+                       p.PartyName AS ClientName
                 {fromSql}{whereSql}
                 ORDER BY u.CreatedAt DESC
                 OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY";
@@ -121,7 +125,8 @@ namespace CentralLicenceApp.Repositories
                       d.DepartmentName,
                       g.DesignationName,
                                             et.TypeName AS EmployeeTypeName,
-                       m.FullName AS ManagerName
+                       m.FullName AS ManagerName,
+                       p.PartyName AS ClientName
                 FROM UserMaster u
                 INNER JOIN RoleMaster r ON u.RoleId = r.Id
                 LEFT JOIN LocationMaster l ON u.LocationId = l.Id
@@ -129,6 +134,7 @@ namespace CentralLicenceApp.Repositories
                   LEFT JOIN EmployeeDesignationMaster g ON u.DesignationId = g.Id
                                     LEFT JOIN EmployeeTypeMaster et ON u.EmployeeTypeId = et.Id
                 LEFT JOIN UserMaster m ON u.ManagerId = m.Id
+                LEFT JOIN PartyMaster p ON u.ClientId = p.Id
                 WHERE u.Id = @Id", new { Id = id });
             if (user != null)
             {
@@ -146,7 +152,8 @@ namespace CentralLicenceApp.Repositories
                       d.DepartmentName,
                       g.DesignationName,
                                             et.TypeName AS EmployeeTypeName,
-                       m.FullName AS ManagerName
+                       m.FullName AS ManagerName,
+                       p.PartyName AS ClientName
                 FROM UserMaster u
                 INNER JOIN RoleMaster r ON u.RoleId = r.Id
                 LEFT JOIN LocationMaster l ON u.LocationId = l.Id
@@ -154,6 +161,7 @@ namespace CentralLicenceApp.Repositories
                   LEFT JOIN EmployeeDesignationMaster g ON u.DesignationId = g.Id
                                     LEFT JOIN EmployeeTypeMaster et ON u.EmployeeTypeId = et.Id
                 LEFT JOIN UserMaster m ON u.ManagerId = m.Id
+                LEFT JOIN PartyMaster p ON u.ClientId = p.Id
                 WHERE u.Username = @Username AND u.IsActive = 1", new { Username = username });
             if (user != null)
             {
@@ -171,7 +179,8 @@ namespace CentralLicenceApp.Repositories
                       d.DepartmentName,
                       g.DesignationName,
                       et.TypeName AS EmployeeTypeName,
-                      m.FullName AS ManagerName
+                      m.FullName AS ManagerName,
+                      p.PartyName AS ClientName
                 FROM UserMaster u
                 INNER JOIN RoleMaster r ON u.RoleId = r.Id
                 LEFT JOIN LocationMaster l ON u.LocationId = l.Id
@@ -179,6 +188,7 @@ namespace CentralLicenceApp.Repositories
                 LEFT JOIN EmployeeDesignationMaster g ON u.DesignationId = g.Id
                 LEFT JOIN EmployeeTypeMaster et ON u.EmployeeTypeId = et.Id
                 LEFT JOIN UserMaster m ON u.ManagerId = m.Id
+                LEFT JOIN PartyMaster p ON u.ClientId = p.Id
                 WHERE u.Email = @Email AND u.IsActive = 1", new { Email = email });
             if (user != null)
             {
@@ -196,10 +206,10 @@ namespace CentralLicenceApp.Repositories
             var sql = @"
                 INSERT INTO UserMaster
                     (Username, Email, PasswordHash, FullName, PhoneNumber, DateOfBirth, DateOfJoining, RoleId,
-                     LocationId, DepartmentId, DesignationId, EmployeeTypeId, IsEmployee, EmployeeCode, IsCoreMember, ManagerId, ProfileImagePath, DigitalSignaturePath, IsActive, CreatedAt)
+                     LocationId, ClientId, DepartmentId, DesignationId, EmployeeTypeId, IsEmployee, EmployeeCode, IsCoreMember, ManagerId, ProfileImagePath, DigitalSignaturePath, IsActive, CreatedAt)
                 VALUES
                     (@Username, @Email, @PasswordHash, @FullName, @PhoneNumber, @DateOfBirth, @DateOfJoining, @RoleId,
-                     @LocationId, @DepartmentId, @DesignationId, @EmployeeTypeId, @IsEmployee, @EmployeeCode, @IsCoreMember, @ManagerId, @ProfileImagePath, @DigitalSignaturePath, @IsActive, @CreatedAt);
+                     @LocationId, @ClientId, @DepartmentId, @DesignationId, @EmployeeTypeId, @IsEmployee, @EmployeeCode, @IsCoreMember, @ManagerId, @ProfileImagePath, @DigitalSignaturePath, @IsActive, @CreatedAt);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);";
             user.CreatedAt = DateTime.Now;
             conn.Open();
@@ -224,6 +234,7 @@ namespace CentralLicenceApp.Repositories
                     DateOfJoining = @DateOfJoining,
                     RoleId       = @RoleId,
                     LocationId   = @LocationId,
+                    ClientId     = @ClientId,
                     DepartmentId = @DepartmentId,
                     DesignationId = @DesignationId,
                     EmployeeTypeId = @EmployeeTypeId,

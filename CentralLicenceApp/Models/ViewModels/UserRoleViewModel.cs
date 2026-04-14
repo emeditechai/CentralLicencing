@@ -34,6 +34,9 @@ namespace CentralLicenceApp.Models.ViewModels
         [DataType(DataType.Date)]
         public DateTime? DateOfJoining { get; set; }
 
+        [Display(Name = "Client")]
+        public int? ClientId { get; set; }
+
         [Display(Name = "Location")]
         public int? LocationId { get; set; }
 
@@ -94,6 +97,7 @@ namespace CentralLicenceApp.Models.ViewModels
         public List<EmployeeDepartmentMaster> Departments { get; set; } = new();
         public List<EmployeeDesignationMaster> Designations { get; set; } = new();
         public List<EmployeeTypeMaster> EmployeeTypes { get; set; } = new();
+        public List<PartyMaster> Clients { get; set; } = new();
     }
 
     public class RoleFormViewModel

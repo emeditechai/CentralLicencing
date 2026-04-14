@@ -59,6 +59,26 @@ namespace CentralLicenceApp.Repositories
                 new { UserId = userId });
         }
 
+        public async Task<IEnumerable<HelpDeskTicket>> GetTicketsForAgentAsync(int userId)
+        {
+            using var conn = CreateConnection();
+            // Tickets currently assigned to the user, OR that were previously assigned
+            // (the user's name appears as NewValue in a "Ticket Assigned" audit log entry
+            // performed by someone, or the user performed the assignment away from themselves).
+            return await conn.QueryAsync<HelpDeskTicket>(
+                $@"{TicketSelectSql}
+                WHERE t.AssignedToId = @UserId
+                   OR t.Id IN (
+                       SELECT DISTINCT al.TicketId
+                       FROM TicketAuditLog al
+                       INNER JOIN UserMaster u ON u.Id = @UserId
+                       WHERE al.Action = 'Ticket Assigned'
+                         AND (al.NewValue = u.FullName OR al.OldValue = u.FullName)
+                   )
+                ORDER BY t.CreatedAt DESC",
+                new { UserId = userId });
+        }
+
         public async Task<HelpDeskTicket?> GetByIdAsync(int id)
         {
             using var conn = CreateConnection();

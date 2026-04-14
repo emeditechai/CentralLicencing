@@ -65,6 +65,7 @@
                         <th>Email</th>
                         <th>Role</th>
                         <th>Location</th>
+                        <th>Client</th>
                         <th>Employee</th>
                         <th>Employee Type</th>
                         <th>Status</th>
@@ -135,6 +136,7 @@
                                 }
                             </td>
                             <td style="font-size:.82rem;">@(u.LocationName ?? "—")</td>
+                            <td style="font-size:.82rem;">@(u.ClientName ?? "—")</td>
                             <td>
                                 @if (u.IsEmployee)
                                 {

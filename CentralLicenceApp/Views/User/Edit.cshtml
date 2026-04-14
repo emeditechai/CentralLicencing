@@ -136,6 +136,12 @@
                     <option value="">-- Select Location --</option>
                 </select>
             </div>
+            <div class="col-sm-6">
+                <label asp-for="ClientId" class="uf-label"></label>
+                <select asp-for="ClientId" class="form-select uf-input" asp-items="@(new SelectList(Model.Clients, "Id", "PartyName", Model.ClientId))">
+                    <option value="">-- Select Client --</option>
+                </select>
+            </div>
         </div>
     </div>
 
