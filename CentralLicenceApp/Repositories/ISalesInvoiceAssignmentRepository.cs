@@ -7,8 +7,10 @@ namespace CentralLicenceApp.Repositories
     {
         Task<IEnumerable<SalesInvoiceAssignmentRow>> GetAssignmentsAsync(int? salesUserId, DateTime? from, DateTime? to);
         Task<IEnumerable<SalesInvoiceAssignmentRow>> GetUnassignedInvoicesAsync(DateTime? from, DateTime? to);
-        Task<bool> AssignAsync(int invoiceId, int salesUserId, int? productId, int assignedById);
-        Task<bool> UnassignAsync(int invoiceId);
-        Task<bool> ReassignAsync(int invoiceId, int newSalesUserId, int? productId, int assignedById);
+        Task<IEnumerable<InvoiceLineItemDto>> GetInvoiceLineItemsAsync(int invoiceId);
+        Task<bool> AssignWithLinesAsync(AssignInvoiceRequest request, int assignedById);
+        Task<bool> UnassignAsync(int assignmentId);
+        Task<IEnumerable<SalesInvoiceAssignmentLine>> GetAssignmentLinesAsync(int assignmentId);
+        Task<IEnumerable<SalesInvoiceAssignmentRow>> GetAssignmentsForInvoiceAsync(int invoiceId);
     }
 }

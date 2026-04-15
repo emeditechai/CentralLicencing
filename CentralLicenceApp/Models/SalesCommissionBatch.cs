@@ -96,6 +96,7 @@ namespace CentralLicenceApp.Models
         public string RateSourceBadgeClass => RateSource switch
         {
             "Product" => "bg-primary",
+            "LineItem" => "bg-info",
             "Default" => "bg-secondary",
             _ => "bg-secondary"
         };

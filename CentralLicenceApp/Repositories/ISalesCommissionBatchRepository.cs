@@ -15,6 +15,7 @@ namespace CentralLicenceApp.Repositories
         // Generation
         Task<SalesCommPreviewResult?> PreviewEligiblePaymentsAsync(int userId, DateTime fromDate, DateTime toDate);
         Task<int> GenerateBatchAsync(int userId, DateTime fromDate, DateTime toDate, string? remarks, int generatedById);
+        Task<BulkGenerateResult> GenerateBulkAsync(DateTime fromDate, DateTime toDate, int generatedById);
 
         // Workflow
         Task<bool> SubmitForApprovalAsync(int batchId);

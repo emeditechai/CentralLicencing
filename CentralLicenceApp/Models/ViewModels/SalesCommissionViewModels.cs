@@ -118,6 +118,44 @@ namespace CentralLicenceApp.Models.ViewModels
         public DateTime? AssignedAt { get; set; }
         public string? AssignedByName { get; set; }
         public bool IsAssigned => AssignmentId.HasValue;
+        public int AssignedUserCount { get; set; }
+        public decimal TotalCommissionAmount { get; set; }
+    }
+
+    /// <summary>Invoice line item for the assignment modal (net price = Amount excluding GST).</summary>
+    public class InvoiceLineItemDto
+    {
+        public int InvoiceLineId { get; set; }
+        public int SNo { get; set; }
+        public string ItemDescription { get; set; } = string.Empty;
+        public string? PlanName { get; set; }
+        public int Qty { get; set; }
+        public decimal Rate { get; set; }
+        public decimal Amount { get; set; }
+        public decimal GstAmount { get; set; }
+        public decimal NetAmount { get; set; }  // Amount excluding GST
+    }
+
+    /// <summary>POST payload for assigning an invoice with line-level commission.</summary>
+    public class AssignInvoiceRequest
+    {
+        [Required]
+        public int InvoiceId { get; set; }
+
+        [Required]
+        public int SalesUserId { get; set; }
+
+        public List<AssignLineItem> Lines { get; set; } = new();
+    }
+
+    public class AssignLineItem
+    {
+        public int InvoiceLineId { get; set; }
+        public string ItemDescription { get; set; } = string.Empty;
+        public decimal NetAmount { get; set; }
+        public string CommissionType { get; set; } = "Percentage";
+        public decimal CommissionRate { get; set; }
+        public decimal CommissionAmount { get; set; }
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -161,6 +199,15 @@ namespace CentralLicenceApp.Models.ViewModels
         public decimal TotalSalesAmount { get; set; }
         public decimal EstimatedCommission { get; set; }
         public string CommissionType { get; set; } = string.Empty;
+    }
+
+    public class BulkGenerateResult
+    {
+        public int SuccessCount { get; set; }
+        public int SkippedCount { get; set; }
+        public List<string> GeneratedUsers { get; set; } = new();
+        public List<string> SkippedUsers { get; set; } = new();
+        public List<string> Errors { get; set; } = new();
     }
 
     public class SalesCommBatchDetailsViewModel

@@ -158,10 +158,27 @@ namespace CentralLicenceApp.Repositories
 
                 foreach (var pay in payments)
                 {
-                    var (rate, source, commType) = ResolveRateAndSource(pay, config, rules);
-                    decimal commission = commType == "Percentage"
-                        ? Math.Round(pay.PaymentAmount * rate / 100m, 2)
-                        : rate;
+                    decimal commission;
+                    string commType;
+                    decimal rate;
+                    string source;
+
+                    // Use assignment-line-level commission when available (proportional to payment)
+                    if (pay.HasAssignmentLines && pay.InvoiceTotalAmount > 0)
+                    {
+                        decimal ratio = pay.PaymentAmount / pay.InvoiceTotalAmount;
+                        commission = Math.Round(pay.AssignmentLineCommission * ratio, 2);
+                        commType = pay.LineCommissionType ?? config.CommissionType;
+                        rate = pay.EffectiveLineRate > 0 ? pay.EffectiveLineRate : config.DefaultRate;
+                        source = "LineItem";
+                    }
+                    else
+                    {
+                        (rate, source, commType) = ResolveRateAndSource(pay, config, rules);
+                        commission = commType == "Percentage"
+                            ? Math.Round(pay.PaymentAmount * rate / 100m, 2)
+                            : rate;
+                    }
 
                     grossCommission += commission;
                     lines.Add(new SalesCommissionBatchLine
@@ -247,6 +264,42 @@ namespace CentralLicenceApp.Repositories
                 tx.Rollback();
                 throw;
             }
+        }
+
+        // ── Generate Bulk (All Configured Users) ───────────────────
+        public async Task<BulkGenerateResult> GenerateBulkAsync(
+            DateTime fromDate, DateTime toDate, int generatedById)
+        {
+            var result = new BulkGenerateResult();
+
+            using var conn = new SqlConnection(_connStr);
+            // Get all active configured users
+            var configs = await conn.QueryAsync<SalesCommissionConfiguration>(
+                "SELECT * FROM SalesCommissionConfiguration WHERE IsActive = 1");
+
+            foreach (var config in configs)
+            {
+                var userName = await conn.QueryFirstOrDefaultAsync<string>(
+                    "SELECT FullName FROM UserMaster WHERE Id = @Id",
+                    new { Id = config.UserId }) ?? $"User #{config.UserId}";
+                try
+                {
+                    var batchId = await GenerateBatchAsync(config.UserId, fromDate, toDate, null, generatedById);
+                    result.SuccessCount++;
+                    result.GeneratedUsers.Add(userName);
+                }
+                catch (InvalidOperationException ex) when (ex.Message.Contains("No eligible payments"))
+                {
+                    result.SkippedCount++;
+                    result.SkippedUsers.Add(userName);
+                }
+                catch (Exception ex)
+                {
+                    result.Errors.Add($"{userName}: {ex.Message}");
+                }
+            }
+
+            return result;
         }
 
         // ── Submit for Approval ────────────────────────────────────
@@ -360,6 +413,7 @@ namespace CentralLicenceApp.Repositories
 
         /// Eligible payments: non-voided payments on invoices assigned to this sales user,
         /// within date range, not already in a non-Rejected batch line.
+        /// Now includes pre-computed commission from SalesInvoiceAssignmentLine when available.
         private const string EligiblePaymentsSql = @"
             SELECT
                 ip.Id AS InvoicePaymentId,
@@ -369,23 +423,47 @@ namespace CentralLicenceApp.Repositories
                 ip.PaymentDate,
                 ip.TotalAmountPaid AS PaymentAmount,
                 a.ProductId,
-                p.ProductName
+                p.ProductName,
+                a.Id AS AssignmentId,
+                i.TotalAmount AS InvoiceTotalAmount,
+                ISNULL(alc.TotalLineCommission, 0) AS AssignmentLineCommission,
+                CASE WHEN alc.TotalLineCommission IS NOT NULL THEN 1 ELSE 0 END AS HasAssignmentLines,
+                alc.LineCommissionType,
+                ISNULL(alc.EffectiveLineRate, 0) AS EffectiveLineRate
             FROM InvoicePayment ip
             INNER JOIN Invoice i ON i.Id = ip.InvoiceId
             INNER JOIN SalesInvoiceAssignment a ON a.InvoiceId = i.Id AND a.SalesUserId = @SalesUserId
             LEFT JOIN ProductMaster p ON p.Id = a.ProductId
+            OUTER APPLY (
+                SELECT
+                    SUM(al.CommissionAmount) AS TotalLineCommission,
+                    SUM(al.NetAmount) AS TotalLineNetAmount,
+                    MAX(al.CommissionType) AS LineCommissionType,
+                    CASE WHEN MAX(al.CommissionType) = 'Percentage' AND SUM(al.NetAmount) > 0
+                         THEN ROUND(SUM(al.CommissionAmount) * 100.0 / SUM(al.NetAmount), 2)
+                         ELSE MAX(al.CommissionRate)
+                    END AS EffectiveLineRate
+                FROM SalesInvoiceAssignmentLine al WHERE al.AssignmentId = a.Id
+            ) alc
             WHERE ip.IsVoided = 0
               AND ip.PaymentDate BETWEEN @FromDate AND @ToDate
               AND NOT EXISTS (
                   SELECT 1 FROM SalesCommissionBatchLine bl
                   INNER JOIN SalesCommissionBatch b ON b.Id = bl.BatchId
-                  WHERE bl.InvoicePaymentId = ip.Id AND b.Status <> 'Rejected'
+                  WHERE bl.InvoicePaymentId = ip.Id AND b.UserId = @SalesUserId AND b.Status <> 'Rejected'
               )
             ORDER BY ip.PaymentDate, i.InvoiceNo";
 
         private static decimal ResolveCommission(
             EligiblePayment pay, SalesCommissionConfiguration config, List<SalesCommissionRule> rules)
         {
+            // If assignment has line-level commission, compute proportionally based on payment ratio
+            if (pay.HasAssignmentLines && pay.InvoiceTotalAmount > 0)
+            {
+                decimal ratio = pay.PaymentAmount / pay.InvoiceTotalAmount;
+                return Math.Round(pay.AssignmentLineCommission * ratio, 2);
+            }
+
             var (rate, _, commType) = ResolveRateAndSource(pay, config, rules);
             return commType == "Percentage"
                 ? Math.Round(pay.PaymentAmount * rate / 100m, 2)
@@ -416,6 +494,12 @@ namespace CentralLicenceApp.Repositories
             public decimal PaymentAmount { get; set; }
             public int? ProductId { get; set; }
             public string? ProductName { get; set; }
+            public int AssignmentId { get; set; }
+            public decimal InvoiceTotalAmount { get; set; }
+            public decimal AssignmentLineCommission { get; set; }
+            public bool HasAssignmentLines { get; set; }
+            public string? LineCommissionType { get; set; }
+            public decimal EffectiveLineRate { get; set; }
         }
     }
 }

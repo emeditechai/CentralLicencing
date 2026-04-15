@@ -24,7 +24,6 @@
 
     .ia-filter { background:linear-gradient(145deg,#faf8ff,#f3f0ff); border:1px solid #e9e4f5; border-radius:14px; padding:1rem 1.5rem; margin-bottom:1.25rem; }
 
-    /* Auto-suggest */
     .ia-search-wrap { position:relative; max-width:340px; }
     .ia-search-wrap input { border-radius:10px; font-size:.84rem; padding-left:2.2rem; }
     .ia-search-wrap .bi-search { position:absolute; left:.75rem; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:.85rem; pointer-events:none; z-index:2; }
@@ -35,6 +34,19 @@
     .ia-suggest-item .ia-inv-party { font-size:.74rem; color:#64748b; }
     .ia-suggest-item .ia-inv-amt { font-weight:700; color:#6366f1; font-size:.78rem; }
     .ia-suggest-empty { padding:.6rem .85rem; font-size:.8rem; color:#94a3b8; text-align:center; }
+
+    /* Line items table in modal */
+    .line-items-table { font-size:.8rem; }
+    .line-items-table th { font-size:.7rem; font-weight:700; color:#475569; text-transform:uppercase; }
+    .line-items-table td { vertical-align:middle; }
+    .line-items-table input, .line-items-table select { font-size:.78rem; }
+    .commission-summary { background:linear-gradient(145deg,#f0fdf4,#ecfdf5); border:1px solid #bbf7d0; border-radius:12px; padding:.75rem 1rem; }
+    .assigned-badge { display:inline-flex; align-items:center; gap:.25rem; background:linear-gradient(135deg,#e0e7ff,#dbeafe); color:#4338ca; font-size:.68rem; font-weight:600; padding:.2rem .5rem; border-radius:6px; cursor:pointer; transition:all .15s; }
+    .assigned-badge:hover { background:linear-gradient(135deg,#c7d2fe,#bfdbfe); box-shadow:0 2px 8px rgba(67,56,202,.18); }
+    .existing-assign-card { background:linear-gradient(145deg,#faf5ff,#f3e8ff); border:1px solid #e9d5ff; border-radius:10px; padding:.6rem .85rem; margin-bottom:.35rem; }
+    .existing-assign-card .ea-name { font-weight:600; color:#6d28d9; font-size:.82rem; }
+    .existing-assign-card .ea-comm { font-weight:700; color:#059669; font-size:.8rem; }
+    .existing-assign-card .ea-date { font-size:.7rem; color:#94a3b8; }
 </style>
 
 <!-- Hero -->
@@ -42,25 +54,25 @@
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div>
             <h4><i class="bi bi-link-45deg me-2"></i>Invoice Assignment</h4>
-            <div class="ia-sub">Assign invoices to sales persons for commission tracking</div>
+            <div class="ia-sub">Assign invoices to sales persons for commission tracking (multiple sales persons per invoice)</div>
         </div>
         <div class="d-flex gap-3 flex-wrap">
             <div class="ia-stat">
                 <div class="ia-stat-num">@Model.Assignments.Count</div>
-                <div class="ia-stat-lbl">Assigned</div>
+                <div class="ia-stat-lbl">Assignments</div>
             </div>
             <div class="ia-stat">
-                <div class="ia-stat-num">@Model.UnassignedInvoices.Count</div>
+                <div class="ia-stat-num">@Model.UnassignedInvoices.Count(i => i.AssignedUserCount == 0)</div>
                 <div class="ia-stat-lbl">Unassigned</div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Unassigned Invoices -->
+<!-- Invoices (All — available for assignment) -->
 <div class="ia-card">
     <div class="ia-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span><i class="bi bi-file-earmark-plus me-1"></i> Unassigned Invoices (@Model.UnassignedInvoices.Count)</span>
+        <span><i class="bi bi-file-earmark-plus me-1"></i> Invoices (@Model.UnassignedInvoices.Count)</span>
         <div class="ia-search-wrap">
             <i class="bi bi-search"></i>
             <input type="text" id="invoiceSearch" class="form-control form-control-sm" autocomplete="off" placeholder="Search invoice no…" />
@@ -76,13 +88,14 @@
                     <th>Party</th>
                     <th>Amount (₹)</th>
                     <th>Status</th>
+                    <th>Assigned To</th>
                     <th class="text-center">Assign</th>
                 </tr>
             </thead>
             <tbody>
                 @if (!Model.UnassignedInvoices.Any())
                 {
-                    <tr><td colspan="6" class="text-center text-muted py-3"><i class="bi bi-check-circle me-1 text-success"></i> All invoices are assigned!</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-3"><i class="bi bi-check-circle me-1 text-success"></i> No invoices available.</td></tr>
                 }
                 @foreach (var inv in Model.UnassignedInvoices)
                 {
@@ -92,6 +105,18 @@
                         <td>@inv.PartyName</td>
                         <td class="fw-bold">₹@inv.TotalAmount.ToString("N2")</td>
                         <td><span class="badge bg-info text-white" style="font-size:.68rem;">@inv.InvoiceStatus</span></td>
+                        <td>
+                            @if (inv.AssignedUserCount > 0)
+                            {
+                                <span class="assigned-badge" onclick="showAssignedUsers(@inv.InvoiceId, '@inv.InvoiceNo')" title="Click to view assigned users">
+                                    <i class="bi bi-people-fill"></i> @inv.AssignedUserCount person(s)
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted" style="font-size:.78rem;">—</span>
+                            }
+                        </td>
                         <td class="text-center">
                             <button type="button" class="btn btn-sm" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:8px;font-size:.72rem;"
                                     onclick="openAssignModal(@inv.InvoiceId, '@inv.InvoiceNo')">
@@ -146,7 +171,7 @@
                     <th>Party</th>
                     <th>Amount (₹)</th>
                     <th>Sales Person</th>
-                    <th>Product</th>
+                    <th>Commission (₹)</th>
                     <th>Received (₹)</th>
                     <th>Assigned At</th>
                     <th class="text-center">Actions</th>
@@ -170,13 +195,20 @@
                         <td>
                             <div class="fw-semibold" style="font-size:.82rem;">@a.SalesUserName</div>
                         </td>
-                        <td style="font-size:.8rem;">@(a.ProductName ?? "—")</td>
+                        <td class="fw-bold text-primary">
+                            ₹@a.TotalCommissionAmount.ToString("N2")
+                            <button type="button" class="btn btn-sm btn-link p-0 ms-1" style="font-size:.7rem;"
+                                    onclick="viewAssignmentLines(@a.AssignmentId, '@a.InvoiceNo', '@a.SalesUserName')"
+                                    title="View line details">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </td>
                         <td class="fw-bold text-success">₹@a.ReceivedAmount.ToString("N2")</td>
                         <td style="font-size:.78rem;">@(a.AssignedAt?.ToString("dd MMM yyyy") ?? "—")</td>
                         <td class="text-center">
                             <form asp-action="Unassign" method="post" class="d-inline swal-confirm-form"
                                   data-swal-title="Unassign Invoice?"
-                                  data-swal-text="This will remove the sales person assignment from invoice @a.InvoiceNo."
+                                  data-swal-text="This will remove @a.SalesUserName's assignment from invoice @a.InvoiceNo."
                                   data-swal-icon="warning"
                                   data-swal-confirm="Yes, Unassign"
                                   data-swal-danger="true">
@@ -195,44 +227,87 @@
 
 <!-- Assign Modal -->
 <div class="modal fade" id="assignModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content" style="border-radius:16px;border:none;">
             <div class="modal-header" style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:16px 16px 0 0;">
                 <h5 class="modal-title text-white fw-bold">Assign Invoice</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form asp-action="Assign" method="post">
+            <form asp-action="Assign" method="post" id="assignForm">
                 <div class="modal-body">
-                    <input type="hidden" name="invoiceId" id="assignInvoiceId" />
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold" style="font-size:.82rem;">Invoice</label>
-                        <input type="text" id="assignInvoiceNo" class="form-control" style="border-radius:10px;" readonly />
+                    <input type="hidden" name="InvoiceId" id="assignInvoiceId" />
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" style="font-size:.82rem;">Invoice</label>
+                            <input type="text" id="assignInvoiceNo" class="form-control" style="border-radius:10px;" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" style="font-size:.82rem;">Sales Person <span class="text-danger">*</span></label>
+                            <select name="SalesUserId" id="assignSalesUser" class="form-select" style="border-radius:10px;" required>
+                                <option value="">— Select —</option>
+                                @foreach (var u in Model.SalesUsers)
+                                {
+                                    <option value="@u.Id">@u.FullName @(!string.IsNullOrEmpty(u.EmployeeCode) ? $"({u.EmployeeCode})" : "")</option>
+                                }
+                            </select>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold" style="font-size:.82rem;">Sales Person <span class="text-danger">*</span></label>
-                        <select name="salesUserId" class="form-select" style="border-radius:10px;" required>
-                            <option value="">— Select —</option>
-                            @foreach (var u in Model.SalesUsers)
-                            {
-                                <option value="@u.Id">@u.FullName @(!string.IsNullOrEmpty(u.EmployeeCode) ? $"({u.EmployeeCode})" : "")</option>
-                            }
-                        </select>
+
+                    <!-- Existing Assignments (loaded when reopening for already-assigned invoices) -->
+                    <div id="existingAssignmentsSection" class="mb-3 d-none">
+                        <label class="form-label fw-semibold" style="font-size:.82rem;">
+                            <i class="bi bi-people me-1"></i>Existing Assignments
+                        </label>
+                        <div id="existingAssignmentsContainer"></div>
                     </div>
+
+                    <!-- Line Items -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold" style="font-size:.82rem;">Product (optional)</label>
-                        <select name="productId" class="form-select" style="border-radius:10px;">
-                            <option value="">— None —</option>
-                            @foreach (var p in Model.Products)
-                            {
-                                <option value="@p.Id">@p.ProductName (@p.ProductCode)</option>
-                            }
-                        </select>
-                        <div class="form-text" style="font-size:.74rem;">If set, product-specific commission rules will apply.</div>
+                        <label class="form-label fw-semibold" style="font-size:.82rem;">
+                            <i class="bi bi-list-ul me-1"></i>Invoice Items
+                            <small class="text-muted fw-normal">(Net price = Amount excluding GST)</small>
+                        </label>
+                        <div id="lineItemsLoading" class="text-center py-3 d-none">
+                            <div class="spinner-border spinner-border-sm text-primary"></div>
+                            <span class="ms-2 text-muted" style="font-size:.82rem;">Loading items...</span>
+                        </div>
+                        <div id="lineItemsContainer" class="d-none">
+                            <div class="table-responsive">
+                                <table class="table table-sm line-items-table border">
+                                    <thead>
+                                        <tr style="background:#f8fafc;">
+                                            <th style="width:30px;">
+                                                <input type="checkbox" id="selectAllLines" checked />
+                                            </th>
+                                            <th>#</th>
+                                            <th>Item Description</th>
+                                            <th class="text-end">Net Amount (₹)</th>
+                                            <th style="width:130px;">Commission Type</th>
+                                            <th style="width:100px;">Rate</th>
+                                            <th class="text-end" style="width:120px;">Commission (₹)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="lineItemsBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="commission-summary mt-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-semibold" style="font-size:.82rem;">
+                                        <i class="bi bi-calculator me-1"></i>Total Commission
+                                    </span>
+                                    <span class="fw-bold text-success" style="font-size:1.05rem;" id="totalCommissionDisplay">₹0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="lineItemsEmpty" class="text-center py-3 d-none">
+                            <span class="text-muted" style="font-size:.82rem;">No line items found for this invoice.</span>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid #f1f5f9;">
                     <button type="button" class="btn btn-outline-secondary" style="border-radius:10px;" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:10px;font-weight:600;">
+                    <button type="submit" id="assignSubmitBtn" class="btn" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:10px;font-weight:600;">
                         <i class="bi bi-check-lg me-1"></i> Assign
                     </button>
                 </div>
@@ -241,11 +316,101 @@
     </div>
 </div>
 
+<!-- View Assignment Lines Modal -->
+<div class="modal fade" id="viewLinesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius:16px;border:none;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#059669,#047857);border-radius:16px 16px 0 0;">
+                <h5 class="modal-title text-white fw-bold" id="viewLinesTitle">Assignment Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="viewLinesLoading" class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                    <span class="ms-2 text-muted">Loading...</span>
+                </div>
+                <div id="viewLinesContent" class="d-none">
+                    <div class="table-responsive">
+                        <table class="table table-sm line-items-table border">
+                            <thead>
+                                <tr style="background:#f8fafc;">
+                                    <th>Item Description</th>
+                                    <th class="text-end">Net Amount (₹)</th>
+                                    <th>Commission Type</th>
+                                    <th class="text-end">Rate</th>
+                                    <th class="text-end">Commission (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="viewLinesBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="commission-summary mt-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold" style="font-size:.82rem;">Total Commission</span>
+                            <span class="fw-bold text-success" style="font-size:1.05rem;" id="viewTotalCommission">₹0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assigned Users Modal (for Invoices list — Assigned To column) -->
+<div class="modal fade" id="assignedUsersModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:16px;border:none;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#7c3aed,#6d28d9);border-radius:16px 16px 0 0;">
+                <h5 class="modal-title text-white fw-bold" id="assignedUsersTitle">Assigned Users</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="assignedUsersLoading" class="text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-primary"></div>
+                    <span class="ms-2 text-muted">Loading...</span>
+                </div>
+                <div id="assignedUsersContent" class="d-none"></div>
+                <div id="assignedUsersEmpty" class="text-center py-3 d-none">
+                    <span class="text-muted" style="font-size:.82rem;">No users assigned.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
-var assignModal;
+var assignModal, viewLinesModal, assignedUsersModal;
+var loadedItems = [];
+var userConfig = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     assignModal = new bootstrap.Modal(document.getElementById('assignModal'));
+    viewLinesModal = new bootstrap.Modal(document.getElementById('viewLinesModal'));
+    assignedUsersModal = new bootstrap.Modal(document.getElementById('assignedUsersModal'));
+
+    // ── Sales User change → load commission config ────────────
+    document.getElementById('assignSalesUser').addEventListener('change', function() {
+        var userId = this.value;
+        if (!userId) { userConfig = null; applyConfigToLines(); return; }
+
+        fetch('@Url.Action("GetUserCommissionConfig")' + '?userId=' + encodeURIComponent(userId))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    userConfig = data;
+                    applyConfigToLines();
+                }
+            });
+    });
+
+    // ── Select all checkbox ──────────────────────────────────
+    document.getElementById('selectAllLines').addEventListener('change', function() {
+        var checked = this.checked;
+        document.querySelectorAll('.line-check').forEach(function(cb) { cb.checked = checked; });
+        recalcTotal();
+    });
 
     // ── Invoice Auto-Suggest ──────────────────────────────────
     var invoices = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
@@ -253,7 +418,8 @@ document.addEventListener('DOMContentLoaded', function() {
             id = i.InvoiceId,
             no = i.InvoiceNo,
             party = i.PartyName,
-            amt = i.TotalAmount.ToString("N2")
+            amt = i.TotalAmount.ToString("N2"),
+            users = i.AssignedUserCount
         })
     ));
 
@@ -261,40 +427,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var suggestBox = document.getElementById('invoiceSuggest');
     var activeIdx = -1;
     var filtered = [];
-
-    // Get all unassigned table rows
     var tableBody = document.querySelector('.ia-card .ia-table tbody');
-    var allRows = tableBody ? Array.from(tableBody.querySelectorAll('tr[data-inv-id], tr:not([data-inv-id])')) : [];
-
-    // Tag rows with invoice id for filtering
-    (function tagRows() {
-        var rows = tableBody ? tableBody.querySelectorAll('tr') : [];
-        var invIdx = 0;
-        rows.forEach(function(row) {
-            var cells = row.querySelectorAll('td');
-            if (cells.length >= 5) {
-                // match by invoice no text
-                var invNo = cells[0].textContent.trim();
-                var inv = invoices.find(function(i) { return i.no === invNo; });
-                if (inv) row.setAttribute('data-inv-id', inv.id);
-            }
-        });
-    })();
 
     searchInput.addEventListener('input', function() {
         var q = this.value.trim().toLowerCase();
         activeIdx = -1;
-
-        if (!q) {
-            suggestBox.style.display = 'none';
-            showAllRows();
-            return;
-        }
-
-        filtered = invoices.filter(function(i) {
-            return i.no.toLowerCase().indexOf(q) >= 0 || i.party.toLowerCase().indexOf(q) >= 0;
-        });
-
+        if (!q) { suggestBox.style.display = 'none'; showAllRows(); return; }
+        filtered = invoices.filter(function(i) { return i.no.toLowerCase().indexOf(q) >= 0 || i.party.toLowerCase().indexOf(q) >= 0; });
         renderSuggestions(filtered, q);
         filterTableRows(q);
     });
@@ -302,88 +441,47 @@ document.addEventListener('DOMContentLoaded', function() {
     searchInput.addEventListener('keydown', function(e) {
         var items = suggestBox.querySelectorAll('.ia-suggest-item');
         if (!items.length) return;
-
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            activeIdx = Math.min(activeIdx + 1, items.length - 1);
-            highlightItem(items);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            activeIdx = Math.max(activeIdx - 1, 0);
-            highlightItem(items);
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (activeIdx >= 0 && items[activeIdx]) items[activeIdx].click();
-        } else if (e.key === 'Escape') {
-            suggestBox.style.display = 'none';
-        }
-    });
-
-    searchInput.addEventListener('focus', function() {
-        if (this.value.trim()) {
-            var q = this.value.trim().toLowerCase();
-            filtered = invoices.filter(function(i) {
-                return i.no.toLowerCase().indexOf(q) >= 0 || i.party.toLowerCase().indexOf(q) >= 0;
-            });
-            if (filtered.length) renderSuggestions(filtered, q);
-        }
+        if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx + 1, items.length - 1); highlightItem(items); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx - 1, 0); highlightItem(items); }
+        else if (e.key === 'Enter') { e.preventDefault(); if (activeIdx >= 0 && items[activeIdx]) items[activeIdx].click(); }
+        else if (e.key === 'Escape') { suggestBox.style.display = 'none'; }
     });
 
     document.addEventListener('click', function(e) {
-        if (!searchInput.contains(e.target) && !suggestBox.contains(e.target)) {
-            suggestBox.style.display = 'none';
-        }
+        if (!searchInput.contains(e.target) && !suggestBox.contains(e.target)) suggestBox.style.display = 'none';
     });
 
     function renderSuggestions(list, q) {
-        if (!list.length) {
-            suggestBox.innerHTML = '<div class="ia-suggest-empty"><i class="bi bi-search me-1"></i>No matching invoices</div>';
-            suggestBox.style.display = 'block';
-            return;
-        }
+        if (!list.length) { suggestBox.innerHTML = '<div class="ia-suggest-empty"><i class="bi bi-search me-1"></i>No matching invoices</div>'; suggestBox.style.display = 'block'; return; }
         var html = '';
         list.slice(0, 10).forEach(function(inv) {
-            var hl = highlightMatch(inv.no, q);
-            html += '<div class="ia-suggest-item" data-id="' + inv.id + '" data-no="' + inv.no.replace(/"/g,'&quot;') + '">'
-                  + '<div><span class="ia-inv-no">' + hl + '</span> <span class="ia-inv-party">' + escHtml(inv.party) + '</span></div>'
-                  + '<span class="ia-inv-amt">\u20b9' + inv.amt + '</span>'
-                  + '</div>';
+            html += '<div class="ia-suggest-item" data-id="' + inv.id + '" data-no="' + escHtml(inv.no) + '">'
+                  + '<div><span class="ia-inv-no">' + highlightMatch(inv.no, q) + '</span> <span class="ia-inv-party">' + escHtml(inv.party) + '</span></div>'
+                  + '<span class="ia-inv-amt">\u20b9' + inv.amt + '</span></div>';
         });
         suggestBox.innerHTML = html;
         suggestBox.style.display = 'block';
-
         suggestBox.querySelectorAll('.ia-suggest-item').forEach(function(item) {
-            item.addEventListener('click', function() {
-                var invNo = this.dataset.no;
-                searchInput.value = invNo;
-                suggestBox.style.display = 'none';
-                filterTableRows(invNo.toLowerCase());
-                scrollToInvoice(invNo);
-            });
+            item.addEventListener('click', function() { searchInput.value = this.dataset.no; suggestBox.style.display = 'none'; filterTableRows(this.dataset.no.toLowerCase()); });
         });
     }
 
     function highlightMatch(text, q) {
         var idx = text.toLowerCase().indexOf(q);
         if (idx < 0) return escHtml(text);
-        return escHtml(text.substring(0, idx))
-             + '<strong style="color:#6366f1;">' + escHtml(text.substring(idx, idx + q.length)) + '</strong>'
-             + escHtml(text.substring(idx + q.length));
+        return escHtml(text.substring(0, idx)) + '<strong style="color:#6366f1;">' + escHtml(text.substring(idx, idx + q.length)) + '</strong>' + escHtml(text.substring(idx + q.length));
     }
 
     function highlightItem(items) {
-        items.forEach(function(el, i) {
-            el.classList.toggle('ia-suggest-active', i === activeIdx);
-        });
+        items.forEach(function(el, i) { el.classList.toggle('ia-suggest-active', i === activeIdx); });
         if (items[activeIdx]) items[activeIdx].scrollIntoView({ block: 'nearest' });
     }
 
     function filterTableRows(q) {
         if (!tableBody) return;
-        var rows = tableBody.querySelectorAll('tr');
-        rows.forEach(function(row) {
+        tableBody.querySelectorAll('tr').forEach(function(row) {
             var cells = row.querySelectorAll('td');
-            if (cells.length < 3) return; // skip empty-state row
+            if (cells.length < 3) return;
             var invNo = (cells[0].textContent || '').trim().toLowerCase();
             var party = (cells[2].textContent || '').trim().toLowerCase();
             row.style.display = (invNo.indexOf(q) >= 0 || party.indexOf(q) >= 0) ? '' : 'none';
@@ -395,32 +493,242 @@ document.addEventListener('DOMContentLoaded', function() {
         tableBody.querySelectorAll('tr').forEach(function(r) { r.style.display = ''; });
     }
 
-    function scrollToInvoice(invNo) {
-        if (!tableBody) return;
-        var rows = tableBody.querySelectorAll('tr');
-        for (var i = 0; i < rows.length; i++) {
-            var cells = rows[i].querySelectorAll('td');
-            if (cells.length && cells[0].textContent.trim() === invNo) {
-                rows[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                rows[i].style.transition = 'background .3s';
-                rows[i].style.background = 'linear-gradient(90deg,#ede9fe,#dbeafe)';
-                setTimeout(function() { rows[i].style.background = ''; }, 1500);
-                break;
-            }
-        }
-    }
+    // ── Form submit — build hidden inputs for lines ──────────
+    document.getElementById('assignForm').addEventListener('submit', function(e) {
+        // Remove old dynamic inputs
+        this.querySelectorAll('.dynamic-line-input').forEach(function(el) { el.remove(); });
 
-    function escHtml(s) {
-        var d = document.createElement('div');
-        d.appendChild(document.createTextNode(s));
-        return d.innerHTML;
+        var lineIdx = 0;
+        document.querySelectorAll('.line-check:checked').forEach(function(cb) {
+            var row = cb.closest('tr');
+            var invoiceLineId = cb.dataset.lineId;
+            var desc = row.querySelector('.line-desc').textContent.trim();
+            var netAmt = parseFloat(row.querySelector('.line-net').dataset.val) || 0;
+            var commType = row.querySelector('.comm-type').value;
+            var commRate = parseFloat(row.querySelector('.comm-rate').value) || 0;
+            var commAmt = parseFloat(row.querySelector('.comm-amount').textContent.replace(/[₹,]/g, '')) || 0;
+
+            addHidden('Lines[' + lineIdx + '].InvoiceLineId', invoiceLineId);
+            addHidden('Lines[' + lineIdx + '].ItemDescription', desc);
+            addHidden('Lines[' + lineIdx + '].NetAmount', netAmt);
+            addHidden('Lines[' + lineIdx + '].CommissionType', commType);
+            addHidden('Lines[' + lineIdx + '].CommissionRate', commRate);
+            addHidden('Lines[' + lineIdx + '].CommissionAmount', commAmt);
+            lineIdx++;
+        });
+
+        if (lineIdx === 0) {
+            e.preventDefault();
+            Swal.fire({ title: 'No Items Selected', text: 'Please select at least one line item.', icon: 'warning', confirmButtonColor: '#6366f1' });
+        }
+    });
+
+    function addHidden(name, value) {
+        var inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = name;
+        inp.value = value;
+        inp.className = 'dynamic-line-input';
+        document.getElementById('assignForm').appendChild(inp);
     }
 });
 
 function openAssignModal(invoiceId, invoiceNo) {
     document.getElementById('assignInvoiceId').value = invoiceId;
     document.getElementById('assignInvoiceNo').value = invoiceNo;
+    document.getElementById('assignSalesUser').value = '';
+    userConfig = null;
+
+    // Reset and show loading
+    document.getElementById('lineItemsBody').innerHTML = '';
+    document.getElementById('lineItemsContainer').classList.add('d-none');
+    document.getElementById('lineItemsEmpty').classList.add('d-none');
+    document.getElementById('lineItemsLoading').classList.remove('d-none');
+    document.getElementById('totalCommissionDisplay').textContent = '\u20b90.00';
+    document.getElementById('selectAllLines').checked = true;
+    document.getElementById('existingAssignmentsSection').classList.add('d-none');
+    document.getElementById('existingAssignmentsContainer').innerHTML = '';
+
     assignModal.show();
+
+    // Load existing assignments for this invoice
+    fetch('@Url.Action("GetInvoiceAssignments")' + '?invoiceId=' + encodeURIComponent(invoiceId))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success && data.assignments && data.assignments.length > 0) {
+                var html = '';
+                data.assignments.forEach(function(a) {
+                    html += '<div class="existing-assign-card d-flex justify-content-between align-items-center">'
+                        + '<div><span class="ea-name"><i class="bi bi-person-fill me-1"></i>' + escHtml(a.salesUserName) + '</span></div>'
+                        + '<div class="d-flex align-items-center gap-3">'
+                        + '<span class="ea-comm">\u20b9' + formatNum(a.totalCommissionAmount) + '</span>'
+                        + '<span class="ea-date">' + escHtml(a.assignedAt || '') + '</span>'
+                        + '</div></div>';
+                });
+                document.getElementById('existingAssignmentsContainer').innerHTML = html;
+                document.getElementById('existingAssignmentsSection').classList.remove('d-none');
+            }
+        });
+
+    // Load items
+    fetch('@Url.Action("GetInvoiceItems")' + '?invoiceId=' + encodeURIComponent(invoiceId))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById('lineItemsLoading').classList.add('d-none');
+            if (data.success && data.items && data.items.length > 0) {
+                loadedItems = data.items;
+                renderLineItems(data.items);
+                document.getElementById('lineItemsContainer').classList.remove('d-none');
+            } else {
+                loadedItems = [];
+                document.getElementById('lineItemsEmpty').classList.remove('d-none');
+            }
+        })
+        .catch(function() {
+            document.getElementById('lineItemsLoading').classList.add('d-none');
+            document.getElementById('lineItemsEmpty').classList.remove('d-none');
+        });
+}
+
+function renderLineItems(items) {
+    var tbody = document.getElementById('lineItemsBody');
+    var html = '';
+    items.forEach(function(item, idx) {
+        var commType = 'Percentage';
+        var commRate = 0;
+        html += '<tr>'
+            + '<td><input type="checkbox" class="line-check" data-line-id="' + item.invoiceLineId + '" checked onchange="recalcTotal()" /></td>'
+            + '<td>' + item.sNo + '</td>'
+            + '<td class="line-desc">' + escHtml(item.itemDescription) + (item.planName ? ' <small class="text-muted">(' + escHtml(item.planName) + ')</small>' : '') + '</td>'
+            + '<td class="text-end line-net" data-val="' + item.netAmount + '">\u20b9' + formatNum(item.netAmount) + '</td>'
+            + '<td><select class="form-select form-select-sm comm-type" onchange="onCommTypeChange(this)" style="border-radius:8px;">'
+            + '<option value="Percentage">Percentage (%)</option>'
+            + '<option value="FixedAmount">Fixed (\u20b9)</option>'
+            + '</select></td>'
+            + '<td><input type="number" class="form-control form-control-sm comm-rate" step="0.01" min="0" value="' + commRate + '" onchange="recalcRow(this)" oninput="recalcRow(this)" style="border-radius:8px;" /></td>'
+            + '<td class="text-end fw-bold comm-amount">\u20b90.00</td>'
+            + '</tr>';
+    });
+    tbody.innerHTML = html;
+    // Apply default config if user is already selected
+    applyConfigToLines();
+}
+
+function applyConfigToLines() {
+    if (!loadedItems.length) return;
+    var rows = document.querySelectorAll('#lineItemsBody tr');
+    rows.forEach(function(row) {
+        var typeSelect = row.querySelector('.comm-type');
+        var rateInput = row.querySelector('.comm-rate');
+        if (userConfig && userConfig.defaultRate > 0) {
+            typeSelect.value = userConfig.commissionType;
+            rateInput.value = userConfig.defaultRate;
+        } else {
+            typeSelect.value = 'Percentage';
+            rateInput.value = '0';
+        }
+        recalcRow(rateInput);
+    });
+}
+
+function onCommTypeChange(select) {
+    recalcRow(select.closest('tr').querySelector('.comm-rate'));
+}
+
+function recalcRow(rateInput) {
+    var row = rateInput.closest('tr');
+    var netAmt = parseFloat(row.querySelector('.line-net').dataset.val) || 0;
+    var commType = row.querySelector('.comm-type').value;
+    var rate = parseFloat(rateInput.value) || 0;
+    var commission = commType === 'Percentage' ? Math.round(netAmt * rate / 100 * 100) / 100 : rate;
+    row.querySelector('.comm-amount').textContent = '\u20b9' + formatNum(commission);
+    recalcTotal();
+}
+
+function recalcTotal() {
+    var total = 0;
+    document.querySelectorAll('#lineItemsBody tr').forEach(function(row) {
+        var cb = row.querySelector('.line-check');
+        if (cb && cb.checked) {
+            var amt = parseFloat(row.querySelector('.comm-amount').textContent.replace(/[\u20b9,]/g, '')) || 0;
+            total += amt;
+        }
+    });
+    document.getElementById('totalCommissionDisplay').textContent = '\u20b9' + formatNum(total);
+}
+
+function viewAssignmentLines(assignmentId, invoiceNo, salesUserName) {
+    document.getElementById('viewLinesTitle').textContent = invoiceNo + ' — ' + salesUserName;
+    document.getElementById('viewLinesLoading').classList.remove('d-none');
+    document.getElementById('viewLinesContent').classList.add('d-none');
+    viewLinesModal.show();
+
+    fetch('@Url.Action("GetAssignmentLines")' + '?assignmentId=' + encodeURIComponent(assignmentId))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById('viewLinesLoading').classList.add('d-none');
+            if (data.success && data.lines && data.lines.length > 0) {
+                var html = '';
+                var total = 0;
+                data.lines.forEach(function(l) {
+                    total += l.commissionAmount;
+                    html += '<tr>'
+                        + '<td>' + escHtml(l.itemDescription) + '</td>'
+                        + '<td class="text-end">\u20b9' + formatNum(l.netAmount) + '</td>'
+                        + '<td>' + (l.commissionType === 'Percentage' ? 'Percentage' : 'Fixed') + '</td>'
+                        + '<td class="text-end">' + (l.commissionType === 'Percentage' ? l.commissionRate + '%' : '\u20b9' + formatNum(l.commissionRate)) + '</td>'
+                        + '<td class="text-end fw-bold">\u20b9' + formatNum(l.commissionAmount) + '</td>'
+                        + '</tr>';
+                });
+                document.getElementById('viewLinesBody').innerHTML = html;
+                document.getElementById('viewTotalCommission').textContent = '\u20b9' + formatNum(total);
+                document.getElementById('viewLinesContent').classList.remove('d-none');
+            }
+        });
+}
+
+function showAssignedUsers(invoiceId, invoiceNo) {
+    document.getElementById('assignedUsersTitle').textContent = 'Assigned Users — ' + invoiceNo;
+    document.getElementById('assignedUsersLoading').classList.remove('d-none');
+    document.getElementById('assignedUsersContent').classList.add('d-none');
+    document.getElementById('assignedUsersEmpty').classList.add('d-none');
+    assignedUsersModal.show();
+
+    fetch('@Url.Action("GetInvoiceAssignments")' + '?invoiceId=' + encodeURIComponent(invoiceId))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById('assignedUsersLoading').classList.add('d-none');
+            if (data.success && data.assignments && data.assignments.length > 0) {
+                var html = '';
+                data.assignments.forEach(function(a, idx) {
+                    html += '<div class="existing-assign-card d-flex justify-content-between align-items-center">'
+                        + '<div><span class="badge bg-primary me-2" style="font-size:.65rem;">' + (idx + 1) + '</span>'
+                        + '<span class="ea-name">' + escHtml(a.salesUserName) + '</span></div>'
+                        + '<div class="d-flex align-items-center gap-3">'
+                        + '<span class="ea-comm">\u20b9' + formatNum(a.totalCommissionAmount) + '</span>'
+                        + '<span class="ea-date">' + escHtml(a.assignedAt || '') + '</span>'
+                        + '</div></div>';
+                });
+                document.getElementById('assignedUsersContent').innerHTML = html;
+                document.getElementById('assignedUsersContent').classList.remove('d-none');
+            } else {
+                document.getElementById('assignedUsersEmpty').classList.remove('d-none');
+            }
+        })
+        .catch(function() {
+            document.getElementById('assignedUsersLoading').classList.add('d-none');
+            document.getElementById('assignedUsersEmpty').classList.remove('d-none');
+        });
+}
+
+function formatNum(n) {
+    return parseFloat(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function escHtml(s) {
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(s || ''));
+    return d.innerHTML;
 }
 
 document.querySelectorAll('.swal-confirm-form').forEach(function(form) {
@@ -440,10 +748,7 @@ document.querySelectorAll('.swal-confirm-form').forEach(function(form) {
             customClass: { popup: 'app-swal-popup' },
             reverseButtons: true
         }).then(function(result) {
-            if (result.isConfirmed) {
-                f.removeEventListener('submit', handler);
-                f.submit();
-            }
+            if (result.isConfirmed) { f.removeEventListener('submit', handler); f.submit(); }
         });
     });
 });

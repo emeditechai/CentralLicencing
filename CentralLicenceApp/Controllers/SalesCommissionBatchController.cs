@@ -93,6 +93,41 @@ namespace CentralLicenceApp.Controllers
             }
         }
 
+        // ── Generate Bulk POST ─────────────────────────────────────
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> GenerateBulk(DateTime fromDate, DateTime toDate)
+        {
+            if (fromDate > toDate)
+            {
+                TempData["Error"] = "To date must be on or after From date.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            var result = await _batchRepo.GenerateBulkAsync(fromDate, toDate, CurrentUserId);
+
+            if (result.SuccessCount > 0)
+            {
+                var msg = $"Bulk generation complete: {result.SuccessCount} batch(es) created for {string.Join(", ", result.GeneratedUsers)}.";
+                if (result.SkippedCount > 0)
+                    msg += $" {result.SkippedCount} skipped (no eligible payments).";
+                TempData["Success"] = msg;
+            }
+            else if (result.SkippedCount > 0)
+            {
+                TempData["Error"] = $"No batches generated. {result.SkippedCount} user(s) had no eligible payments in the selected period.";
+            }
+            else
+            {
+                TempData["Error"] = "No configured users found or all failed.";
+            }
+
+            if (result.Errors.Any())
+                TempData["Error"] = string.Join(" | ", result.Errors);
+
+            return RedirectToAction(nameof(Index));
+        }
+
         // ── Preview (AJAX) ─────────────────────────────────────────
         [HttpPost]
         [ValidateAntiForgeryToken]

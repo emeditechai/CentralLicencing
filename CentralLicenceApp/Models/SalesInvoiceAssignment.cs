@@ -27,5 +27,27 @@ namespace CentralLicenceApp.Models
         public string? ProductName { get; set; }
         public string? AssignedByName { get; set; }
         public decimal? ReceivedAmount { get; set; }
+
+        // Line-level assignment details
+        public List<SalesInvoiceAssignmentLine> Lines { get; set; } = new();
+    }
+
+    public class SalesInvoiceAssignmentLine
+    {
+        public int Id { get; set; }
+        public int AssignmentId { get; set; }
+        public int InvoiceLineId { get; set; }
+        public string ItemDescription { get; set; } = string.Empty;
+        public decimal NetAmount { get; set; }
+
+        [Required]
+        [RegularExpression("^(Percentage|FixedAmount)$")]
+        public string CommissionType { get; set; } = "Percentage";
+
+        [Required]
+        [Range(0.01, 999999.99)]
+        public decimal CommissionRate { get; set; }
+
+        public decimal CommissionAmount { get; set; }
     }
 }

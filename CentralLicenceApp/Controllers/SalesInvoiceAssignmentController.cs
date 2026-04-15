@@ -13,15 +13,18 @@ namespace CentralLicenceApp.Controllers
         private readonly ISalesInvoiceAssignmentRepository _assignRepo;
         private readonly IUserRepository _userRepo;
         private readonly IProductMasterRepository _productRepo;
+        private readonly ISalesCommissionConfigRepository _configRepo;
 
         public SalesInvoiceAssignmentController(
             ISalesInvoiceAssignmentRepository assignRepo,
             IUserRepository userRepo,
-            IProductMasterRepository productRepo)
+            IProductMasterRepository productRepo,
+            ISalesCommissionConfigRepository configRepo)
         {
             _assignRepo = assignRepo;
             _userRepo = userRepo;
             _productRepo = productRepo;
+            _configRepo = configRepo;
         }
 
         private int CurrentUserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -47,21 +50,61 @@ namespace CentralLicenceApp.Controllers
             return View(vm);
         }
 
+        // ── Get Invoice Line Items (AJAX) ──────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> GetInvoiceItems(int invoiceId)
+        {
+            if (invoiceId <= 0)
+                return Json(new { success = false, message = "Invalid invoice." });
+
+            var items = await _assignRepo.GetInvoiceLineItemsAsync(invoiceId);
+            return Json(new { success = true, items });
+        }
+
+        // ── Get Default Commission Config for a Sales User (AJAX) ──
+        [HttpGet]
+        public async Task<IActionResult> GetUserCommissionConfig(int userId)
+        {
+            if (userId <= 0)
+                return Json(new { success = false });
+
+            var config = await _configRepo.GetConfigurationByUserIdAsync(userId);
+            if (config == null)
+                return Json(new { success = true, commissionType = "Percentage", defaultRate = 0m });
+
+            // Also load product-specific rules
+            var rules = await _configRepo.GetRulesAsync(userId);
+
+            return Json(new
+            {
+                success = true,
+                commissionType = config.CommissionType,
+                defaultRate = config.DefaultRate,
+                rules = rules.Select(r => new
+                {
+                    productId = r.ProductId,
+                    productName = r.ProductName,
+                    commissionType = r.CommissionType,
+                    rate = r.Rate
+                })
+            });
+        }
+
         // ── Assign (POST) ─────────────────────────────────────────
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Assign(int invoiceId, int salesUserId, int? productId)
+        public async Task<IActionResult> Assign([FromForm] AssignInvoiceRequest request)
         {
-            if (invoiceId <= 0 || salesUserId <= 0)
+            if (request.InvoiceId <= 0 || request.SalesUserId <= 0 || request.Lines == null || !request.Lines.Any())
             {
-                TempData["Error"] = "Invalid invoice or sales user.";
+                TempData["Error"] = "Invalid request. Please select at least one line item.";
                 return RedirectToAction(nameof(Index));
             }
 
-            var ok = await _assignRepo.AssignAsync(invoiceId, salesUserId, productId, CurrentUserId);
+            var ok = await _assignRepo.AssignWithLinesAsync(request, CurrentUserId);
             TempData[ok ? "Success" : "Error"] = ok
                 ? "Invoice assigned successfully."
-                : "Failed to assign. The invoice may already be assigned.";
+                : "Failed to assign. This sales person may already be assigned to this invoice.";
             return RedirectToAction(nameof(Index));
         }
 
@@ -83,22 +126,49 @@ namespace CentralLicenceApp.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // ── Reassign (POST) ───────────────────────────────────────
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Reassign(int id, int newSalesUserId, int? newProductId)
+        // ── Get Assignment Lines (AJAX) ───────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> GetAssignmentLines(int assignmentId)
         {
-            if (id <= 0 || newSalesUserId <= 0)
-            {
-                TempData["Error"] = "Invalid parameters.";
-                return RedirectToAction(nameof(Index));
-            }
+            if (assignmentId <= 0)
+                return Json(new { success = false });
 
-            var ok = await _assignRepo.ReassignAsync(id, newSalesUserId, newProductId, CurrentUserId);
-            TempData[ok ? "Success" : "Error"] = ok
-                ? "Invoice reassigned successfully."
-                : "Cannot reassign. The invoice may be part of an active commission batch.";
-            return RedirectToAction(nameof(Index));
+            var lines = await _assignRepo.GetAssignmentLinesAsync(assignmentId);
+            return Json(new
+            {
+                success = true,
+                lines = lines.Select(l => new
+                {
+                    l.InvoiceLineId,
+                    l.ItemDescription,
+                    l.NetAmount,
+                    l.CommissionType,
+                    l.CommissionRate,
+                    l.CommissionAmount
+                })
+            });
+        }
+
+        // ── Get Assignments for an Invoice (AJAX) ─────────────────
+        [HttpGet]
+        public async Task<IActionResult> GetInvoiceAssignments(int invoiceId)
+        {
+            if (invoiceId <= 0)
+                return Json(new { success = false });
+
+            var assignments = await _assignRepo.GetAssignmentsForInvoiceAsync(invoiceId);
+            return Json(new
+            {
+                success = true,
+                assignments = assignments.Select(a => new
+                {
+                    a.AssignmentId,
+                    a.SalesUserId,
+                    a.SalesUserName,
+                    a.TotalCommissionAmount,
+                    assignedAt = a.AssignedAt?.ToString("dd MMM yyyy")
+                })
+            });
         }
     }
 }
