@@ -1,0 +1,183 @@
+@model CentralLicenceApp.Models.ViewModels.SalesCommConfigIndexViewModel
+@{
+    ViewData["Title"] = "Sales Commission Configuration";
+    var configured = Model.Users.Count(u => u.IsConfigured);
+    var total = Model.Users.Count;
+}
+
+<style>
+    .sc-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .sc-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:320px; height:320px; background:rgba(255,255,255,.06); border-radius:50%; pointer-events:none; }
+    .sc-hero h4 { color:#fff; font-weight:800; font-size:1.5rem; letter-spacing:-.02em; margin-bottom:.25rem; }
+    .sc-hero .sc-sub { color:rgba(255,255,255,.75); font-size:.85rem; }
+
+    .sc-stat { background:rgba(255,255,255,.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:.7rem 1.1rem; min-width:105px; text-align:center; }
+    .sc-stat-num { font-size:1.5rem; font-weight:800; color:#fff; line-height:1.2; }
+    .sc-stat-lbl { font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color:rgba(255,255,255,.7); }
+
+    .sc-filter { background:#fff; border-radius:16px; box-shadow:0 2px 16px rgba(0,0,0,.05); border:1px solid #f1f5f9; padding:1rem 1.5rem; margin-bottom:1.5rem; }
+    .sc-filter .form-control { border-radius:10px; border:1.5px solid #e2e8f0; font-size:.85rem; }
+    .sc-filter .form-control:focus { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+
+    .sc-card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9; overflow:hidden; }
+    .sc-table { margin-bottom:0; }
+    .sc-table thead { background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+    .sc-table thead th { font-size:.7rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.08em; padding:.75rem .85rem; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+    .sc-table tbody tr { transition:all .15s ease; border-bottom:1px solid #f8fafc; }
+    .sc-table tbody tr:hover { background:linear-gradient(90deg,#f5f3ff,#eff6ff); }
+    .sc-table td { vertical-align:middle; padding:.65rem .85rem; font-size:.84rem; color:#334155; }
+
+    .sc-type-badge { font-size:.7rem; font-weight:700; padding:4px 10px; border-radius:20px; letter-spacing:.03em; }
+    .sc-type-pct { background:linear-gradient(135deg,#ede9fe,#ddd6fe); color:#5b21b6; }
+    .sc-type-fixed { background:linear-gradient(135deg,#dcfce7,#bbf7d0); color:#166534; }
+
+    .sc-status-configured { font-size:.7rem; font-weight:700; padding:4px 10px; border-radius:20px; background:#dcfce7; color:#166534; }
+    .sc-status-notconfigured { font-size:.7rem; font-weight:700; padding:4px 10px; border-radius:20px; background:#fef3c7; color:#92400e; }
+
+    .sc-btn { border-radius:10px; font-weight:600; font-size:.8rem; padding:.35rem .9rem; border:none; transition:all .15s; }
+    .sc-btn-setup { background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; }
+    .sc-btn-setup:hover { background:linear-gradient(135deg,#4f46e5,#4338ca); color:#fff; transform:translateY(-1px); }
+    .sc-btn-rules { background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; }
+    .sc-btn-rules:hover { background:linear-gradient(135deg,#6d28d9,#5b21b6); color:#fff; transform:translateY(-1px); }
+
+    .sc-rate { font-weight:700; font-size:.88rem; color:#0f172a; }
+    .sc-rate small { font-weight:500; color:#94a3b8; font-size:.72rem; }
+</style>
+
+<!-- Hero -->
+<div class="sc-hero">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h4><i class="bi bi-cash-coin me-2"></i>Sales Commission Configuration</h4>
+            <div class="sc-sub">Configure commission rates and rules per sales user</div>
+        </div>
+        <div class="d-flex gap-3 flex-wrap">
+            <div class="sc-stat">
+                <div class="sc-stat-num">@total</div>
+                <div class="sc-stat-lbl">Employees</div>
+            </div>
+            <div class="sc-stat">
+                <div class="sc-stat-num">@configured</div>
+                <div class="sc-stat-lbl">Configured</div>
+            </div>
+            <div class="sc-stat">
+                <div class="sc-stat-num">@(total - configured)</div>
+                <div class="sc-stat-lbl">Pending</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="sc-filter">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-8">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">Search</label>
+            <input type="text" name="search" class="form-control" value="@Model.SearchTerm" placeholder="Name or employee code..." />
+        </div>
+        <div class="col-md-4 d-flex gap-2">
+            <button type="submit" class="btn sc-btn sc-btn-setup flex-fill"><i class="bi bi-search me-1"></i> Filter</button>
+            <a asp-action="Index" class="btn btn-outline-secondary" style="border-radius:10px;font-size:.8rem;"><i class="bi bi-x-lg"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- Table -->
+<div class="sc-card">
+    <div class="table-responsive">
+        <table class="table sc-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Commission Type</th>
+                    <th>Default Rate</th>
+                    <th>Effective From</th>
+                    <th>Rules</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Users.Any())
+                {
+                    <tr><td colspan="9" class="text-center text-muted py-4"><i class="bi bi-inbox me-1"></i> No employees found.</td></tr>
+                }
+                @{ var idx = 0; }
+                @foreach (var u in Model.Users)
+                {
+                    idx++;
+                    <tr>
+                        <td class="text-muted" style="font-size:.78rem;">@idx</td>
+                        <td>
+                            <div class="fw-semibold" style="font-size:.85rem;">@u.UserName</div>
+                            @if (!string.IsNullOrEmpty(u.EmployeeCode))
+                            {
+                                <div style="font-size:.72rem;color:#94a3b8;">@u.EmployeeCode</div>
+                            }
+                        </td>
+                        <td style="font-size:.82rem;">@(u.DepartmentName ?? "—")</td>
+                        <td>
+                            @if (u.IsConfigured)
+                            {
+                                <span class="sc-status-configured"><i class="bi bi-check-circle me-1"></i>Configured</span>
+                            }
+                            else
+                            {
+                                <span class="sc-status-notconfigured"><i class="bi bi-exclamation-circle me-1"></i>Not Set</span>
+                            }
+                        </td>
+                        <td>
+                            @if (u.IsConfigured && u.CommissionType != null)
+                            {
+                                <span class="sc-type-badge @(u.CommissionType == "Percentage" ? "sc-type-pct" : "sc-type-fixed")">
+                                    <i class="bi @(u.CommissionType == "Percentage" ? "bi-percent" : "bi-currency-rupee") me-1"></i>@u.CommissionType
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted" style="font-size:.78rem;">—</span>
+                            }
+                        </td>
+                        <td>
+                            @if (u.IsConfigured && u.DefaultRate.HasValue)
+                            {
+                                @if (u.CommissionType == "Percentage")
+                                {
+                                    <span class="sc-rate">@u.DefaultRate.Value.ToString("N2") <small>%</small></span>
+                                }
+                                else
+                                {
+                                    <span class="sc-rate">₹@u.DefaultRate.Value.ToString("N2")</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted" style="font-size:.78rem;">—</span>
+                            }
+                        </td>
+                        <td style="font-size:.82rem;">@(u.EffectiveFrom?.ToString("dd MMM yyyy") ?? "—")</td>
+                        <td>
+                            @if (u.IsConfigured)
+                            {
+                                <a asp-action="Rules" asp-route-userId="@u.UserId" class="text-decoration-none" style="font-size:.78rem;font-weight:600;color:#7c3aed;">
+                                    @u.RuleCount rule(s) <i class="bi bi-arrow-right"></i>
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted" style="font-size:.78rem;">—</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <a asp-action="Setup" asp-route-userId="@u.UserId" class="btn sc-btn sc-btn-setup btn-sm">
+                                <i class="bi bi-gear me-1"></i> @(u.IsConfigured ? "Edit" : "Setup")
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

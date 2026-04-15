@@ -27,6 +27,7 @@ namespace CentralLicenceApp.Models
         public bool IsEmployee { get; set; }
         public string? EmployeeCode { get; set; }
         public bool IsCoreMember { get; set; }
+        public bool IsSalesAgent { get; set; }
         public int? ManagerId { get; set; }
         public string? ManagerName { get; set; }
         public string? ProfileImagePath { get; set; }

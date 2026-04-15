@@ -56,7 +56,9 @@ namespace CentralLicenceApp.Services
                 ("PaymentMode",              () => EnsurePaymentModeTableAsync(conn)),
                 ("InvoicePaymentTables",     () => EnsureInvoicePaymentTablesAsync(conn)),
                 ("HelpDeskTicketTables",     () => EnsureHelpDeskTicketTablesAsync(conn)),
-                ("TicketReportStoredProcs",  () => EnsureTicketReportStoredProcsAsync(conn))
+                ("TicketReportStoredProcs",  () => EnsureTicketReportStoredProcsAsync(conn)),
+                ("PayoutTables",             () => EnsurePayoutTablesAsync(conn)),
+                ("PayoutReportProcs",        () => EnsurePayoutReportProcsAsync(conn))
             };
 
             foreach (var (name, action) in steps)
@@ -2590,6 +2592,34 @@ namespace CentralLicenceApp.Services
             foreach (var sql in procedures)
             {
                 await conn.ExecuteAsync(sql);
+            }
+        }
+
+        private static async Task EnsurePayoutTablesAsync(SqlConnection conn)
+        {
+            var sqlPath = Path.Combine(AppContext.BaseDirectory, "SqlScripts", "068_CreatePayoutTables.sql");
+            if (!File.Exists(sqlPath)) return;
+            var script = await File.ReadAllTextAsync(sqlPath);
+            var batches = script.Split(new[] { "\nGO", "\r\nGO" }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var batch in batches)
+            {
+                var trimmed = batch.Trim();
+                if (!string.IsNullOrEmpty(trimmed))
+                    await conn.ExecuteAsync(trimmed);
+            }
+        }
+
+        private static async Task EnsurePayoutReportProcsAsync(SqlConnection conn)
+        {
+            var sqlPath = Path.Combine(AppContext.BaseDirectory, "SqlScripts", "069_PayoutReportProcedures.sql");
+            if (!File.Exists(sqlPath)) return;
+            var script = await File.ReadAllTextAsync(sqlPath);
+            var batches = script.Split(new[] { "\nGO", "\r\nGO" }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var batch in batches)
+            {
+                var trimmed = batch.Trim();
+                if (!string.IsNullOrEmpty(trimmed))
+                    await conn.ExecuteAsync(trimmed);
             }
         }
     }

@@ -1,0 +1,124 @@
+@model CentralLicenceApp.Models.ViewModels.PayoutSettlementFormViewModel
+@{
+    ViewData["Title"] = "Settle Payout — " + Model.UserName;
+}
+
+<style>
+    .st-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .st-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:320px; height:320px; background:rgba(255,255,255,.06); border-radius:50%; pointer-events:none; }
+    .st-hero h4 { color:#fff; font-weight:800; font-size:1.3rem; margin-bottom:.1rem; }
+    .st-hero .st-sub { color:rgba(255,255,255,.8); font-size:.85rem; }
+
+    .st-card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9; padding:1.75rem; }
+    .st-btn { background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; border-radius:12px; font-weight:700; font-size:.9rem; padding:.6rem 2rem; border:none; }
+    .st-btn:hover { background:linear-gradient(135deg,#4f46e5,#4338ca); color:#fff; }
+
+    .st-amount-box { background:linear-gradient(145deg,#faf8ff,#f3f0ff); border:1px solid #e9e4f5; border-radius:14px; padding:1.25rem; text-align:center; margin-bottom:1.25rem; }
+    .st-amount-box .st-amt { font-size:2rem; font-weight:800; color:#6366f1; }
+    .st-amount-box .st-lbl { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:#5b21b6; font-weight:600; }
+</style>
+
+<!-- Hero -->
+<div class="st-hero">
+    <h4><i class="bi bi-cash-stack me-2"></i>Settle Payout</h4>
+    <div class="st-sub">Batch #@Model.BatchId · @Model.UserName</div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="st-amount-box">
+            <div class="st-lbl">Net Payable Amount</div>
+            <div class="st-amt">₹@Model.NetAmount.ToString("N2")</div>
+        </div>
+
+        <div class="st-card">
+            <form asp-action="Settle" method="post">
+                <input type="hidden" asp-for="BatchId" />
+                <input type="hidden" asp-for="UserName" />
+                <input type="hidden" asp-for="NetAmount" />
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label asp-for="SettlementAmount" class="form-label fw-semibold" style="font-size:.85rem;">Settlement Amount <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text" style="border-radius:10px 0 0 10px;">₹</span>
+                            <input asp-for="SettlementAmount" type="number" step="0.01" min="0.01" class="form-control" style="border-radius:0 10px 10px 0;" />
+                        </div>
+                        <span asp-validation-for="SettlementAmount" class="text-danger" style="font-size:.78rem;"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="SettlementDate" class="form-label fw-semibold" style="font-size:.85rem;">Settlement Date <span class="text-danger">*</span></label>
+                        <input asp-for="SettlementDate" type="date" class="form-control" style="border-radius:10px;" />
+                        <span asp-validation-for="SettlementDate" class="text-danger" style="font-size:.78rem;"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="SettlementMode" class="form-label fw-semibold" style="font-size:.85rem;">Payment Mode <span class="text-danger">*</span></label>
+                        <select asp-for="SettlementMode" class="form-select" style="border-radius:10px;">
+                            <option value="">— Select —</option>
+                            @foreach (var m in Model.PaymentModes)
+                            {
+                                <option value="@m.Name">@m.Name</option>
+                            }
+                        </select>
+                        <span asp-validation-for="SettlementMode" class="text-danger" style="font-size:.78rem;"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="SettlementBankId" class="form-label fw-semibold" style="font-size:.85rem;">Bank Account</label>
+                        <select asp-for="SettlementBankId" class="form-select" style="border-radius:10px;">
+                            <option value="">— Optional —</option>
+                            @foreach (var b in Model.Banks)
+                            {
+                                <option value="@b.Id">@b.BankName — @b.AccountNumber</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="SettlementReferenceNo" class="form-label fw-semibold" style="font-size:.85rem;">Reference No.</label>
+                        <input asp-for="SettlementReferenceNo" class="form-control" style="border-radius:10px;" placeholder="e.g. UTR, Txn ID" />
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="SettlementRemarks" class="form-label fw-semibold" style="font-size:.85rem;">Remarks</label>
+                        <textarea asp-for="SettlementRemarks" class="form-control" rows="2" style="border-radius:10px;" placeholder="Optional settlement notes"></textarea>
+                    </div>
+                </div>
+
+                <hr class="my-4" style="border-color:#e2e8f0;" />
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <a asp-action="SettlementDesk" class="btn btn-outline-secondary" style="border-radius:10px;">
+                        <i class="bi bi-arrow-left me-1"></i> Back
+                    </a>
+                    <button type="submit" class="btn st-btn" id="settleBtn">
+                        <i class="bi bi-check-circle me-1"></i> Confirm Settlement
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.getElementById('settleBtn').closest('form').addEventListener('submit', function handler(e) {
+    e.preventDefault();
+    var f = this;
+    Swal.fire({
+        title: 'Confirm Settlement?',
+        text: 'Mark this batch as Paid? This action cannot be reversed.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Settle',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#180a3c',
+        cancelButtonColor: '#6c757d',
+        customClass: { popup: 'app-swal-popup' },
+        reverseButtons: true
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            f.removeEventListener('submit', handler);
+            f.submit();
+        }
+    });
+});
+</script>
+}

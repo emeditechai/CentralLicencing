@@ -160,6 +160,7 @@ namespace CentralLicenceApp.Controllers
                 IsEmployee    = vm.IsEmployee,
                 EmployeeCode  = vm.IsEmployee ? vm.EmployeeCode?.Trim() : null,
                 IsCoreMember  = vm.IsEmployee && vm.IsCoreMember,
+                IsSalesAgent  = vm.IsSalesAgent,
                 ManagerId     = vm.IsEmployee ? vm.ManagerId : null,
                 ProfileImagePath = await SaveProfileImageAsync(vm.ProfileImage),
                 DigitalSignaturePath = await SaveSignatureImageAsync(vm.SignatureImage),
@@ -201,6 +202,7 @@ namespace CentralLicenceApp.Controllers
                 IsEmployee   = user.IsEmployee,
                 EmployeeCode = user.EmployeeCode,
                 IsCoreMember = user.IsCoreMember,
+                IsSalesAgent = user.IsSalesAgent,
                 ManagerId    = user.ManagerId,
                 ExistingProfileImagePath = user.ProfileImagePath,
                 ExistingSignaturePath = user.DigitalSignaturePath,
@@ -287,6 +289,7 @@ namespace CentralLicenceApp.Controllers
             existing.IsEmployee   = vm.IsEmployee;
             existing.EmployeeCode = vm.IsEmployee ? vm.EmployeeCode?.Trim() : null;
             existing.IsCoreMember = vm.IsEmployee && vm.IsCoreMember;
+            existing.IsSalesAgent = vm.IsSalesAgent;
             existing.ManagerId    = vm.IsEmployee ? vm.ManagerId : null;
             if (vm.ProfileImage != null)
                 existing.ProfileImagePath = await SaveProfileImageAsync(vm.ProfileImage, existing.ProfileImagePath);

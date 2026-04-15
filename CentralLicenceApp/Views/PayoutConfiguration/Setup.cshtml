@@ -1,0 +1,157 @@
+@model CentralLicenceApp.Models.ViewModels.PayoutConfigurationFormViewModel
+@{
+    ViewData["Title"] = Model.IsEdit ? "Edit Payout Configuration" : "Setup Payout Configuration";
+}
+
+<style>
+    .ps-page { max-width:680px; margin:0 auto; }
+    .ps-header { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:18px 18px 0 0; padding:1.5rem 2rem; color:#fff; }
+    .ps-header h5 { font-weight:800; font-size:1.2rem; margin-bottom:.15rem; }
+    .ps-header .ps-sub { font-size:.82rem; color:rgba(255,255,255,.7); }
+    .ps-body { background:#fff; border-radius:0 0 18px 18px; box-shadow:0 4px 20px rgba(0,0,0,.06); padding:2rem; border:1px solid #f1f5f9; border-top:none; }
+    .ps-user-info { background:#f8fafc; border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.5rem; border:1px solid #e2e8f0; }
+    .ps-user-info .fw-bold { font-size:.95rem; color:#0f172a; }
+    .ps-user-info small { font-size:.78rem; color:#64748b; }
+
+    .ps-model-toggle { display:flex; gap:.75rem; margin-bottom:1.5rem; }
+    .ps-model-option { flex:1; cursor:pointer; border:2px solid #e2e8f0; border-radius:14px; padding:1.25rem; text-align:center; transition:all .2s ease; }
+    .ps-model-option:hover { border-color:#6366f1; background:#f5f3ff; }
+    .ps-model-option.active { border-color:#6366f1; background:#f5f3ff; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+    .ps-model-option i { font-size:1.5rem; margin-bottom:.5rem; display:block; }
+    .ps-model-option .ps-opt-title { font-weight:700; font-size:.88rem; color:#0f172a; }
+    .ps-model-option .ps-opt-desc { font-size:.74rem; color:#64748b; margin-top:.25rem; }
+
+    .ps-field-group { display:none; }
+    .ps-field-group.active { display:block; }
+    .ps-form .form-control, .ps-form .form-select { border-radius:10px; border:1.5px solid #e2e8f0; font-size:.88rem; }
+    .ps-form .form-control:focus, .ps-form .form-select:focus { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+    .ps-form .form-label { font-weight:600; font-size:.82rem; color:#334155; }
+
+    .ps-btn-save { background:linear-gradient(135deg,#6366f1,#4f46e5); border:none; border-radius:12px; font-weight:700; font-size:.88rem; padding:.55rem 1.8rem; color:#fff; transition:all .15s; }
+    .ps-btn-save:hover { background:linear-gradient(135deg,#4f46e5,#4338ca); color:#fff; transform:translateY(-1px); }
+    .ps-btn-cancel { border-radius:12px; font-weight:600; font-size:.85rem; }
+
+    .ps-required::after { content:' *'; color:#ef4444; font-weight:700; }
+</style>
+
+<div class="ps-page">
+    <div class="ps-header">
+        <h5><i class="bi bi-gear-wide-connected me-2"></i>@(Model.IsEdit ? "Edit Payout Configuration" : "Setup Payout Configuration")</h5>
+        <div class="ps-sub">Configure payout model and rates for this employee</div>
+    </div>
+    <div class="ps-body">
+        <!-- User Info -->
+        <div class="ps-user-info d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center justify-content-center rounded-circle text-white fw-bold" style="width:42px;height:42px;min-width:42px;background:#6366f1;font-size:.95rem;">
+                @(Model.UserName.Length > 0 ? Model.UserName[0].ToString().ToUpper() : "U")
+            </div>
+            <div>
+                <div class="fw-bold">@Model.UserName</div>
+                <small>
+                    @if (!string.IsNullOrEmpty(Model.EmployeeCode)) { <span>@Model.EmployeeCode</span> }
+                    @if (!string.IsNullOrEmpty(Model.DepartmentName)) { <span class="ms-2">@Model.DepartmentName</span> }
+                </small>
+            </div>
+        </div>
+
+        <form asp-action="Setup" method="post" class="ps-form" id="setupForm">
+            <input type="hidden" name="UserId" value="@Model.UserId" />
+            <input type="hidden" name="IsEdit" value="@Model.IsEdit" />
+
+            <!-- Payout Model Toggle -->
+            <label class="form-label ps-required">Payout Model</label>
+            <div class="ps-model-toggle">
+                <div class="ps-model-option @(Model.PayoutModel == "Hourly" ? "active" : "")" data-model="Hourly" onclick="selectModel('Hourly')">
+                    <i class="bi bi-clock text-success"></i>
+                    <div class="ps-opt-title">Hourly</div>
+                    <div class="ps-opt-desc">Pay per hour of logged time</div>
+                </div>
+                <div class="ps-model-option @(Model.PayoutModel == "Commission" ? "active" : "")" data-model="Commission" onclick="selectModel('Commission')">
+                    <i class="bi bi-percent text-primary"></i>
+                    <div class="ps-opt-title">Commission</div>
+                    <div class="ps-opt-desc">Fixed amount per completed task</div>
+                </div>
+            </div>
+            <input type="hidden" name="PayoutModel" id="payoutModel" value="@Model.PayoutModel" />
+
+            <!-- Hourly Rate -->
+            <div id="hourlyFields" class="ps-field-group @(Model.PayoutModel == "Hourly" ? "active" : "")">
+                <div class="mb-3">
+                    <label class="form-label ps-required">Hourly Rate (₹)</label>
+                    <div class="input-group">
+                        <span class="input-group-text" style="border-radius:10px 0 0 10px;">₹</span>
+                        <input type="number" step="0.01" min="0.01" max="999999.99" name="HourlyRate" id="hourlyRate"
+                               class="form-control" value="@(Model.HourlyRate?.ToString("F2") ?? "")" placeholder="e.g. 500.00" />
+                    </div>
+                    <span asp-validation-for="HourlyRate" class="text-danger" style="font-size:.78rem;"></span>
+                </div>
+            </div>
+
+            <!-- Commission Default Amount -->
+            <div id="commissionFields" class="ps-field-group @(Model.PayoutModel == "Commission" ? "active" : "")">
+                <div class="mb-3">
+                    <label class="form-label ps-required">Default Commission per Task (₹)</label>
+                    <div class="input-group">
+                        <span class="input-group-text" style="border-radius:10px 0 0 10px;">₹</span>
+                        <input type="number" step="0.01" min="0.01" max="999999.99" name="DefaultCommissionAmount" id="defaultCommission"
+                               class="form-control" value="@(Model.DefaultCommissionAmount?.ToString("F2") ?? "")" placeholder="e.g. 200.00" />
+                    </div>
+                    <span asp-validation-for="DefaultCommissionAmount" class="text-danger" style="font-size:.78rem;"></span>
+                    <div class="form-text" style="font-size:.74rem;">This is the fallback amount when no specific rule matches a task.</div>
+                </div>
+            </div>
+
+            <!-- Effective From -->
+            <div class="mb-4">
+                <label class="form-label ps-required">Effective From</label>
+                <input type="date" name="EffectiveFrom" class="form-control" value="@Model.EffectiveFrom.ToString("yyyy-MM-dd")" required />
+                <span asp-validation-for="EffectiveFrom" class="text-danger" style="font-size:.78rem;"></span>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex gap-3">
+                <button type="submit" class="ps-btn-save" id="saveBtn">
+                    <i class="bi bi-check-lg me-1"></i> @(Model.IsEdit ? "Update Configuration" : "Save Configuration")
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary ps-btn-cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function selectModel(model) {
+    document.getElementById('payoutModel').value = model;
+    document.querySelectorAll('.ps-model-option').forEach(function(el) {
+        el.classList.toggle('active', el.dataset.model === model);
+    });
+    document.getElementById('hourlyFields').classList.toggle('active', model === 'Hourly');
+    document.getElementById('commissionFields').classList.toggle('active', model === 'Commission');
+}
+
+document.getElementById('setupForm').addEventListener('submit', function(e) {
+    var model = document.getElementById('payoutModel').value;
+    if (model === 'Hourly') {
+        var rate = parseFloat(document.getElementById('hourlyRate').value);
+        if (!rate || rate <= 0) {
+            e.preventDefault();
+            document.getElementById('hourlyRate').classList.add('is-invalid');
+            document.getElementById('hourlyRate').focus();
+            return;
+        }
+    } else if (model === 'Commission') {
+        var comm = parseFloat(document.getElementById('defaultCommission').value);
+        if (!comm || comm <= 0) {
+            e.preventDefault();
+            document.getElementById('defaultCommission').classList.add('is-invalid');
+            document.getElementById('defaultCommission').focus();
+            return;
+        }
+    }
+});
+
+document.getElementById('hourlyRate')?.addEventListener('input', function() { this.classList.remove('is-invalid'); });
+document.getElementById('defaultCommission')?.addEventListener('input', function() { this.classList.remove('is-invalid'); });
+</script>
+}

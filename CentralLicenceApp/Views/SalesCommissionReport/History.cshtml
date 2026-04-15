@@ -1,0 +1,166 @@
+@model CentralLicenceApp.Models.ViewModels.SalesCommHistoryReportViewModel
+@{
+    ViewData["Title"] = "Sales Commission History Report";
+}
+
+<style>
+    .rph-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .rph-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:320px; height:320px; background:rgba(255,255,255,.06); border-radius:50%; pointer-events:none; }
+    .rph-hero h4 { color:#fff; font-weight:800; font-size:1.4rem; margin-bottom:.15rem; }
+    .rph-hero .rph-sub { color:rgba(255,255,255,.8); font-size:.85rem; }
+
+    .rph-stat { background:rgba(255,255,255,.18); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.2); border-radius:14px; padding:.7rem 1.1rem; min-width:110px; text-align:center; }
+    .rph-stat-num { font-size:1.4rem; font-weight:800; color:#fff; line-height:1.2; }
+    .rph-stat-lbl { font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color:rgba(255,255,255,.7); }
+
+    .rph-filter { background:linear-gradient(145deg,#faf8ff,#f3f0ff); border:1px solid #e9e4f5; border-radius:14px; padding:1rem 1.5rem; margin-bottom:1.25rem; }
+    .rph-card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9; overflow:hidden; }
+    .rph-table { margin-bottom:0; }
+    .rph-table thead { background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+    .rph-table thead th { font-size:.68rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.08em; padding:.7rem .8rem; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+    .rph-table tbody tr { transition:all .15s; border-bottom:1px solid #f8fafc; }
+    .rph-table tbody tr:hover { background:linear-gradient(90deg,#f5f3ff,#eff6ff); }
+    .rph-table td { vertical-align:middle; padding:.6rem .8rem; font-size:.8rem; color:#334155; }
+</style>
+
+<!-- Hero -->
+<div class="rph-hero">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h4><i class="bi bi-clock-history me-2"></i>Sales Commission History</h4>
+            <div class="rph-sub">Complete batch history with settlement details</div>
+        </div>
+        <div class="d-flex gap-3 flex-wrap">
+            <div class="rph-stat">
+                <div class="rph-stat-num">@Model.Items.Count</div>
+                <div class="rph-stat-lbl">Batches</div>
+            </div>
+            <div class="rph-stat">
+                <div class="rph-stat-num">₹@Model.GrandTotalNet.ToString("N0")</div>
+                <div class="rph-stat-lbl">Total Net</div>
+            </div>
+            <div class="rph-stat">
+                <div class="rph-stat-num">₹@Model.GrandTotalPaid.ToString("N0")</div>
+                <div class="rph-stat-lbl">Total Paid</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="rph-filter">
+    <form method="get" class="row g-2 align-items-end">
+        @if (Model.IsAdminView)
+        {
+        <div class="col-md-3">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">Sales User</label>
+            <select name="userId" class="form-select form-select-sm" style="border-radius:10px;">
+                <option value="">All Users</option>
+                @foreach (var u in Model.Users)
+                {
+                    <option value="@u.Id" selected="@(Model.UserFilter == u.Id)">@u.FullName</option>
+                }
+            </select>
+        </div>
+        }
+        <div class="col-md-2">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">Status</label>
+            <select name="status" class="form-select form-select-sm" style="border-radius:10px;">
+                <option value="">All</option>
+                <option value="Draft" selected="@(Model.StatusFilter == "Draft")">Draft</option>
+                <option value="PendingApproval" selected="@(Model.StatusFilter == "PendingApproval")">Pending Approval</option>
+                <option value="L1Approved" selected="@(Model.StatusFilter == "L1Approved")">L1 Approved</option>
+                <option value="Approved" selected="@(Model.StatusFilter == "Approved")">Approved</option>
+                <option value="Paid" selected="@(Model.StatusFilter == "Paid")">Paid</option>
+                <option value="Rejected" selected="@(Model.StatusFilter == "Rejected")">Rejected</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">From Date</label>
+            <input type="date" name="from" class="form-control form-control-sm" style="border-radius:10px;" value="@Model.FromDate?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">To Date</label>
+            <input type="date" name="to" class="form-control form-control-sm" style="border-radius:10px;" value="@Model.ToDate?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-sm btn-primary" style="border-radius:10px;"><i class="bi bi-funnel me-1"></i> Filter</button>
+            <a asp-action="History" class="btn btn-sm btn-outline-secondary" style="border-radius:10px;"><i class="bi bi-x-lg"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- Table -->
+<div class="rph-card">
+    <div class="table-responsive">
+        <table class="table rph-table">
+            <thead>
+                <tr>
+                    <th>Batch</th>
+                    <th>Sales User</th>
+                    <th>Period</th>
+                    <th>Type</th>
+                    <th>Payments</th>
+                    <th>Net (₹)</th>
+                    <th>Status</th>
+                    <th>Generated</th>
+                    <th>Settlement (₹)</th>
+                    <th>Paid On</th>
+                    <th>Mode</th>
+                    <th>Ref #</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr><td colspan="12" class="text-center text-muted py-4"><i class="bi bi-inbox me-1"></i> No data found.</td></tr>
+                }
+                @foreach (var r in Model.Items)
+                {
+                    var statusClass = r.Status switch
+                    {
+                        "Draft" => "bg-secondary",
+                        "PendingApproval" => "bg-warning text-dark",
+                        "L1Approved" => "bg-info text-dark",
+                        "Approved" => "bg-primary",
+                        "Paid" => "bg-success",
+                        "Rejected" => "bg-danger",
+                        _ => "bg-secondary"
+                    };
+                    var statusDisplay = r.Status switch
+                    {
+                        "PendingApproval" => "Pending",
+                        "L1Approved" => "L1 Approved",
+                        _ => r.Status
+                    };
+                    <tr>
+                        <td><a asp-controller="SalesCommissionBatch" asp-action="Details" asp-route-id="@r.BatchId" class="text-primary fw-semibold">#@r.BatchId</a></td>
+                        <td>
+                            <div class="fw-semibold" style="font-size:.78rem;">@r.UserName</div>
+                            @if (!string.IsNullOrEmpty(r.EmployeeCode))
+                            {
+                                <small class="text-muted">@r.EmployeeCode</small>
+                            }
+                        </td>
+                        <td style="font-size:.78rem;">@r.FromDate.ToString("dd MMM") – @r.ToDate.ToString("dd MMM yy")</td>
+                        <td>
+                            <span class="badge" style="font-size:.65rem; background:@(r.CommissionType == "Percentage" ? "#7c3aed" : "#0891b2") !important;">
+                                @r.CommissionType
+                            </span>
+                        </td>
+                        <td>@r.TotalPayments</td>
+                        <td class="fw-bold">₹@r.NetCommission.ToString("N2")</td>
+                        <td><span class="badge @statusClass" style="font-size:.65rem;">@statusDisplay</span></td>
+                        <td style="font-size:.76rem;">@r.GeneratedAt.ToString("dd MMM yyyy")</td>
+                        <td class="@(r.Status == "Paid" ? "fw-bold text-success" : "text-muted")">
+                            @(r.SettlementAmount.HasValue ? $"₹{r.SettlementAmount:N2}" : "—")
+                        </td>
+                        <td style="font-size:.76rem;">@(r.SettlementDate?.ToString("dd MMM yyyy") ?? "—")</td>
+                        <td style="font-size:.76rem;">@(r.SettlementMode ?? "—")</td>
+                        <td style="font-size:.76rem;">@(r.SettlementReferenceNo ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

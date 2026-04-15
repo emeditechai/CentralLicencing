@@ -1,0 +1,215 @@
+@model CentralLicenceApp.Models.ViewModels.PayoutConfigurationIndexViewModel
+@{
+    ViewData["Title"] = "Payout Configuration";
+    var configured = Model.Users.Count(u => u.IsConfigured);
+    var total = Model.Users.Count;
+}
+
+<style>
+    .pc-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .pc-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:320px; height:320px; background:rgba(255,255,255,.06); border-radius:50%; pointer-events:none; }
+    .pc-hero h4 { color:#fff; font-weight:800; font-size:1.5rem; letter-spacing:-.02em; margin-bottom:.25rem; }
+    .pc-hero .pc-sub { color:rgba(255,255,255,.75); font-size:.85rem; }
+
+    .pc-stat { background:rgba(255,255,255,.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:.7rem 1.1rem; min-width:105px; text-align:center; }
+    .pc-stat-num { font-size:1.5rem; font-weight:800; color:#fff; line-height:1.2; }
+    .pc-stat-lbl { font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color:rgba(255,255,255,.7); }
+
+    .pc-filter { background:#fff; border-radius:16px; box-shadow:0 2px 16px rgba(0,0,0,.05); border:1px solid #f1f5f9; padding:1rem 1.5rem; margin-bottom:1.5rem; }
+    .pc-filter .form-control, .pc-filter .form-select { border-radius:10px; border:1.5px solid #e2e8f0; font-size:.85rem; }
+    .pc-filter .form-control:focus, .pc-filter .form-select:focus { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+
+    .pc-card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9; overflow:hidden; }
+    .pc-table { margin-bottom:0; }
+    .pc-table thead { background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+    .pc-table thead th { font-size:.7rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.08em; padding:.75rem .85rem; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+    .pc-table tbody tr { transition:all .15s ease; border-bottom:1px solid #f8fafc; }
+    .pc-table tbody tr:hover { background:linear-gradient(90deg,#f5f3ff,#eff6ff); }
+    .pc-table td { vertical-align:middle; padding:.65rem .85rem; font-size:.84rem; color:#334155; }
+
+    .pc-model-badge { font-size:.7rem; font-weight:700; padding:4px 10px; border-radius:20px; letter-spacing:.03em; }
+    .pc-model-hourly { background:linear-gradient(135deg,#dcfce7,#bbf7d0); color:#166534; }
+    .pc-model-commission { background:linear-gradient(135deg,#ede9fe,#ddd6fe); color:#5b21b6; }
+
+    .pc-status-configured { font-size:.7rem; font-weight:700; padding:4px 10px; border-radius:20px; background:#dcfce7; color:#166534; }
+    .pc-status-notconfigured { font-size:.7rem; font-weight:700; padding:4px 10px; border-radius:20px; background:#fef3c7; color:#92400e; }
+
+    .pc-btn { border-radius:10px; font-weight:600; font-size:.8rem; padding:.35rem .9rem; border:none; transition:all .15s; }
+    .pc-btn-setup { background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; }
+    .pc-btn-setup:hover { background:linear-gradient(135deg,#4f46e5,#4338ca); color:#fff; transform:translateY(-1px); }
+    .pc-btn-rules { background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; }
+    .pc-btn-rules:hover { background:linear-gradient(135deg,#6d28d9,#5b21b6); color:#fff; transform:translateY(-1px); }
+
+    .pc-rate { font-weight:700; font-size:.88rem; color:#0f172a; }
+    .pc-rate small { font-weight:500; color:#94a3b8; font-size:.72rem; }
+</style>
+
+<!-- Hero -->
+<div class="pc-hero">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h4><i class="bi bi-gear-wide-connected me-2"></i>Payout Configuration</h4>
+            <div class="pc-sub">Configure hourly rates and commission rules per employee</div>
+        </div>
+        <div class="d-flex gap-3 flex-wrap">
+            <div class="pc-stat">
+                <div class="pc-stat-num">@total</div>
+                <div class="pc-stat-lbl">Employees</div>
+            </div>
+            <div class="pc-stat">
+                <div class="pc-stat-num">@configured</div>
+                <div class="pc-stat-lbl">Configured</div>
+            </div>
+            <div class="pc-stat">
+                <div class="pc-stat-num">@(total - configured)</div>
+                <div class="pc-stat-lbl">Pending</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alerts -->
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" style="border-radius:12px;font-size:.85rem;">
+        <i class="bi bi-check-circle me-1"></i> @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" style="border-radius:12px;font-size:.85rem;">
+        <i class="bi bi-exclamation-triangle me-1"></i> @TempData["Error"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<!-- Filters -->
+<div class="pc-filter">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">Search</label>
+            <input type="text" name="search" class="form-control" value="@Model.SearchTerm" placeholder="Name or employee code..." />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">Payout Model</label>
+            <select name="model" class="form-select">
+                <option value="">All Models</option>
+                <option value="Hourly" selected="@(Model.ModelFilter == "Hourly")">Hourly</option>
+                <option value="Commission" selected="@(Model.ModelFilter == "Commission")">Commission</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">Status</label>
+            <select name="status" class="form-select">
+                <option value="">All</option>
+                <option value="Configured" selected="@(Model.StatusFilter == "Configured")">Configured</option>
+                <option value="NotConfigured" selected="@(Model.StatusFilter == "NotConfigured")">Not Configured</option>
+            </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn pc-btn pc-btn-setup flex-fill"><i class="bi bi-search me-1"></i> Filter</button>
+            <a asp-action="Index" class="btn btn-outline-secondary" style="border-radius:10px;font-size:.8rem;"><i class="bi bi-x-lg"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- Table -->
+<div class="pc-card">
+    <div class="table-responsive">
+        <table class="table pc-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Model</th>
+                    <th>Rate / Amount</th>
+                    <th>Effective From</th>
+                    <th>Rules</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Users.Any())
+                {
+                    <tr><td colspan="9" class="text-center text-muted py-4"><i class="bi bi-inbox me-1"></i> No employees found.</td></tr>
+                }
+                @{ var idx = 0; }
+                @foreach (var u in Model.Users)
+                {
+                    idx++;
+                    <tr>
+                        <td class="text-muted" style="font-size:.78rem;">@idx</td>
+                        <td>
+                            <div class="fw-semibold" style="font-size:.85rem;">@u.UserName</div>
+                            @if (!string.IsNullOrEmpty(u.EmployeeCode))
+                            {
+                                <div style="font-size:.72rem;color:#94a3b8;">@u.EmployeeCode</div>
+                            }
+                        </td>
+                        <td style="font-size:.82rem;">@(u.DepartmentName ?? "—")</td>
+                        <td>
+                            @if (u.IsConfigured)
+                            {
+                                <span class="pc-status-configured"><i class="bi bi-check-circle me-1"></i>Configured</span>
+                            }
+                            else
+                            {
+                                <span class="pc-status-notconfigured"><i class="bi bi-exclamation-circle me-1"></i>Not Set</span>
+                            }
+                        </td>
+                        <td>
+                            @if (u.IsConfigured && u.PayoutModel != null)
+                            {
+                                <span class="pc-model-badge @(u.PayoutModel == "Hourly" ? "pc-model-hourly" : "pc-model-commission")">
+                                    <i class="bi @(u.PayoutModel == "Hourly" ? "bi-clock" : "bi-percent") me-1"></i>@u.PayoutModel
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted" style="font-size:.78rem;">—</span>
+                            }
+                        </td>
+                        <td>
+                            @if (u.IsConfigured)
+                            {
+                                @if (u.PayoutModel == "Hourly")
+                                {
+                                    <span class="pc-rate">₹@(u.HourlyRate?.ToString("N2") ?? "0.00") <small>/hr</small></span>
+                                }
+                                else
+                                {
+                                    <span class="pc-rate">₹@(u.DefaultCommissionAmount?.ToString("N2") ?? "0.00") <small>/task</small></span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted" style="font-size:.78rem;">—</span>
+                            }
+                        </td>
+                        <td style="font-size:.82rem;">@(u.EffectiveFrom?.ToString("dd MMM yyyy") ?? "—")</td>
+                        <td>
+                            @if (u.IsConfigured && u.PayoutModel == "Commission")
+                            {
+                                <a asp-action="CommissionRules" asp-route-userId="@u.UserId" class="text-decoration-none" style="font-size:.78rem;font-weight:600;color:#7c3aed;">
+                                    @u.CommissionRuleCount rule(s) <i class="bi bi-arrow-right"></i>
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted" style="font-size:.78rem;">—</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <a asp-action="Setup" asp-route-userId="@u.UserId" class="btn pc-btn pc-btn-setup btn-sm">
+                                <i class="bi bi-gear me-1"></i> @(u.IsConfigured ? "Edit" : "Setup")
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

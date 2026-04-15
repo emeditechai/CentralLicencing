@@ -358,6 +358,14 @@
             <div class="ql-icon" style="background:#f0fdf4;color:#16a34a;"><i class="bi bi-collection"></i></div>
             <div><div class="ql-label">Master Data</div><div class="ql-desc">Products, parties & rates</div></div>
         </a>
+        <a class="quick-link-card" href="#module-task-payout">
+            <div class="ql-icon" style="background:#fef3c7;color:#b45309;"><i class="bi bi-gear"></i></div>
+            <div><div class="ql-label">Task Payout</div><div class="ql-desc">Payout config, batches & settlement</div></div>
+        </a>
+        <a class="quick-link-card" href="#module-sales-commission">
+            <div class="ql-icon" style="background:#fce7f3;color:#be185d;"><i class="bi bi-percent"></i></div>
+            <div><div class="ql-label">Sales Commission</div><div class="ql-desc">Commission config, batches & payouts</div></div>
+        </a>
         }
     </div>
 
@@ -382,6 +390,8 @@
                 {
                 <a href="#module-admin"><i class="bi bi-gear"></i> Administration</a>
                 <a href="#module-masters"><i class="bi bi-collection"></i> Master Data</a>
+                <a href="#module-task-payout"><i class="bi bi-cash-stack"></i> Task Payout</a>
+                <a href="#module-sales-commission"><i class="bi bi-percent"></i> Sales Commission</a>
                 <a href="#module-email"><i class="bi bi-send-check"></i> Email Engine</a>
                 }
                 <div style="margin-top:1rem;border-top:1px solid #f1f5f9;padding-top:.75rem;">
@@ -614,16 +624,16 @@
                 }
 
                 @* ─── CRM / HELP DESK ─────────────────────── *@
-                <div class="help-module" id="module-crm" data-keywords="crm help desk ticket support agent priority category sla status note notification">
+                <div class="help-module" id="module-crm" data-keywords="crm help desk ticket support agent priority category sla status note notification task log daily timesheet productivity project effort">
                     <div class="help-module-header">
                         <div class="help-module-icon" style="background:#e0f2fe;color:#0284c7;"><i class="bi bi-headset"></i></div>
                         <div>
                             <h3>Help Desk / CRM</h3>
-                            <span class="text-muted" style="font-size:.78rem;">Support ticketing system with SLA tracking</span>
+                            <span class="text-muted" style="font-size:.78rem;">Support ticketing, task tracking & SLA management</span>
                         </div>
                         <span class="module-badge">All Users</span>
                     </div>
-                    <p>The Help Desk module provides a comprehensive support ticketing system. Users can raise tickets for issues or requests, and agents/admins can manage, prioritize, and resolve them. The system supports SLA tracking, priority levels, and real-time notifications.</p>
+                    <p>The Help Desk module provides a comprehensive support ticketing system combined with daily task logging. Users can raise tickets, track work hours, and agents/admins can manage, prioritize, and resolve them. The system supports SLA tracking, priority levels, and real-time notifications.</p>
 
                     <div class="help-section-divider">
                         <span class="divider-label">Raising a Ticket</span>
@@ -649,6 +659,30 @@
                     </ol>
 
                     <div class="help-section-divider">
+                        <span class="divider-label">Daily Task Log</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Navigate to <strong>CRM → My Task Log</strong> to record your daily work activities.</li>
+                        <li>Log tasks with <strong>Task Date</strong>, <strong>Project/Module</strong>, <strong>Task Category</strong>, <strong>Task Type</strong>, a description, and <strong>Hours Spent</strong>.</li>
+                        <li>View and manage your task history with date filters and search.</li>
+                        <li>Navigate to <strong>CRM → Team Task Log</strong> (Admin / Ticket Admin) to view task logs across all team members.</li>
+                        <li>Filter the team view by employee, date range, or project to analyze productivity.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">CRM Master Data</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li><strong>Ticket Categories & Sub-Categories</strong> — Organize tickets by category hierarchy.</li>
+                        <li><strong>Ticket Priorities</strong> — Define priority levels with SLA timeframes.</li>
+                        <li><strong>Task Types</strong> — Define types of work activities (e.g., Development, Testing, Bug Fix, Meeting).</li>
+                        <li><strong>Task Categories</strong> — Categorize tasks for reporting (e.g., Feature, Support, Maintenance).</li>
+                        <li><strong>Project / Module</strong> — Manage projects and modules that tasks can be logged against.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
                         <span class="divider-label">CRM Reports</span>
                         <div class="divider-line"></div>
                     </div>
@@ -656,6 +690,11 @@
                         <li><strong>Analytics Dashboard</strong> — Overview KPIs: open tickets, resolution times, category distribution.</li>
                         <li><strong>Agent Performance</strong> — Metrics per agent: tickets handled, average resolution time, ratings.</li>
                         <li><strong>SLA Compliance</strong> — Track whether tickets are resolved within the defined SLA timeframes.</li>
+                        <li><strong>Timesheet Report</strong> — View daily/weekly task logs with hours spent, grouped by employee and date.</li>
+                        <li><strong>Employee Productivity</strong> — Analyze individual productivity metrics across projects and task types.</li>
+                        <li><strong>Project Effort</strong> — Breakdown of total effort spent per project/module with contributor details.</li>
+                        <li><strong>Payout Summary / Detail / History</strong> — Task-based payout reports: summary view, line-item details, and historical settlement records.</li>
+                        <li><strong>Sales Comm Summary / Detail / History</strong> — Sales commission reports: per-agent summary, invoice-level detail, and historical payouts.</li>
                     </ol>
 
                     <div class="help-features">
@@ -665,7 +704,15 @@
                         <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Status Notes</div>
                         <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Email Notifications</div>
                         <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Browser Notifications</div>
-                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Analytics & SLA Reports</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Daily Task Logging</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Team Task View</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Timesheet & Productivity</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Project Effort Tracking</div>
+                    </div>
+
+                    <div class="help-tip">
+                        <i class="bi bi-lightbulb-fill"></i>
+                        <div><strong>Tip:</strong> Set up Task Types, Task Categories, and Project/Module masters under CRM → Master before logging tasks. This ensures consistent categorization and accurate reporting.</div>
                     </div>
                 </div>
 
@@ -705,10 +752,141 @@
                 </div>
                 }
 
+                @* ─── TASK PAYOUT ─────────────────────────── *@
+                @if (isAdmin)
+                {
+                <div class="help-module" id="module-task-payout" data-keywords="task payout configuration batch approval settlement desk rate employee hours">
+                    <div class="help-module-header">
+                        <div class="help-module-icon" style="background:#fef3c7;color:#b45309;"><i class="bi bi-cash-stack"></i></div>
+                        <div>
+                            <h3>Task Payout</h3>
+                            <span class="text-muted" style="font-size:.78rem;">Configure task-based payouts, generate batches & settle</span>
+                        </div>
+                        <span class="module-badge">Admin Only</span>
+                    </div>
+                    <p>The Task Payout module lets you configure per-employee payout rates based on logged task hours, generate payout batches for review, approve them, and settle payments. Found under <strong>Business Unit → Task Payout</strong>.</p>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Payout Configuration</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Go to <strong>Business Unit → Task Payout → Payout Configuration</strong>.</li>
+                        <li>View a list of all active employees with their current payout configuration status (<strong>Configured</strong> or <strong>Not Set</strong>).</li>
+                        <li>Click <strong>Setup</strong> to configure an employee's hourly rate, effective date, and payout calculation rules.</li>
+                        <li>Edit existing configurations to update rates or rules as needed.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Payout Batches</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Navigate to <strong>Task Payout → Payout Batches</strong>.</li>
+                        <li>Generate a new batch by selecting a date range — the system calculates payouts based on logged task hours and configured rates.</li>
+                        <li>Review the batch summary showing per-employee payout amounts before submission.</li>
+                        <li>Submit the batch for approval.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Approval & Settlement</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li><strong>Approval Inbox</strong> — Review submitted payout batches and approve or reject them.</li>
+                        <li><strong>Settlement Desk</strong> — Process approved batches for final payment settlement. Mark batches as settled with payment details.</li>
+                    </ol>
+
+                    <div class="help-features">
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Per-employee Rate Config</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Auto Calculation</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Batch Generation</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Approval Workflow</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Settlement Tracking</div>
+                    </div>
+
+                    <div class="help-tip">
+                        <i class="bi bi-lightbulb-fill"></i>
+                        <div><strong>Tip:</strong> Ensure employees have logged their daily tasks under CRM → My Task Log before generating payout batches. Only configured employees with logged hours will appear in the batch.</div>
+                    </div>
+                </div>
+
+                @* ─── SALES COMMISSION ────────────────────── *@
+                <div class="help-module" id="module-sales-commission" data-keywords="sales commission agent invoice assignment batch approval settlement rate percentage fixed product rule">
+                    <div class="help-module-header">
+                        <div class="help-module-icon" style="background:#fce7f3;color:#be185d;"><i class="bi bi-percent"></i></div>
+                        <div>
+                            <h3>Sales Commission</h3>
+                            <span class="text-muted" style="font-size:.78rem;">Commission configuration, invoice assignment & payouts</span>
+                        </div>
+                        <span class="module-badge">Admin Only</span>
+                    </div>
+                    <p>The Sales Commission module manages commission payouts for sales agents. Configure commission rates (percentage or fixed), assign invoices to agents, generate commission batches, and settle payments. Found under <strong>Business Unit → Sales Commission</strong>.</p>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Commission Configuration</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Go to <strong>Sales Commission → Commission Config</strong>.</li>
+                        <li>View all users marked as <strong>Sales Agent</strong> (set via the "Is Sales Agent" toggle in User Management).</li>
+                        <li>Click <strong>Setup</strong> to configure an agent's commission type (<strong>Percentage</strong> or <strong>Fixed Amount</strong>), default rate, and effective date.</li>
+                        <li>Optionally add <strong>product-specific rules</strong> to override the default rate for specific products.</li>
+                        <li>Edit existing configurations or rules at any time.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Invoice Assignment</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Navigate to <strong>Sales Commission → Invoice Assignment</strong>.</li>
+                        <li>View unassigned invoices and assign them to sales agents.</li>
+                        <li>Use the <strong>search/auto-suggest</strong> to quickly find invoices by invoice number.</li>
+                        <li>View already-assigned invoices and reassign if needed.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Commission Batches</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li>Navigate to <strong>Sales Commission → Commission Batches</strong>.</li>
+                        <li>Generate a new batch by selecting a date range — the system calculates commissions based on assigned invoices and configured rates.</li>
+                        <li>Review per-agent commission amounts before submission.</li>
+                        <li>Submit the batch for approval.</li>
+                    </ol>
+
+                    <div class="help-section-divider">
+                        <span class="divider-label">Approval & Settlement</span>
+                        <div class="divider-line"></div>
+                    </div>
+                    <ol class="help-steps">
+                        <li><strong>Approval Inbox</strong> — Review submitted commission batches and approve or reject them.</li>
+                        <li><strong>Settlement Desk</strong> — Process approved batches for final commission settlement.</li>
+                    </ol>
+
+                    <div class="help-features">
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Percentage & Fixed Rates</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Product-specific Rules</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Invoice Assignment</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Auto-suggest Search</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Batch Generation</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Approval Workflow</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Settlement Tracking</div>
+                    </div>
+
+                    <div class="help-tip">
+                        <i class="bi bi-lightbulb-fill"></i>
+                        <div><strong>Tip:</strong> First mark users as "Sales Agent" in User Management (Administration → User Management → Edit), then configure their commission rates, and finally assign invoices to them. Only users with "Is Sales Agent" enabled appear in the Commission Config.</div>
+                    </div>
+                </div>
+                }
+
                 @* ─── ADMINISTRATION ──────────────────────── *@
                 @if (isAdmin)
                 {
-                <div class="help-module" id="module-admin" data-keywords="admin user role company settings password profile logo branding">
+                <div class="help-module" id="module-admin" data-keywords="admin user role company settings password profile logo branding sales agent employee">
                     <div class="help-module-header">
                         <div class="help-module-icon" style="background:#fef2f2;color:#dc2626;"><i class="bi bi-gear"></i></div>
                         <div>
@@ -727,6 +905,7 @@
                         <li>Go to <strong>Administration → User Management</strong>.</li>
                         <li>Create new users with <strong>Username</strong>, <strong>Full Name</strong>, <strong>Email</strong>, <strong>Department</strong>, <strong>Designation</strong>, and <strong>Employee Type</strong>.</li>
                         <li>Assign one or more <strong>Roles</strong> to each user (e.g., Administrator, Finance, Ticket Agent).</li>
+                        <li>Toggle <strong>Is Employee</strong>, <strong>Core Member</strong>, and <strong>Is Sales Agent</strong> flags. The "Is Sales Agent" flag determines which users appear in the Sales Commission Configuration.</li>
                         <li>Upload a <strong>Profile Image</strong> for the user avatar displayed in the topbar.</li>
                         <li>Activate or deactivate users as needed.</li>
                     </ol>
@@ -755,6 +934,7 @@
                     <div class="help-features">
                         <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> User CRUD</div>
                         <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Multi-role Assignment</div>
+                        <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Is Sales Agent Flag</div>
                         <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Profile Images</div>
                         <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Company Branding</div>
                         <div class="help-feature-tag"><i class="bi bi-check-circle-fill"></i> Role-based Access</div>

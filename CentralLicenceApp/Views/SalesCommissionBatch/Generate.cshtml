@@ -1,0 +1,183 @@
+@model CentralLicenceApp.Models.ViewModels.SalesCommGenerateFormViewModel
+@{
+    ViewData["Title"] = "Generate Sales Commission Batch";
+}
+
+<style>
+    .gen-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .gen-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:320px; height:320px; background:rgba(255,255,255,.06); border-radius:50%; pointer-events:none; }
+    .gen-hero h4 { color:#fff; font-weight:800; font-size:1.4rem; margin-bottom:.15rem; }
+    .gen-hero .gen-sub { color:rgba(255,255,255,.75); font-size:.85rem; }
+
+    .gen-card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9; padding:1.75rem; }
+    .gen-preview { background:linear-gradient(145deg,#faf8ff,#f3f0ff); border:1px solid #e9e4f5; border-radius:14px; padding:1.25rem 1.5rem; margin-top:1.25rem; display:none; }
+    .gen-preview .gen-pv-num { font-size:1.3rem; font-weight:800; color:#6366f1; }
+    .gen-preview .gen-pv-lbl { font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:#64748b; font-weight:600; }
+    .gen-btn { background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; border-radius:12px; font-weight:700; font-size:.9rem; padding:.6rem 2rem; border:none; }
+    .gen-btn:hover { background:linear-gradient(135deg,#4f46e5,#4338ca); color:#fff; }
+    .gen-btn:disabled { opacity:.5; }
+</style>
+
+<!-- Hero -->
+<div class="gen-hero">
+    <h4><i class="bi bi-lightning-charge me-2"></i>Generate Sales Commission Batch</h4>
+    <div class="gen-sub">Select a sales user and date range to generate a commission batch from received payments</div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="gen-card">
+            <form asp-action="Generate" method="post" id="generateForm">
+                <div class="mb-3">
+                    <label asp-for="UserId" class="form-label fw-semibold" style="font-size:.85rem;">Sales User <span class="text-danger">*</span></label>
+                    <select asp-for="UserId" class="form-select" style="border-radius:10px;" id="userSelect">
+                        <option value="">— Select Sales User —</option>
+                        @foreach (var u in Model.ConfiguredUsers)
+                        {
+                            <option value="@u.UserId"
+                                    data-type="@u.CommissionType"
+                                    data-rate="@u.DefaultRate?.ToString("N2")"
+                                    selected="@(u.UserId == Model.UserId)">
+                                @u.UserName @(!string.IsNullOrEmpty(u.EmployeeCode) ? $"({u.EmployeeCode})" : "") — @u.CommissionType
+                            </option>
+                        }
+                    </select>
+                    <span asp-validation-for="UserId" class="text-danger" style="font-size:.78rem;"></span>
+                </div>
+
+                <!-- User Info Card -->
+                <div id="userInfoCard" class="d-none mb-3" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:.75rem 1.25rem;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-semibold" style="font-size:.82rem;">Type:</span>
+                            <span id="userType" class="badge bg-primary ms-1" style="font-size:.72rem;"></span>
+                        </div>
+                        <div>
+                            <span class="fw-semibold" style="font-size:.82rem;">Default Rate:</span>
+                            <span id="userRate" class="fw-bold text-success" style="font-size:.88rem;"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label asp-for="FromDate" class="form-label fw-semibold" style="font-size:.85rem;">From Date <span class="text-danger">*</span></label>
+                        <input asp-for="FromDate" type="date" class="form-control" style="border-radius:10px;" id="fromDate" />
+                        <span asp-validation-for="FromDate" class="text-danger" style="font-size:.78rem;"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="ToDate" class="form-label fw-semibold" style="font-size:.85rem;">To Date <span class="text-danger">*</span></label>
+                        <input asp-for="ToDate" type="date" class="form-control" style="border-radius:10px;" id="toDate" />
+                        <span asp-validation-for="ToDate" class="text-danger" style="font-size:.78rem;"></span>
+                    </div>
+                </div>
+
+                <!-- Preview Button -->
+                <button type="button" id="previewBtn" class="btn btn-outline-primary mb-3" style="border-radius:10px;font-size:.82rem;" onclick="loadPreview()">
+                    <i class="bi bi-binoculars me-1"></i> Preview Eligible Payments
+                </button>
+
+                <!-- Preview Results -->
+                <div id="previewBox" class="gen-preview">
+                    <div class="row text-center g-3">
+                        <div class="col-3">
+                            <div class="gen-pv-num" id="pvPayments">0</div>
+                            <div class="gen-pv-lbl">Payments</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="gen-pv-num" id="pvInvoices">0</div>
+                            <div class="gen-pv-lbl">Invoices</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="gen-pv-num" id="pvSales">₹0</div>
+                            <div class="gen-pv-lbl">Sales Amount</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="gen-pv-num" id="pvCommission">₹0</div>
+                            <div class="gen-pv-lbl">Est. Commission</div>
+                        </div>
+                    </div>
+                    <div id="pvNoPayments" class="text-center text-warning d-none mt-2" style="font-size:.82rem;">
+                        <i class="bi bi-exclamation-triangle me-1"></i> No eligible payments found in this date range.
+                    </div>
+                </div>
+
+                <hr class="my-4" style="border-color:#e2e8f0;" />
+
+                <div class="d-flex justify-content-between align-items-center">
+                    <a asp-action="Index" class="btn btn-outline-secondary" style="border-radius:10px;">
+                        <i class="bi bi-arrow-left me-1"></i> Back
+                    </a>
+                    <button type="submit" class="btn gen-btn" id="generateBtn">
+                        <i class="bi bi-lightning-charge me-1"></i> Generate Batch
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.getElementById('userSelect').addEventListener('change', function() {
+    var opt = this.options[this.selectedIndex];
+    var card = document.getElementById('userInfoCard');
+    if (!this.value) { card.classList.add('d-none'); return; }
+    card.classList.remove('d-none');
+    var type = opt.getAttribute('data-type') || '';
+    document.getElementById('userType').textContent = type;
+    document.getElementById('userType').className = 'badge ms-1 ' + (type === 'Percentage' ? '' : 'bg-success');
+    if (type === 'Percentage') document.getElementById('userType').style.background = '#7c3aed';
+    else document.getElementById('userType').style.background = '';
+    var rate = opt.getAttribute('data-rate') || '0';
+    document.getElementById('userRate').textContent = type === 'Percentage' ? rate + '%' : '₹' + rate;
+    document.getElementById('previewBox').style.display = 'none';
+});
+
+function loadPreview() {
+    var userId = document.getElementById('userSelect').value;
+    var from = document.getElementById('fromDate').value;
+    var to = document.getElementById('toDate').value;
+    if (!userId || !from || !to) {
+        Swal.fire('Missing Info', 'Please select a sales user and date range first.', 'warning');
+        return;
+    }
+    var btn = document.getElementById('previewBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Loading...';
+
+    var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+    var fd = new FormData();
+    fd.append('__RequestVerificationToken', token);
+    fd.append('userId', userId);
+    fd.append('fromDate', from);
+    fd.append('toDate', to);
+
+    fetch('@Url.Action("Preview")', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-binoculars me-1"></i> Preview Eligible Payments';
+            var box = document.getElementById('previewBox');
+            box.style.display = 'block';
+            if (!data.success) {
+                Swal.fire('Error', data.message || 'Preview failed.', 'error');
+                box.style.display = 'none';
+                return;
+            }
+            var d = data.data;
+            document.getElementById('pvPayments').textContent = d.eligiblePayments;
+            document.getElementById('pvInvoices').textContent = d.invoiceCount;
+            document.getElementById('pvSales').textContent = '₹' + d.totalSalesAmount.toFixed(2);
+            document.getElementById('pvCommission').textContent = '₹' + d.estimatedCommission.toFixed(2);
+            var noP = document.getElementById('pvNoPayments');
+            if (d.eligiblePayments === 0) { noP.classList.remove('d-none'); } else { noP.classList.add('d-none'); }
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-binoculars me-1"></i> Preview Eligible Payments';
+            Swal.fire('Error', 'Network error.', 'error');
+        });
+}
+</script>
+}

@@ -78,6 +78,9 @@ namespace CentralLicenceApp.Models.ViewModels
         [Display(Name = "Is Core Member")]
         public bool IsCoreMember { get; set; }
 
+        [Display(Name = "Is Sales Agent")]
+        public bool IsSalesAgent { get; set; }
+
         [Display(Name = "Manager")]
         public int? ManagerId { get; set; }
 

@@ -206,10 +206,10 @@ namespace CentralLicenceApp.Repositories
             var sql = @"
                 INSERT INTO UserMaster
                     (Username, Email, PasswordHash, FullName, PhoneNumber, DateOfBirth, DateOfJoining, RoleId,
-                     LocationId, ClientId, DepartmentId, DesignationId, EmployeeTypeId, IsEmployee, EmployeeCode, IsCoreMember, ManagerId, ProfileImagePath, DigitalSignaturePath, IsActive, CreatedAt)
+                     LocationId, ClientId, DepartmentId, DesignationId, EmployeeTypeId, IsEmployee, EmployeeCode, IsCoreMember, IsSalesAgent, ManagerId, ProfileImagePath, DigitalSignaturePath, IsActive, CreatedAt)
                 VALUES
                     (@Username, @Email, @PasswordHash, @FullName, @PhoneNumber, @DateOfBirth, @DateOfJoining, @RoleId,
-                     @LocationId, @ClientId, @DepartmentId, @DesignationId, @EmployeeTypeId, @IsEmployee, @EmployeeCode, @IsCoreMember, @ManagerId, @ProfileImagePath, @DigitalSignaturePath, @IsActive, @CreatedAt);
+                     @LocationId, @ClientId, @DepartmentId, @DesignationId, @EmployeeTypeId, @IsEmployee, @EmployeeCode, @IsCoreMember, @IsSalesAgent, @ManagerId, @ProfileImagePath, @DigitalSignaturePath, @IsActive, @CreatedAt);
                 SELECT CAST(SCOPE_IDENTITY() AS INT);";
             user.CreatedAt = DateTime.Now;
             conn.Open();
@@ -241,6 +241,7 @@ namespace CentralLicenceApp.Repositories
                     IsEmployee   = @IsEmployee,
                     EmployeeCode = @EmployeeCode,
                     IsCoreMember = @IsCoreMember,
+                    IsSalesAgent = @IsSalesAgent,
                     ManagerId    = @ManagerId,
                     ProfileImagePath = @ProfileImagePath,
                     DigitalSignaturePath = @DigitalSignaturePath,

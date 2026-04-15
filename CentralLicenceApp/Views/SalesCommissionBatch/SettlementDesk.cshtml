@@ -1,0 +1,89 @@
+@model List<CentralLicenceApp.Models.SalesCommissionBatch>
+@{
+    ViewData["Title"] = "Sales Commission Settlement Desk";
+    var totalAmount = Model.Sum(b => b.NetCommission);
+}
+
+<style>
+    .sd-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .sd-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:320px; height:320px; background:rgba(255,255,255,.06); border-radius:50%; pointer-events:none; }
+    .sd-hero h4 { color:#fff; font-weight:800; font-size:1.4rem; margin-bottom:.15rem; }
+    .sd-hero .sd-sub { color:rgba(255,255,255,.8); font-size:.85rem; }
+
+    .sd-stat { background:rgba(255,255,255,.2); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.2); border-radius:14px; padding:.7rem 1.1rem; min-width:110px; text-align:center; }
+    .sd-stat-num { font-size:1.5rem; font-weight:800; color:#fff; line-height:1.2; }
+    .sd-stat-lbl { font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color:rgba(255,255,255,.75); }
+
+    .sd-card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9; overflow:hidden; }
+    .sd-table { margin-bottom:0; }
+    .sd-table thead { background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+    .sd-table thead th { font-size:.7rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.08em; padding:.75rem .85rem; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+    .sd-table tbody tr { transition:all .15s; border-bottom:1px solid #f8fafc; }
+    .sd-table tbody tr:hover { background:linear-gradient(90deg,#f5f3ff,#eff6ff); }
+    .sd-table td { vertical-align:middle; padding:.65rem .85rem; font-size:.84rem; color:#334155; }
+</style>
+
+<!-- Hero -->
+<div class="sd-hero">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h4><i class="bi bi-cash-stack me-2"></i>Sales Commission Settlement Desk</h4>
+            <div class="sd-sub">Process settlement payments for approved commission batches</div>
+        </div>
+        <div class="d-flex gap-3 flex-wrap">
+            <div class="sd-stat">
+                <div class="sd-stat-num">@Model.Count</div>
+                <div class="sd-stat-lbl">Pending Settlement</div>
+            </div>
+            <div class="sd-stat">
+                <div class="sd-stat-num">₹@totalAmount.ToString("N0")</div>
+                <div class="sd-stat-lbl">Total Amount</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="sd-card">
+    <div class="table-responsive">
+        <table class="table sd-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Employee</th>
+                    <th>Period</th>
+                    <th>Payments</th>
+                    <th>Sales (₹)</th>
+                    <th>Net Commission (₹)</th>
+                    <th>Generated</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr><td colspan="8" class="text-center text-muted py-4"><i class="bi bi-check-circle me-1 text-success"></i> No batches pending settlement.</td></tr>
+                }
+                @foreach (var b in Model)
+                {
+                    <tr>
+                        <td class="text-muted" style="font-size:.78rem;">@b.Id</td>
+                        <td>
+                            <div class="fw-semibold" style="font-size:.82rem;">@b.UserName</div>
+                            @if (!string.IsNullOrEmpty(b.EmployeeCode)) { <small class="text-muted">@b.EmployeeCode</small> }
+                        </td>
+                        <td style="font-size:.82rem;">@b.FromDate.ToString("dd MMM") – @b.ToDate.ToString("dd MMM yyyy")</td>
+                        <td class="fw-semibold">@b.TotalPayments</td>
+                        <td class="fw-bold">₹@b.TotalSalesAmount.ToString("N2")</td>
+                        <td class="fw-bold text-primary">₹@b.NetCommission.ToString("N2")</td>
+                        <td style="font-size:.78rem;">@b.GeneratedAt.ToString("dd MMM yyyy")</td>
+                        <td class="text-center">
+                            <a asp-action="Settle" asp-route-id="@b.Id" class="btn btn-sm btn-success" style="border-radius:8px;font-size:.75rem;">
+                                <i class="bi bi-cash-stack me-1"></i> Settle
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

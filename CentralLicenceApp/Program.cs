@@ -62,6 +62,13 @@ builder.Services.AddScoped<IProjectModuleRepository>(_ => new ProjectModuleRepos
 builder.Services.AddScoped<ITaskTypeMasterRepository>(_ => new TaskTypeMasterRepository(connStr));
 builder.Services.AddScoped<ITaskCategoryMasterRepository>(_ => new TaskCategoryMasterRepository(connStr));
 builder.Services.AddScoped<ITaskReportRepository>(_ => new TaskReportRepository(connStr));
+builder.Services.AddScoped<IPayoutConfigurationRepository>(_ => new PayoutConfigurationRepository(connStr));
+builder.Services.AddScoped<IPayoutBatchRepository>(_ => new PayoutBatchRepository(connStr));
+builder.Services.AddScoped<IPayoutReportRepository>(_ => new PayoutReportRepository(connStr));
+builder.Services.AddScoped<ISalesCommissionConfigRepository>(_ => new SalesCommissionConfigRepository(connStr));
+builder.Services.AddScoped<ISalesInvoiceAssignmentRepository>(_ => new SalesInvoiceAssignmentRepository(connStr));
+builder.Services.AddScoped<ISalesCommissionBatchRepository>(_ => new SalesCommissionBatchRepository(connStr));
+builder.Services.AddScoped<ISalesCommissionReportRepository>(_ => new SalesCommissionReportRepository(connStr));
 builder.Services.AddScoped<IClientDetailsReportExportService, ClientDetailsReportExportService>();
 builder.Services.AddScoped<IExpenseReportExportService, ExpenseReportExportService>();
 builder.Services.AddScoped<ISettlementReportExportService, SettlementReportExportService>();

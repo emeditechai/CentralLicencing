@@ -1,0 +1,142 @@
+@model CentralLicenceApp.Models.ViewModels.SalesCommSummaryReportViewModel
+@{
+    ViewData["Title"] = "Sales Commission Summary Report";
+}
+
+<style>
+    .rpt-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .rpt-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:320px; height:320px; background:rgba(255,255,255,.06); border-radius:50%; pointer-events:none; }
+    .rpt-hero h4 { color:#fff; font-weight:800; font-size:1.4rem; margin-bottom:.15rem; }
+    .rpt-hero .rpt-sub { color:rgba(255,255,255,.75); font-size:.85rem; }
+
+    .rpt-stat { background:rgba(255,255,255,.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:.7rem 1.1rem; min-width:110px; text-align:center; }
+    .rpt-stat-num { font-size:1.4rem; font-weight:800; color:#fff; line-height:1.2; }
+    .rpt-stat-lbl { font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color:rgba(255,255,255,.7); }
+
+    .rpt-filter { background:linear-gradient(145deg,#faf8ff,#f3f0ff); border:1px solid #e9e4f5; border-radius:14px; padding:1rem 1.5rem; margin-bottom:1.25rem; }
+    .rpt-card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9; overflow:hidden; }
+    .rpt-table { margin-bottom:0; }
+    .rpt-table thead { background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+    .rpt-table thead th { font-size:.68rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.08em; padding:.7rem .8rem; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+    .rpt-table tbody tr { transition:all .15s; border-bottom:1px solid #f8fafc; }
+    .rpt-table tbody tr:hover { background:linear-gradient(90deg,#f5f3ff,#eff6ff); }
+    .rpt-table td { vertical-align:middle; padding:.6rem .8rem; font-size:.82rem; color:#334155; }
+</style>
+
+<!-- Hero -->
+<div class="rpt-hero">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h4><i class="bi bi-bar-chart me-2"></i>Sales Commission Summary</h4>
+            <div class="rpt-sub">Aggregated commission data by sales user</div>
+        </div>
+        <div class="d-flex gap-3 flex-wrap">
+            <div class="rpt-stat">
+                <div class="rpt-stat-num">@Model.Items.Count</div>
+                <div class="rpt-stat-lbl">Users</div>
+            </div>
+            <div class="rpt-stat">
+                <div class="rpt-stat-num">₹@Model.GrandTotalSales.ToString("N0")</div>
+                <div class="rpt-stat-lbl">Total Sales</div>
+            </div>
+            <div class="rpt-stat">
+                <div class="rpt-stat-num">₹@Model.GrandTotalNet.ToString("N0")</div>
+                <div class="rpt-stat-lbl">Total Net</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="rpt-filter">
+    <form method="get" class="row g-2 align-items-end">
+        @if (Model.IsAdminView)
+        {
+        <div class="col-md-3">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">Sales User</label>
+            <select name="userId" class="form-select form-select-sm" style="border-radius:10px;">
+                <option value="">All Users</option>
+                @foreach (var u in Model.Users)
+                {
+                    <option value="@u.Id" selected="@(Model.UserFilter == u.Id)">@u.FullName</option>
+                }
+            </select>
+        </div>
+        }
+        <div class="col-md-3">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">From Date</label>
+            <input type="date" name="from" class="form-control form-control-sm" style="border-radius:10px;" value="@Model.FromDate?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">To Date</label>
+            <input type="date" name="to" class="form-control form-control-sm" style="border-radius:10px;" value="@Model.ToDate?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-sm btn-primary" style="border-radius:10px;"><i class="bi bi-funnel me-1"></i> Filter</button>
+            <a asp-action="Summary" class="btn btn-sm btn-outline-secondary" style="border-radius:10px;"><i class="bi bi-x-lg"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- Table -->
+<div class="rpt-card">
+    <div class="table-responsive">
+        <table class="table rpt-table">
+            <thead>
+                <tr>
+                    <th>Sales User</th>
+                    <th>Code</th>
+                    <th>Type</th>
+                    <th>Batches</th>
+                    <th>Payments</th>
+                    <th>Sales (₹)</th>
+                    <th>Gross (₹)</th>
+                    <th>Deductions (₹)</th>
+                    <th>Net (₹)</th>
+                    <th>Paid (₹)</th>
+                    <th>Pending (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr><td colspan="11" class="text-center text-muted py-4"><i class="bi bi-inbox me-1"></i> No data found.</td></tr>
+                }
+                @foreach (var r in Model.Items)
+                {
+                    <tr>
+                        <td class="fw-semibold">@r.UserName</td>
+                        <td class="text-muted">@(r.EmployeeCode ?? "—")</td>
+                        <td>
+                            <span class="badge" style="font-size:.68rem; background:@(r.CommissionType == "Percentage" ? "#7c3aed" : "#0891b2") !important;">
+                                @r.CommissionType
+                            </span>
+                        </td>
+                        <td>@r.BatchCount</td>
+                        <td>@r.TotalPayments</td>
+                        <td>₹@r.TotalSalesAmount.ToString("N2")</td>
+                        <td class="fw-bold">₹@r.TotalGrossCommission.ToString("N2")</td>
+                        <td>₹@r.TotalDeductions.ToString("N2")</td>
+                        <td class="fw-bold text-primary">₹@r.TotalNetCommission.ToString("N2")</td>
+                        <td class="text-success fw-semibold">₹@r.TotalPaid.ToString("N2")</td>
+                        <td class="text-warning fw-semibold">₹@r.TotalPending.ToString("N2")</td>
+                    </tr>
+                }
+            </tbody>
+            @if (Model.Items.Any())
+            {
+                <tfoot style="background:#f5f3ff;">
+                    <tr>
+                        <td colspan="5" class="fw-bold text-end">Grand Total</td>
+                        <td class="fw-bold">₹@Model.GrandTotalSales.ToString("N2")</td>
+                        <td class="fw-bold">₹@Model.GrandTotalGross.ToString("N2")</td>
+                        <td class="fw-bold">₹@Model.Items.Sum(x => x.TotalDeductions).ToString("N2")</td>
+                        <td class="fw-bold text-primary">₹@Model.GrandTotalNet.ToString("N2")</td>
+                        <td class="fw-bold text-success">₹@Model.Items.Sum(x => x.TotalPaid).ToString("N2")</td>
+                        <td class="fw-bold text-warning">₹@Model.Items.Sum(x => x.TotalPending).ToString("N2")</td>
+                    </tr>
+                </tfoot>
+            }
+        </table>
+    </div>
+</div>

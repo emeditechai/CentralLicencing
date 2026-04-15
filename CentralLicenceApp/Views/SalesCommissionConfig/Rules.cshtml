@@ -1,0 +1,244 @@
+@model CentralLicenceApp.Models.ViewModels.SalesCommRulesViewModel
+@{
+    ViewData["Title"] = "Commission Rules — " + Model.UserName;
+}
+
+<style>
+    .cr-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .cr-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:320px; height:320px; background:rgba(255,255,255,.06); border-radius:50%; pointer-events:none; }
+    .cr-hero h4 { color:#fff; font-weight:800; font-size:1.3rem; margin-bottom:.15rem; }
+    .cr-hero .cr-sub { color:rgba(255,255,255,.75); font-size:.82rem; }
+
+    .cr-card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9; overflow:hidden; margin-bottom:1.25rem; }
+    .cr-card-header { padding:.85rem 1.25rem; font-weight:700; font-size:.88rem; border-bottom:1px solid #f1f5f9; background:#fafbff; display:flex; align-items:center; justify-content:space-between; }
+    .cr-table { margin-bottom:0; }
+    .cr-table thead { background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+    .cr-table thead th { font-size:.7rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.08em; padding:.7rem .85rem; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+    .cr-table tbody tr { transition:all .15s; border-bottom:1px solid #f8fafc; }
+    .cr-table tbody tr:hover { background:#f8fafc; }
+    .cr-table td { vertical-align:middle; padding:.6rem .85rem; font-size:.82rem; color:#334155; }
+
+    .cr-btn-add { background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; border-radius:10px; font-weight:600; font-size:.78rem; border:none; padding:.35rem .85rem; }
+    .cr-btn-add:hover { background:linear-gradient(135deg,#4f46e5,#4338ca); color:#fff; }
+</style>
+
+<!-- Hero -->
+<div class="cr-hero">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h4><i class="bi bi-list-check me-2"></i>Product Commission Rules</h4>
+            <div class="cr-sub">@Model.UserName @(!string.IsNullOrEmpty(Model.EmployeeCode) ? $"({Model.EmployeeCode})" : "") · Default: @(Model.CommissionType == "Percentage" ? $"{Model.DefaultRate:N2}%" : $"₹{Model.DefaultRate:N2}")</div>
+        </div>
+        <a asp-action="Index" class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff;border-radius:10px;font-weight:600;font-size:.8rem;">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+    </div>
+</div>
+
+<!-- Rules Table -->
+<div class="cr-card">
+    <div class="cr-card-header">
+        <span><i class="bi bi-list-ul me-1"></i> Rules (@Model.Rules.Count)</span>
+        <button type="button" class="cr-btn-add" onclick="openAddModal()"><i class="bi bi-plus-lg me-1"></i> Add Rule</button>
+    </div>
+    <div class="table-responsive">
+        <table class="table cr-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Product</th>
+                    <th>Commission Type</th>
+                    <th>Rate</th>
+                    <th>Priority</th>
+                    <th>Effective From</th>
+                    <th>Active</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="rulesBody">
+                @if (!Model.Rules.Any())
+                {
+                    <tr id="emptyRow"><td colspan="8" class="text-center text-muted py-4"><i class="bi bi-inbox me-1"></i> No product rules defined. The default rate will apply to all payments.</td></tr>
+                }
+                @{ var idx = 0; }
+                @foreach (var r in Model.Rules)
+                {
+                    idx++;
+                    <tr>
+                        <td class="text-muted" style="font-size:.75rem;">@idx</td>
+                        <td class="fw-semibold">@(r.ProductName ?? "Default")</td>
+                        <td><span class="badge @(r.CommissionType == "Percentage" ? "bg-purple" : "bg-success")" style="font-size:.7rem;@(r.CommissionType == "Percentage" ? "background:#7c3aed !important;" : "")">@r.CommissionType</span></td>
+                        <td class="fw-bold">@r.CommissionTypeDisplay</td>
+                        <td><span class="badge bg-secondary" style="font-size:.65rem;">@r.Priority</span></td>
+                        <td style="font-size:.8rem;">@r.EffectiveFrom.ToString("dd MMM yyyy")</td>
+                        <td>
+                            @if (r.IsActive) { <span class="badge bg-success" style="font-size:.65rem;">Active</span> }
+                            else { <span class="badge bg-secondary" style="font-size:.65rem;">Inactive</span> }
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-primary" style="border-radius:8px;font-size:.72rem;"
+                                    onclick="openEditModal(@r.Id, @(r.ProductId?.ToString() ?? "null"), '@r.CommissionType', @r.Rate.ToString("F2"), '@r.EffectiveFrom.ToString("yyyy-MM-dd")')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" style="border-radius:8px;font-size:.72rem;" onclick="deleteRule(@r.Id)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal fade" id="ruleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:16px;border:none;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:16px 16px 0 0;">
+                <h5 class="modal-title text-white fw-bold" id="ruleModalTitle">Add Rule</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="ruleId" />
+                <input type="hidden" id="ruleUserId" value="@Model.UserId" />
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size:.82rem;">Product</label>
+                    <select id="ruleProduct" class="form-select" style="border-radius:10px;">
+                        <option value="">— Default (all products) —</option>
+                        @foreach (var p in Model.Products)
+                        {
+                            <option value="@p.Id">@p.ProductName (@p.ProductCode)</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size:.82rem;">Commission Type</label>
+                    <select id="ruleCommType" class="form-select" style="border-radius:10px;">
+                        <option value="Percentage">Percentage</option>
+                        <option value="FixedAmount">Fixed Amount</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size:.82rem;">Rate</label>
+                    <input type="number" step="0.01" min="0.01" id="ruleRate" class="form-control" style="border-radius:10px;" placeholder="e.g. 15.00" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="font-size:.82rem;">Effective From</label>
+                    <input type="date" id="ruleEffective" class="form-control" style="border-radius:10px;" />
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #f1f5f9;">
+                <button type="button" class="btn btn-outline-secondary" style="border-radius:10px;" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:10px;font-weight:600;" id="ruleSubmitBtn" onclick="submitRule()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var ruleModal = null;
+var isEdit = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    ruleModal = new bootstrap.Modal(document.getElementById('ruleModal'));
+});
+
+function openAddModal() {
+    isEdit = false;
+    document.getElementById('ruleModalTitle').textContent = 'Add Rule';
+    document.getElementById('ruleId').value = '';
+    document.getElementById('ruleProduct').value = '';
+    document.getElementById('ruleCommType').value = 'Percentage';
+    document.getElementById('ruleRate').value = '';
+    document.getElementById('ruleEffective').value = new Date().toISOString().split('T')[0];
+    ruleModal.show();
+}
+
+function openEditModal(id, productId, commType, rate, effectiveFrom) {
+    isEdit = true;
+    document.getElementById('ruleModalTitle').textContent = 'Edit Rule';
+    document.getElementById('ruleId').value = id;
+    document.getElementById('ruleProduct').value = productId || '';
+    document.getElementById('ruleCommType').value = commType;
+    document.getElementById('ruleRate').value = rate;
+    document.getElementById('ruleEffective').value = effectiveFrom;
+    ruleModal.show();
+}
+
+function submitRule() {
+    var rate = parseFloat(document.getElementById('ruleRate').value);
+    if (!rate || rate <= 0) {
+        Swal.fire('Error', 'Rate must be greater than zero.', 'error');
+        return;
+    }
+
+    var fd = new FormData();
+    var token = document.querySelector('meta[name="request-verification-token"]')?.getAttribute('content') || '';
+    fd.append('__RequestVerificationToken', token);
+    fd.append('UserId', document.getElementById('ruleUserId').value);
+    fd.append('ProductId', document.getElementById('ruleProduct').value || '');
+    fd.append('CommissionType', document.getElementById('ruleCommType').value);
+    fd.append('Rate', rate);
+    fd.append('EffectiveFrom', document.getElementById('ruleEffective').value);
+
+    var url = isEdit ? '@Url.Action("EditRule")' : '@Url.Action("AddRule")';
+    if (isEdit) fd.append('Id', document.getElementById('ruleId').value);
+
+    var btn = document.getElementById('ruleSubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+    fetch(url, { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            btn.disabled = false;
+            btn.innerHTML = 'Save';
+            if (data.success) {
+                ruleModal.hide();
+                Swal.fire({ title: 'Success', text: data.message, icon: 'success', timer: 1500, showConfirmButton: false })
+                    .then(function() { location.reload(); });
+            } else {
+                Swal.fire('Error', data.message, 'error');
+            }
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.innerHTML = 'Save';
+            Swal.fire('Error', 'Network error.', 'error');
+        });
+}
+
+function deleteRule(id) {
+    Swal.fire({
+        title: 'Delete Rule?',
+        text: 'This rule will be permanently removed.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete',
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6c757d',
+        customClass: { popup: 'app-swal-popup' },
+        reverseButtons: true
+    }).then(function(result) {
+        if (!result.isConfirmed) return;
+        var fd = new FormData();
+        var token = document.querySelector('meta[name="request-verification-token"]')?.getAttribute('content') || '';
+        fd.append('__RequestVerificationToken', token);
+        fd.append('id', id);
+
+        fetch('@Url.Action("DeleteRule")', { method: 'POST', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    Swal.fire({ title: 'Deleted', text: data.message, icon: 'success', timer: 1500, showConfirmButton: false })
+                        .then(function() { location.reload(); });
+                } else {
+                    Swal.fire('Error', data.message, 'error');
+                }
+            });
+    });
+}
+</script>
+}

@@ -1,0 +1,92 @@
+@model CentralLicenceApp.Models.ViewModels.PayoutApprovalInboxViewModel
+@{
+    ViewData["Title"] = "Payout Approval Inbox";
+}
+
+<style>
+    .ai-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .ai-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:320px; height:320px; background:rgba(255,255,255,.08); border-radius:50%; pointer-events:none; }
+    .ai-hero h4 { color:#fff; font-weight:800; font-size:1.4rem; margin-bottom:.15rem; }
+    .ai-hero .ai-sub { color:rgba(255,255,255,.8); font-size:.85rem; }
+
+    .ai-stat { background:rgba(255,255,255,.2); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.2); border-radius:14px; padding:.7rem 1.1rem; min-width:100px; text-align:center; }
+    .ai-stat-num { font-size:1.5rem; font-weight:800; color:#fff; line-height:1.2; }
+    .ai-stat-lbl { font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color:rgba(255,255,255,.75); }
+
+    .ai-card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9; overflow:hidden; }
+    .ai-table { margin-bottom:0; }
+    .ai-table thead { background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+    .ai-table thead th { font-size:.7rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.08em; padding:.75rem .85rem; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+    .ai-table tbody tr { transition:all .15s; border-bottom:1px solid #f8fafc; }
+    .ai-table tbody tr:hover { background:linear-gradient(90deg,#f5f3ff,#eff6ff); }
+    .ai-table td { vertical-align:middle; padding:.65rem .85rem; font-size:.84rem; color:#334155; }
+</style>
+
+<!-- Hero -->
+<div class="ai-hero">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h4><i class="bi bi-inbox me-2"></i>Approval Inbox</h4>
+            <div class="ai-sub">@Model.LevelLabel — Review and approve payout batches</div>
+        </div>
+        <div class="ai-stat">
+            <div class="ai-stat-num">@Model.PendingBatches.Count</div>
+            <div class="ai-stat-lbl">Pending</div>
+        </div>
+    </div>
+</div>
+
+<div class="ai-card">
+    <div class="table-responsive">
+        <table class="table ai-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Employee</th>
+                    <th>Period</th>
+                    <th>Model</th>
+                    <th>Tasks</th>
+                    <th>Time</th>
+                    <th>Net (₹)</th>
+                    <th>Status</th>
+                    <th>Generated</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.PendingBatches.Any())
+                {
+                    <tr><td colspan="10" class="text-center text-muted py-4"><i class="bi bi-check-circle me-1 text-success"></i> No batches pending approval. All caught up!</td></tr>
+                }
+                @foreach (var b in Model.PendingBatches)
+                {
+                    <tr>
+                        <td class="text-muted" style="font-size:.78rem;">@b.Id</td>
+                        <td>
+                            <div class="fw-semibold" style="font-size:.82rem;">@b.UserName</div>
+                            @if (!string.IsNullOrEmpty(b.EmployeeCode))
+                            {
+                                <small class="text-muted">@b.EmployeeCode</small>
+                            }
+                        </td>
+                        <td style="font-size:.82rem;">@b.FromDate.ToString("dd MMM") – @b.ToDate.ToString("dd MMM yyyy")</td>
+                        <td>
+                            <span class="badge @(b.PayoutModel == "Hourly" ? "bg-success" : "")"
+                                  style="font-size:.7rem;@(b.PayoutModel == "Commission" ? "background:#7c3aed !important;" : "")">@b.PayoutModel</span>
+                        </td>
+                        <td class="fw-semibold">@b.TotalTasks</td>
+                        <td style="font-size:.82rem;">@b.FormattedTotalTime</td>
+                        <td class="fw-bold text-primary">₹@b.NetAmount.ToString("N2")</td>
+                        <td><span class="badge @b.StatusBadgeClass" style="font-size:.7rem;">@b.StatusDisplay</span></td>
+                        <td style="font-size:.78rem;">@b.GeneratedAt.ToString("dd MMM yyyy")</td>
+                        <td class="text-center">
+                            <a asp-action="Details" asp-route-id="@b.Id" class="btn btn-sm" style="border-radius:8px;font-size:.75rem;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;">
+                                <i class="bi bi-eye me-1"></i> Review
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

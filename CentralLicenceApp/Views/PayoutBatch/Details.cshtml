@@ -1,0 +1,365 @@
+@model CentralLicenceApp.Models.ViewModels.PayoutBatchDetailsViewModel
+@{
+    ViewData["Title"] = "Batch #" + Model.Batch.Id + " — " + Model.Batch.UserName;
+    var b = Model.Batch;
+}
+
+<style>
+    .bd-hero { border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .bd-hero-draft { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); }
+    .bd-hero-pending { background:linear-gradient(135deg,#667eea 0%,#a855f7 100%); }
+    .bd-hero-l1 { background:linear-gradient(135deg,#667eea 0%,#8b5cf6 100%); }
+    .bd-hero-approved { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); }
+    .bd-hero-paid { background:linear-gradient(135deg,#059669 0%,#10b981 100%); }
+    .bd-hero-rejected { background:linear-gradient(135deg,#dc2626 0%,#ef4444 100%); }
+    .bd-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:320px; height:320px; background:rgba(255,255,255,.06); border-radius:50%; pointer-events:none; }
+    .bd-hero h4 { color:#fff; font-weight:800; font-size:1.3rem; margin-bottom:.1rem; }
+    .bd-hero .bd-sub { color:rgba(255,255,255,.75); font-size:.82rem; }
+
+    .bd-stat { background:rgba(255,255,255,.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:.7rem 1.1rem; min-width:100px; text-align:center; }
+    .bd-stat-num { font-size:1.3rem; font-weight:800; color:#fff; line-height:1.2; }
+    .bd-stat-lbl { font-size:.65rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color:rgba(255,255,255,.7); }
+
+    .bd-card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9; overflow:hidden; margin-bottom:1.25rem; }
+    .bd-card-header { padding:.85rem 1.25rem; font-weight:700; font-size:.88rem; border-bottom:1px solid #f1f5f9; background:#fafbff; }
+
+    .bd-table { margin-bottom:0; }
+    .bd-table thead { background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+    .bd-table thead th { font-size:.68rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.08em; padding:.7rem .8rem; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+    .bd-table tbody tr { transition:all .15s; border-bottom:1px solid #f8fafc; }
+    .bd-table tbody tr:hover { background:#f8fafc; }
+    .bd-table td { vertical-align:middle; padding:.6rem .8rem; font-size:.82rem; color:#334155; }
+
+    .bd-info { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:.75rem; padding:1rem 1.25rem; }
+    .bd-info-item { font-size:.82rem; }
+    .bd-info-item .bd-lbl { font-size:.7rem; text-transform:uppercase; color:#94a3b8; font-weight:600; letter-spacing:.06em; }
+
+    .bd-timeline { padding:1rem 1.25rem; }
+    .bd-tl-item { display:flex; gap:.75rem; margin-bottom:.75rem; position:relative; padding-left:1.5rem; }
+    .bd-tl-item::before { content:''; position:absolute; left:.35rem; top:0; bottom:-0.75rem; width:2px; background:#e2e8f0; }
+    .bd-tl-item:last-child::before { display:none; }
+    .bd-tl-dot { position:absolute; left:0; top:.25rem; width:.75rem; height:.75rem; border-radius:50%; }
+    .bd-tl-approved { background:#059669; }
+    .bd-tl-rejected { background:#dc2626; }
+
+    .bd-action-bar { background:#f8fafc; border-top:1px solid #f1f5f9; padding:1rem 1.25rem; display:flex; flex-wrap:wrap; gap:.5rem; }
+</style>
+
+@{
+    var heroClass = b.Status switch
+    {
+        "Draft" => "bd-hero-draft",
+        "PendingApproval" => "bd-hero-pending",
+        "L1Approved" => "bd-hero-l1",
+        "Approved" => "bd-hero-approved",
+        "Paid" => "bd-hero-paid",
+        "Rejected" => "bd-hero-rejected",
+        _ => "bd-hero-draft"
+    };
+}
+
+<!-- Hero -->
+<div class="bd-hero @heroClass">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h4><i class="bi bi-receipt me-2"></i>Batch #@b.Id</h4>
+            <div class="bd-sub">@b.UserName @(!string.IsNullOrEmpty(b.EmployeeCode) ? $"({b.EmployeeCode})" : "") · @b.FromDate.ToString("dd MMM") – @b.ToDate.ToString("dd MMM yyyy")</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <div class="bd-stat">
+                <div class="bd-stat-num">@b.TotalTasks</div>
+                <div class="bd-stat-lbl">Tasks</div>
+            </div>
+            <div class="bd-stat">
+                <div class="bd-stat-num">@b.FormattedTotalTime</div>
+                <div class="bd-stat-lbl">Time</div>
+            </div>
+            <div class="bd-stat">
+                <div class="bd-stat-num">₹@b.NetAmount.ToString("N0")</div>
+                <div class="bd-stat-lbl">Net Amount</div>
+            </div>
+            <div class="bd-stat">
+                <div class="bd-stat-num">@b.StatusDisplay</div>
+                <div class="bd-stat-lbl">Status</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- Left: Batch Info + Lines -->
+    <div class="col-lg-8">
+        <!-- Batch Info -->
+        <div class="bd-card">
+            <div class="bd-card-header"><i class="bi bi-info-circle me-1"></i> Batch Information</div>
+            <div class="bd-info">
+                <div class="bd-info-item"><div class="bd-lbl">Payout Model</div><span class="badge @(b.PayoutModel == "Hourly" ? "bg-success" : "")" style="@(b.PayoutModel == "Commission" ? "background:#7c3aed;" : "")font-size:.72rem;">@b.PayoutModel</span></div>
+                @if (b.PayoutModel == "Hourly")
+                {
+                    <div class="bd-info-item"><div class="bd-lbl">Hourly Rate</div><strong>₹@(b.HourlyRateSnapshot?.ToString("N2") ?? "—")</strong> /hr</div>
+                }
+                <div class="bd-info-item"><div class="bd-lbl">Gross Amount</div><strong>₹@b.GrossAmount.ToString("N2")</strong></div>
+                <div class="bd-info-item"><div class="bd-lbl">Deductions</div><strong>₹@b.DeductionAmount.ToString("N2")</strong></div>
+                <div class="bd-info-item"><div class="bd-lbl">Net Amount</div><strong class="text-primary">₹@b.NetAmount.ToString("N2")</strong></div>
+                <div class="bd-info-item"><div class="bd-lbl">Generated By</div>@b.GeneratedByName</div>
+                <div class="bd-info-item"><div class="bd-lbl">Generated At</div>@b.GeneratedAt.ToString("dd MMM yyyy HH:mm")</div>
+                @if (!string.IsNullOrEmpty(b.Remarks))
+                {
+                    <div class="bd-info-item"><div class="bd-lbl">Remarks</div>@b.Remarks</div>
+                }
+            </div>
+        </div>
+
+        <!-- Settlement Info (if Paid) -->
+        @if (b.Status == "Paid")
+        {
+            <div class="bd-card">
+                <div class="bd-card-header" style="background:linear-gradient(145deg,#ecfdf5,#d1fae5);"><i class="bi bi-check-circle me-1 text-success"></i> Settlement Details</div>
+                <div class="bd-info">
+                    <div class="bd-info-item"><div class="bd-lbl">Settlement Amount</div><strong class="text-success">₹@(b.SettlementAmount?.ToString("N2") ?? "—")</strong></div>
+                    <div class="bd-info-item"><div class="bd-lbl">Settlement Date</div>@(b.SettlementDate?.ToString("dd MMM yyyy") ?? "—")</div>
+                    <div class="bd-info-item"><div class="bd-lbl">Payment Mode</div>@(b.SettlementMode ?? "—")</div>
+                    <div class="bd-info-item"><div class="bd-lbl">Reference No.</div>@(b.SettlementReferenceNo ?? "—")</div>
+                    <div class="bd-info-item"><div class="bd-lbl">Bank</div>@(b.BankName ?? "—")</div>
+                    <div class="bd-info-item"><div class="bd-lbl">Settled By</div>@(b.SettledByName ?? "—")</div>
+                    <div class="bd-info-item"><div class="bd-lbl">Settled At</div>@(b.SettledAt?.ToString("dd MMM yyyy HH:mm") ?? "—")</div>
+                    @if (!string.IsNullOrEmpty(b.SettlementRemarks))
+                    {
+                        <div class="bd-info-item"><div class="bd-lbl">Remarks</div>@b.SettlementRemarks</div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Task Lines -->
+        <div class="bd-card">
+            <div class="bd-card-header"><i class="bi bi-list-task me-1"></i> Task Line Items (@Model.Lines.Count)</div>
+            <div class="table-responsive">
+                <table class="table bd-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Task</th>
+                            <th>Type</th>
+                            <th>Category</th>
+                            <th>Project</th>
+                            <th>Time</th>
+                            <th>Rate (₹)</th>
+                            <th>Source</th>
+                            <th>Amount (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{ var idx = 0; }
+                        @foreach (var line in Model.Lines)
+                        {
+                            idx++;
+                            <tr>
+                                <td class="text-muted" style="font-size:.75rem;">@idx</td>
+                                <td>
+                                    <div class="fw-semibold" style="font-size:.8rem;">@line.TaskTitle</div>
+                                    @if (line.TaskCompletedAt.HasValue)
+                                    {
+                                        <small class="text-muted">@line.TaskCompletedAt.Value.ToString("dd MMM yyyy")</small>
+                                    }
+                                </td>
+                                <td style="font-size:.8rem;">@line.TaskTypeName</td>
+                                <td style="font-size:.8rem;">@line.TaskCategoryName</td>
+                                <td style="font-size:.8rem;">@(line.ProjectModuleName ?? "—")</td>
+                                <td style="font-size:.8rem;">@line.FormattedTime</td>
+                                <td class="fw-semibold">₹@line.RateApplied.ToString("N2")</td>
+                                <td><span class="badge @line.RateSourceBadgeClass" style="font-size:.65rem;">@line.RateSource</span></td>
+                                <td class="fw-bold">₹@line.Amount.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot style="background:#f8fafc;">
+                        <tr>
+                            <td colspan="5" class="text-end fw-bold" style="font-size:.82rem;">Totals</td>
+                            <td class="fw-bold" style="font-size:.82rem;">@b.FormattedTotalTime</td>
+                            <td></td>
+                            <td></td>
+                            <td class="fw-bold text-primary" style="font-size:.88rem;">₹@b.GrossAmount.ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: Actions + Approval Timeline -->
+    <div class="col-lg-4">
+        <!-- Actions Card -->
+        <div class="bd-card">
+            <div class="bd-card-header"><i class="bi bi-gear me-1"></i> Actions</div>
+            <div class="bd-action-bar flex-column">
+                <a asp-action="Index" class="btn btn-outline-secondary btn-sm w-100" style="border-radius:10px;">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Batches
+                </a>
+
+                @if (Model.CanSubmitForApproval)
+                {
+                    <form asp-action="SubmitForApproval" method="post" class="w-100 swal-confirm-form"
+                          data-swal-title="Submit for Approval?"
+                          data-swal-text="This batch will be sent for review and approval."
+                          data-swal-icon="question"
+                          data-swal-confirm="Yes, Submit">
+                        <input type="hidden" name="id" value="@b.Id" />
+                        <button type="submit" class="btn btn-warning btn-sm w-100" style="border-radius:10px;">
+                            <i class="bi bi-send me-1"></i> Submit for Approval
+                        </button>
+                    </form>
+                }
+
+                @if (Model.CanApproveL1)
+                {
+                    <form asp-action="Approve" method="post" class="w-100 swal-confirm-form"
+                          data-swal-title="L1 Approve?"
+                          data-swal-text="Approve this batch at Level 1."
+                          data-swal-icon="question"
+                          data-swal-confirm="Yes, Approve">
+                        <input type="hidden" name="id" value="@b.Id" />
+                        <input type="hidden" name="level" value="1" />
+                        <input type="hidden" name="status" value="Approved" />
+                        <div class="mb-2">
+                            <input name="remarks" class="form-control form-control-sm" style="border-radius:8px;" placeholder="L1 remarks (optional)" />
+                        </div>
+                        <button type="submit" class="btn btn-info btn-sm w-100 text-white" style="border-radius:10px;">
+                            <i class="bi bi-check-circle me-1"></i> L1 Approve
+                        </button>
+                    </form>
+                    <form asp-action="Approve" method="post" class="w-100 swal-confirm-form"
+                          data-swal-title="Reject Batch?"
+                          data-swal-text="This batch will be rejected and sent back."
+                          data-swal-icon="warning"
+                          data-swal-confirm="Yes, Reject"
+                          data-swal-danger="true">
+                        <input type="hidden" name="id" value="@b.Id" />
+                        <input type="hidden" name="level" value="1" />
+                        <input type="hidden" name="status" value="Rejected" />
+                        <input name="remarks" class="form-control form-control-sm mb-2" style="border-radius:8px;" placeholder="Rejection reason" />
+                        <button type="submit" class="btn btn-outline-danger btn-sm w-100" style="border-radius:10px;">
+                            <i class="bi bi-x-circle me-1"></i> Reject
+                        </button>
+                    </form>
+                }
+
+                @if (Model.CanApproveL2)
+                {
+                    <form asp-action="Approve" method="post" class="w-100 swal-confirm-form"
+                          data-swal-title="Final Approve?"
+                          data-swal-text="This is the final approval. The batch will be ready for settlement."
+                          data-swal-icon="question"
+                          data-swal-confirm="Yes, Approve">
+                        <input type="hidden" name="id" value="@b.Id" />
+                        <input type="hidden" name="level" value="2" />
+                        <input type="hidden" name="status" value="Approved" />
+                        <div class="mb-2">
+                            <input name="remarks" class="form-control form-control-sm" style="border-radius:8px;" placeholder="L2 remarks (optional)" />
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100" style="border-radius:10px;">
+                            <i class="bi bi-check-circle me-1"></i> L2 Final Approve
+                        </button>
+                    </form>
+                    <form asp-action="Approve" method="post" class="w-100 swal-confirm-form"
+                          data-swal-title="Reject Batch?"
+                          data-swal-text="This batch will be rejected and sent back."
+                          data-swal-icon="warning"
+                          data-swal-confirm="Yes, Reject"
+                          data-swal-danger="true">
+                        <input type="hidden" name="id" value="@b.Id" />
+                        <input type="hidden" name="level" value="2" />
+                        <input type="hidden" name="status" value="Rejected" />
+                        <input name="remarks" class="form-control form-control-sm mb-2" style="border-radius:8px;" placeholder="Rejection reason" />
+                        <button type="submit" class="btn btn-outline-danger btn-sm w-100" style="border-radius:10px;">
+                            <i class="bi bi-x-circle me-1"></i> Reject
+                        </button>
+                    </form>
+                }
+
+                @if (Model.CanSettle)
+                {
+                    <a asp-action="Settle" asp-route-id="@b.Id" class="btn btn-success btn-sm w-100" style="border-radius:10px;">
+                        <i class="bi bi-cash-stack me-1"></i> Settle Payment
+                    </a>
+                }
+
+                @if (Model.CanDelete)
+                {
+                    <form asp-action="Delete" method="post" class="w-100 swal-confirm-form"
+                          data-swal-title="Delete Draft?"
+                          data-swal-text="This draft batch will be permanently deleted. This cannot be undone."
+                          data-swal-icon="warning"
+                          data-swal-confirm="Yes, Delete"
+                          data-swal-danger="true">
+                        <input type="hidden" name="id" value="@b.Id" />
+                        <button type="submit" class="btn btn-outline-danger btn-sm w-100" style="border-radius:10px;">
+                            <i class="bi bi-trash me-1"></i> Delete Draft
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+
+        <!-- Approval Timeline -->
+        <div class="bd-card">
+            <div class="bd-card-header"><i class="bi bi-clock-history me-1"></i> Approval Timeline</div>
+            <div class="bd-timeline">
+                @if (!Model.ApprovalHistory.Any())
+                {
+                    <div class="text-muted text-center py-3" style="font-size:.82rem;">
+                        <i class="bi bi-hourglass me-1"></i> No approval actions yet.
+                    </div>
+                }
+                @foreach (var h in Model.ApprovalHistory)
+                {
+                    <div class="bd-tl-item">
+                        <span class="bd-tl-dot @(h.Status == "Approved" ? "bd-tl-approved" : "bd-tl-rejected")"></span>
+                        <div>
+                            <div class="fw-semibold" style="font-size:.82rem;">
+                                @h.LevelDisplay —
+                                <span class="@(h.Status == "Approved" ? "text-success" : "text-danger")">@h.Status</span>
+                            </div>
+                            <div class="text-muted" style="font-size:.76rem;">
+                                @h.ApprovedByName · @h.ApprovedAt.ToString("dd MMM yyyy HH:mm")
+                            </div>
+                            @if (!string.IsNullOrEmpty(h.Remarks))
+                            {
+                                <div class="mt-1" style="font-size:.78rem;color:#475569;"><em>"@h.Remarks"</em></div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.querySelectorAll('.swal-confirm-form').forEach(function(form) {
+    form.addEventListener('submit', function handler(e) {
+        e.preventDefault();
+        var f = this;
+        var isDanger = f.dataset.swalDanger === 'true';
+        Swal.fire({
+            title: f.dataset.swalTitle,
+            text: f.dataset.swalText,
+            icon: f.dataset.swalIcon || 'question',
+            showCancelButton: true,
+            confirmButtonText: f.dataset.swalConfirm || 'Yes',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: isDanger ? '#dc2626' : '#180a3c',
+            cancelButtonColor: '#6c757d',
+            customClass: { popup: 'app-swal-popup' },
+            reverseButtons: true
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                f.removeEventListener('submit', handler);
+                f.submit();
+            }
+        });
+    });
+});
+</script>
+}

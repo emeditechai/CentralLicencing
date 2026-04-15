@@ -1,0 +1,451 @@
+@model CentralLicenceApp.Models.ViewModels.SalesInvoiceAssignmentIndexViewModel
+@{
+    ViewData["Title"] = "Invoice Assignment";
+}
+
+<style>
+    .ia-hero { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-radius:20px; padding:2rem 2.25rem; margin-bottom:1.75rem; position:relative; overflow:hidden; }
+    .ia-hero::before { content:''; position:absolute; top:-50%; right:-8%; width:320px; height:320px; background:rgba(255,255,255,.06); border-radius:50%; pointer-events:none; }
+    .ia-hero h4 { color:#fff; font-weight:800; font-size:1.4rem; margin-bottom:.15rem; }
+    .ia-hero .ia-sub { color:rgba(255,255,255,.75); font-size:.85rem; }
+
+    .ia-stat { background:rgba(255,255,255,.15); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.18); border-radius:14px; padding:.7rem 1.1rem; min-width:110px; text-align:center; }
+    .ia-stat-num { font-size:1.5rem; font-weight:800; color:#fff; line-height:1.2; }
+    .ia-stat-lbl { font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; font-weight:600; color:rgba(255,255,255,.7); }
+
+    .ia-card { background:#fff; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.05); border:1px solid #f1f5f9; overflow:hidden; margin-bottom:1.5rem; }
+    .ia-card-header { padding:.85rem 1.25rem; font-weight:700; font-size:.88rem; border-bottom:1px solid #f1f5f9; background:#fafbff; }
+    .ia-table { margin-bottom:0; }
+    .ia-table thead { background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+    .ia-table thead th { font-size:.7rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.08em; padding:.7rem .85rem; border-bottom:2px solid #e2e8f0; white-space:nowrap; }
+    .ia-table tbody tr { transition:all .15s; border-bottom:1px solid #f8fafc; }
+    .ia-table tbody tr:hover { background:linear-gradient(90deg,#f5f3ff,#eff6ff); }
+    .ia-table td { vertical-align:middle; padding:.6rem .85rem; font-size:.82rem; color:#334155; }
+
+    .ia-filter { background:linear-gradient(145deg,#faf8ff,#f3f0ff); border:1px solid #e9e4f5; border-radius:14px; padding:1rem 1.5rem; margin-bottom:1.25rem; }
+
+    /* Auto-suggest */
+    .ia-search-wrap { position:relative; max-width:340px; }
+    .ia-search-wrap input { border-radius:10px; font-size:.84rem; padding-left:2.2rem; }
+    .ia-search-wrap .bi-search { position:absolute; left:.75rem; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:.85rem; pointer-events:none; z-index:2; }
+    .ia-suggest { position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #e2e8f0; border-radius:0 0 12px 12px; box-shadow:0 8px 24px rgba(0,0,0,.12); max-height:260px; overflow-y:auto; z-index:50; display:none; }
+    .ia-suggest-item { padding:.55rem .85rem; font-size:.82rem; cursor:pointer; border-bottom:1px solid #f8fafc; display:flex; justify-content:space-between; align-items:center; }
+    .ia-suggest-item:hover, .ia-suggest-item.ia-suggest-active { background:linear-gradient(90deg,#f5f3ff,#eff6ff); }
+    .ia-suggest-item .ia-inv-no { font-weight:600; color:#334155; }
+    .ia-suggest-item .ia-inv-party { font-size:.74rem; color:#64748b; }
+    .ia-suggest-item .ia-inv-amt { font-weight:700; color:#6366f1; font-size:.78rem; }
+    .ia-suggest-empty { padding:.6rem .85rem; font-size:.8rem; color:#94a3b8; text-align:center; }
+</style>
+
+<!-- Hero -->
+<div class="ia-hero">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h4><i class="bi bi-link-45deg me-2"></i>Invoice Assignment</h4>
+            <div class="ia-sub">Assign invoices to sales persons for commission tracking</div>
+        </div>
+        <div class="d-flex gap-3 flex-wrap">
+            <div class="ia-stat">
+                <div class="ia-stat-num">@Model.Assignments.Count</div>
+                <div class="ia-stat-lbl">Assigned</div>
+            </div>
+            <div class="ia-stat">
+                <div class="ia-stat-num">@Model.UnassignedInvoices.Count</div>
+                <div class="ia-stat-lbl">Unassigned</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Unassigned Invoices -->
+<div class="ia-card">
+    <div class="ia-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-file-earmark-plus me-1"></i> Unassigned Invoices (@Model.UnassignedInvoices.Count)</span>
+        <div class="ia-search-wrap">
+            <i class="bi bi-search"></i>
+            <input type="text" id="invoiceSearch" class="form-control form-control-sm" autocomplete="off" placeholder="Search invoice no…" />
+            <div class="ia-suggest" id="invoiceSuggest"></div>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table ia-table">
+            <thead>
+                <tr>
+                    <th>Invoice No</th>
+                    <th>Date</th>
+                    <th>Party</th>
+                    <th>Amount (₹)</th>
+                    <th>Status</th>
+                    <th class="text-center">Assign</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.UnassignedInvoices.Any())
+                {
+                    <tr><td colspan="6" class="text-center text-muted py-3"><i class="bi bi-check-circle me-1 text-success"></i> All invoices are assigned!</td></tr>
+                }
+                @foreach (var inv in Model.UnassignedInvoices)
+                {
+                    <tr>
+                        <td class="fw-semibold">@inv.InvoiceNo</td>
+                        <td>@inv.InvoiceDate.ToString("dd MMM yyyy")</td>
+                        <td>@inv.PartyName</td>
+                        <td class="fw-bold">₹@inv.TotalAmount.ToString("N2")</td>
+                        <td><span class="badge bg-info text-white" style="font-size:.68rem;">@inv.InvoiceStatus</span></td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:8px;font-size:.72rem;"
+                                    onclick="openAssignModal(@inv.InvoiceId, '@inv.InvoiceNo')">
+                                <i class="bi bi-person-plus me-1"></i> Assign
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="ia-filter">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">Sales Person</label>
+            <select name="salesUserId" class="form-select form-select-sm" style="border-radius:10px;">
+                <option value="">All</option>
+                @foreach (var u in Model.SalesUsers)
+                {
+                    <option value="@u.Id" selected="@(Model.SalesUserFilter == u.Id)">@u.FullName</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">From</label>
+            <input type="date" name="from" class="form-control form-control-sm" style="border-radius:10px;" value="@Model.FromDate?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-semibold" style="font-size:.78rem;">To</label>
+            <input type="date" name="to" class="form-control form-control-sm" style="border-radius:10px;" value="@Model.ToDate?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-sm btn-primary" style="border-radius:10px;"><i class="bi bi-funnel me-1"></i> Filter</button>
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:10px;"><i class="bi bi-x-lg"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- Assigned Invoices -->
+<div class="ia-card">
+    <div class="ia-card-header"><i class="bi bi-check2-square me-1"></i> Assigned Invoices (@Model.Assignments.Count)</div>
+    <div class="table-responsive">
+        <table class="table ia-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Invoice No</th>
+                    <th>Date</th>
+                    <th>Party</th>
+                    <th>Amount (₹)</th>
+                    <th>Sales Person</th>
+                    <th>Product</th>
+                    <th>Received (₹)</th>
+                    <th>Assigned At</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Assignments.Any())
+                {
+                    <tr><td colspan="10" class="text-center text-muted py-3"><i class="bi bi-inbox me-1"></i> No assigned invoices found.</td></tr>
+                }
+                @{ var idx = 0; }
+                @foreach (var a in Model.Assignments)
+                {
+                    idx++;
+                    <tr>
+                        <td class="text-muted" style="font-size:.75rem;">@idx</td>
+                        <td class="fw-semibold">@a.InvoiceNo</td>
+                        <td style="font-size:.8rem;">@a.InvoiceDate.ToString("dd MMM yyyy")</td>
+                        <td>@a.PartyName</td>
+                        <td class="fw-bold">₹@a.TotalAmount.ToString("N2")</td>
+                        <td>
+                            <div class="fw-semibold" style="font-size:.82rem;">@a.SalesUserName</div>
+                        </td>
+                        <td style="font-size:.8rem;">@(a.ProductName ?? "—")</td>
+                        <td class="fw-bold text-success">₹@a.ReceivedAmount.ToString("N2")</td>
+                        <td style="font-size:.78rem;">@(a.AssignedAt?.ToString("dd MMM yyyy") ?? "—")</td>
+                        <td class="text-center">
+                            <form asp-action="Unassign" method="post" class="d-inline swal-confirm-form"
+                                  data-swal-title="Unassign Invoice?"
+                                  data-swal-text="This will remove the sales person assignment from invoice @a.InvoiceNo."
+                                  data-swal-icon="warning"
+                                  data-swal-confirm="Yes, Unassign"
+                                  data-swal-danger="true">
+                                <input type="hidden" name="id" value="@a.AssignmentId" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger" style="border-radius:8px;font-size:.72rem;">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Assign Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:16px;border:none;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:16px 16px 0 0;">
+                <h5 class="modal-title text-white fw-bold">Assign Invoice</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="Assign" method="post">
+                <div class="modal-body">
+                    <input type="hidden" name="invoiceId" id="assignInvoiceId" />
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:.82rem;">Invoice</label>
+                        <input type="text" id="assignInvoiceNo" class="form-control" style="border-radius:10px;" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:.82rem;">Sales Person <span class="text-danger">*</span></label>
+                        <select name="salesUserId" class="form-select" style="border-radius:10px;" required>
+                            <option value="">— Select —</option>
+                            @foreach (var u in Model.SalesUsers)
+                            {
+                                <option value="@u.Id">@u.FullName @(!string.IsNullOrEmpty(u.EmployeeCode) ? $"({u.EmployeeCode})" : "")</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:.82rem;">Product (optional)</label>
+                        <select name="productId" class="form-select" style="border-radius:10px;">
+                            <option value="">— None —</option>
+                            @foreach (var p in Model.Products)
+                            {
+                                <option value="@p.Id">@p.ProductName (@p.ProductCode)</option>
+                            }
+                        </select>
+                        <div class="form-text" style="font-size:.74rem;">If set, product-specific commission rules will apply.</div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #f1f5f9;">
+                    <button type="button" class="btn btn-outline-secondary" style="border-radius:10px;" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn" style="background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border-radius:10px;font-weight:600;">
+                        <i class="bi bi-check-lg me-1"></i> Assign
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var assignModal;
+document.addEventListener('DOMContentLoaded', function() {
+    assignModal = new bootstrap.Modal(document.getElementById('assignModal'));
+
+    // ── Invoice Auto-Suggest ──────────────────────────────────
+    var invoices = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        Model.UnassignedInvoices.Select(i => new {
+            id = i.InvoiceId,
+            no = i.InvoiceNo,
+            party = i.PartyName,
+            amt = i.TotalAmount.ToString("N2")
+        })
+    ));
+
+    var searchInput = document.getElementById('invoiceSearch');
+    var suggestBox = document.getElementById('invoiceSuggest');
+    var activeIdx = -1;
+    var filtered = [];
+
+    // Get all unassigned table rows
+    var tableBody = document.querySelector('.ia-card .ia-table tbody');
+    var allRows = tableBody ? Array.from(tableBody.querySelectorAll('tr[data-inv-id], tr:not([data-inv-id])')) : [];
+
+    // Tag rows with invoice id for filtering
+    (function tagRows() {
+        var rows = tableBody ? tableBody.querySelectorAll('tr') : [];
+        var invIdx = 0;
+        rows.forEach(function(row) {
+            var cells = row.querySelectorAll('td');
+            if (cells.length >= 5) {
+                // match by invoice no text
+                var invNo = cells[0].textContent.trim();
+                var inv = invoices.find(function(i) { return i.no === invNo; });
+                if (inv) row.setAttribute('data-inv-id', inv.id);
+            }
+        });
+    })();
+
+    searchInput.addEventListener('input', function() {
+        var q = this.value.trim().toLowerCase();
+        activeIdx = -1;
+
+        if (!q) {
+            suggestBox.style.display = 'none';
+            showAllRows();
+            return;
+        }
+
+        filtered = invoices.filter(function(i) {
+            return i.no.toLowerCase().indexOf(q) >= 0 || i.party.toLowerCase().indexOf(q) >= 0;
+        });
+
+        renderSuggestions(filtered, q);
+        filterTableRows(q);
+    });
+
+    searchInput.addEventListener('keydown', function(e) {
+        var items = suggestBox.querySelectorAll('.ia-suggest-item');
+        if (!items.length) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIdx = Math.min(activeIdx + 1, items.length - 1);
+            highlightItem(items);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIdx = Math.max(activeIdx - 1, 0);
+            highlightItem(items);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIdx >= 0 && items[activeIdx]) items[activeIdx].click();
+        } else if (e.key === 'Escape') {
+            suggestBox.style.display = 'none';
+        }
+    });
+
+    searchInput.addEventListener('focus', function() {
+        if (this.value.trim()) {
+            var q = this.value.trim().toLowerCase();
+            filtered = invoices.filter(function(i) {
+                return i.no.toLowerCase().indexOf(q) >= 0 || i.party.toLowerCase().indexOf(q) >= 0;
+            });
+            if (filtered.length) renderSuggestions(filtered, q);
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !suggestBox.contains(e.target)) {
+            suggestBox.style.display = 'none';
+        }
+    });
+
+    function renderSuggestions(list, q) {
+        if (!list.length) {
+            suggestBox.innerHTML = '<div class="ia-suggest-empty"><i class="bi bi-search me-1"></i>No matching invoices</div>';
+            suggestBox.style.display = 'block';
+            return;
+        }
+        var html = '';
+        list.slice(0, 10).forEach(function(inv) {
+            var hl = highlightMatch(inv.no, q);
+            html += '<div class="ia-suggest-item" data-id="' + inv.id + '" data-no="' + inv.no.replace(/"/g,'&quot;') + '">'
+                  + '<div><span class="ia-inv-no">' + hl + '</span> <span class="ia-inv-party">' + escHtml(inv.party) + '</span></div>'
+                  + '<span class="ia-inv-amt">\u20b9' + inv.amt + '</span>'
+                  + '</div>';
+        });
+        suggestBox.innerHTML = html;
+        suggestBox.style.display = 'block';
+
+        suggestBox.querySelectorAll('.ia-suggest-item').forEach(function(item) {
+            item.addEventListener('click', function() {
+                var invNo = this.dataset.no;
+                searchInput.value = invNo;
+                suggestBox.style.display = 'none';
+                filterTableRows(invNo.toLowerCase());
+                scrollToInvoice(invNo);
+            });
+        });
+    }
+
+    function highlightMatch(text, q) {
+        var idx = text.toLowerCase().indexOf(q);
+        if (idx < 0) return escHtml(text);
+        return escHtml(text.substring(0, idx))
+             + '<strong style="color:#6366f1;">' + escHtml(text.substring(idx, idx + q.length)) + '</strong>'
+             + escHtml(text.substring(idx + q.length));
+    }
+
+    function highlightItem(items) {
+        items.forEach(function(el, i) {
+            el.classList.toggle('ia-suggest-active', i === activeIdx);
+        });
+        if (items[activeIdx]) items[activeIdx].scrollIntoView({ block: 'nearest' });
+    }
+
+    function filterTableRows(q) {
+        if (!tableBody) return;
+        var rows = tableBody.querySelectorAll('tr');
+        rows.forEach(function(row) {
+            var cells = row.querySelectorAll('td');
+            if (cells.length < 3) return; // skip empty-state row
+            var invNo = (cells[0].textContent || '').trim().toLowerCase();
+            var party = (cells[2].textContent || '').trim().toLowerCase();
+            row.style.display = (invNo.indexOf(q) >= 0 || party.indexOf(q) >= 0) ? '' : 'none';
+        });
+    }
+
+    function showAllRows() {
+        if (!tableBody) return;
+        tableBody.querySelectorAll('tr').forEach(function(r) { r.style.display = ''; });
+    }
+
+    function scrollToInvoice(invNo) {
+        if (!tableBody) return;
+        var rows = tableBody.querySelectorAll('tr');
+        for (var i = 0; i < rows.length; i++) {
+            var cells = rows[i].querySelectorAll('td');
+            if (cells.length && cells[0].textContent.trim() === invNo) {
+                rows[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                rows[i].style.transition = 'background .3s';
+                rows[i].style.background = 'linear-gradient(90deg,#ede9fe,#dbeafe)';
+                setTimeout(function() { rows[i].style.background = ''; }, 1500);
+                break;
+            }
+        }
+    }
+
+    function escHtml(s) {
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(s));
+        return d.innerHTML;
+    }
+});
+
+function openAssignModal(invoiceId, invoiceNo) {
+    document.getElementById('assignInvoiceId').value = invoiceId;
+    document.getElementById('assignInvoiceNo').value = invoiceNo;
+    assignModal.show();
+}
+
+document.querySelectorAll('.swal-confirm-form').forEach(function(form) {
+    form.addEventListener('submit', function handler(e) {
+        e.preventDefault();
+        var f = this;
+        var isDanger = f.dataset.swalDanger === 'true';
+        Swal.fire({
+            title: f.dataset.swalTitle,
+            text: f.dataset.swalText,
+            icon: f.dataset.swalIcon || 'question',
+            showCancelButton: true,
+            confirmButtonText: f.dataset.swalConfirm || 'Yes',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: isDanger ? '#dc2626' : '#180a3c',
+            cancelButtonColor: '#6c757d',
+            customClass: { popup: 'app-swal-popup' },
+            reverseButtons: true
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                f.removeEventListener('submit', handler);
+                f.submit();
+            }
+        });
+    });
+});
+</script>
+}
