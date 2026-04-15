@@ -7,7 +7,7 @@ using CentralLicenceApp.Repositories;
 
 namespace CentralLicenceApp.Controllers
 {
-    [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = "Administrator,Finance")]
     public class PayoutBatchController : Controller
     {
         private readonly IPayoutBatchRepository _batchRepo;
@@ -51,6 +51,7 @@ namespace CentralLicenceApp.Controllers
         }
 
         // ── Generate GET: show form ────────────────────────────────
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> Generate()
         {
             var configuredUsers = await _configRepo.GetAllConfigurationsAsync(null, null, "Configured");
@@ -66,6 +67,7 @@ namespace CentralLicenceApp.Controllers
         // ── Generate POST: create batch ────────────────────────────
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> Generate(PayoutGenerateFormViewModel vm)
         {
             if (vm.FromDate > vm.ToDate)
@@ -96,6 +98,7 @@ namespace CentralLicenceApp.Controllers
         // ── Preview (AJAX) ─────────────────────────────────────────
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> Preview(int userId, DateTime fromDate, DateTime toDate)
         {
             if (userId <= 0 || fromDate > toDate)
@@ -260,6 +263,7 @@ namespace CentralLicenceApp.Controllers
         // ── Delete Draft Batch ─────────────────────────────────────
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> Delete(int id)
         {
             var ok = await _batchRepo.DeleteBatchAsync(id);

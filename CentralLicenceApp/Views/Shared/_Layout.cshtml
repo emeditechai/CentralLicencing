@@ -179,6 +179,9 @@
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="PaymentMode" asp-action="Index" class="@Act("PaymentMode")"><i class="bi bi-credit-card-2-front"></i> Payment Modes</a></div>
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="TermsConditionTemplate" asp-action="Index" class="@Act("TermsConditionTemplate")"><i class="bi bi-file-text"></i> Terms &amp; Conditions</a></div>
                     </div>
+                }
+                @if (isAdmin || isFinance)
+                {
                     <div class="nav-item nav-item-nested">
                         <a href="#section-business-unit-config" data-bs-toggle="collapse" class="@(payoutConfigOpen ? "active" : "")" aria-expanded="@(payoutConfigOpen ? "true" : "false")">
                             <i class="bi bi-gear"></i> Task Payout
@@ -186,7 +189,10 @@
                         </a>
                     </div>
                     <div class="collapse @(payoutConfigOpen ? "show" : "")" id="section-business-unit-config">
+                        @if (isAdmin)
+                        {
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="PayoutConfiguration" asp-action="Index" class="@Act("PayoutConfiguration")"><i class="bi bi-sliders"></i> Payout Configuration</a></div>
+                        }
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="PayoutBatch" asp-action="Index" class="@Act("PayoutBatch")"><i class="bi bi-collection"></i> Payout Batches</a></div>
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="PayoutBatch" asp-action="ApprovalInbox" class="@(ctrl == "PayoutBatch" && (ViewContext.RouteData.Values["action"]?.ToString() == "ApprovalInbox") ? "active" : "")"><i class="bi bi-inbox"></i> Approval Inbox</a></div>
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="PayoutBatch" asp-action="SettlementDesk" class="@(ctrl == "PayoutBatch" && (ViewContext.RouteData.Values["action"]?.ToString() == "SettlementDesk") ? "active" : "")"><i class="bi bi-cash-stack"></i> Settlement Desk</a></div>
@@ -198,8 +204,11 @@
                         </a>
                     </div>
                     <div class="collapse @(salesCommConfigOpen ? "show" : "")" id="section-sales-commission">
+                        @if (isAdmin)
+                        {
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="SalesCommissionConfig" asp-action="Index" class="@Act("SalesCommissionConfig")"><i class="bi bi-sliders"></i> Commission Config</a></div>
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="SalesInvoiceAssignment" asp-action="Index" class="@Act("SalesInvoiceAssignment")"><i class="bi bi-link-45deg"></i> Invoice Assignment</a></div>
+                        }
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="SalesCommissionBatch" asp-action="Index" class="@Act("SalesCommissionBatch")"><i class="bi bi-collection"></i> Commission Batches</a></div>
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="SalesCommissionBatch" asp-action="ApprovalInbox" class="@(ctrl == "SalesCommissionBatch" && (ViewContext.RouteData.Values["action"]?.ToString() == "ApprovalInbox") ? "active" : "")"><i class="bi bi-inbox"></i> Approval Inbox</a></div>
                         <div class="nav-sub-item nav-sub-item-deep"><a asp-controller="SalesCommissionBatch" asp-action="SettlementDesk" class="@(ctrl == "SalesCommissionBatch" && (ViewContext.RouteData.Values["action"]?.ToString() == "SettlementDesk") ? "active" : "")"><i class="bi bi-cash-stack"></i> Settlement Desk</a></div>

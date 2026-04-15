@@ -7,7 +7,7 @@ using CentralLicenceApp.Repositories;
 
 namespace CentralLicenceApp.Controllers
 {
-    [Authorize(Roles = "Administrator")]
+    [Authorize(Roles = "Administrator,Finance")]
     public class SalesCommissionBatchController : Controller
     {
         private readonly ISalesCommissionBatchRepository _batchRepo;
@@ -51,6 +51,7 @@ namespace CentralLicenceApp.Controllers
         }
 
         // ── Generate GET ───────────────────────────────────────────
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> Generate()
         {
             var configs = await _configRepo.GetAllConfigurationsAsync(null, null, null);
@@ -66,6 +67,7 @@ namespace CentralLicenceApp.Controllers
         // ── Generate POST ──────────────────────────────────────────
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> Generate(SalesCommGenerateFormViewModel vm)
         {
             if (vm.FromDate > vm.ToDate)
@@ -96,6 +98,7 @@ namespace CentralLicenceApp.Controllers
         // ── Generate Bulk POST ─────────────────────────────────────
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> GenerateBulk(DateTime fromDate, DateTime toDate)
         {
             if (fromDate > toDate)
@@ -131,6 +134,7 @@ namespace CentralLicenceApp.Controllers
         // ── Preview (AJAX) ─────────────────────────────────────────
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> Preview(int userId, DateTime fromDate, DateTime toDate)
         {
             if (userId <= 0 || fromDate > toDate)
@@ -293,6 +297,7 @@ namespace CentralLicenceApp.Controllers
         // ── Delete Draft ───────────────────────────────────────────
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator")]
         public async Task<IActionResult> Delete(int id)
         {
             var ok = await _batchRepo.DeleteBatchAsync(id);
