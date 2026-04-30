@@ -15,6 +15,10 @@ var connStr = builder.Configuration.GetConnectionString("DefaultConnection")!;
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "RequestVerificationToken";
+});
 builder.Services.AddSignalR();
 builder.Services.AddHttpContextAccessor();
 builder.Services.Configure<PushNotificationSettings>(builder.Configuration.GetSection("PushNotifications"));
@@ -69,6 +73,7 @@ builder.Services.AddScoped<ISalesCommissionConfigRepository>(_ => new SalesCommi
 builder.Services.AddScoped<ISalesInvoiceAssignmentRepository>(_ => new SalesInvoiceAssignmentRepository(connStr));
 builder.Services.AddScoped<ISalesCommissionBatchRepository>(_ => new SalesCommissionBatchRepository(connStr));
 builder.Services.AddScoped<ISalesCommissionReportRepository>(_ => new SalesCommissionReportRepository(connStr));
+builder.Services.AddScoped<IAppUploadRepository>(_ => new AppUploadRepository(connStr));
 builder.Services.AddScoped<IClientDetailsReportExportService, ClientDetailsReportExportService>();
 builder.Services.AddScoped<IExpenseReportExportService, ExpenseReportExportService>();
 builder.Services.AddScoped<ISettlementReportExportService, SettlementReportExportService>();

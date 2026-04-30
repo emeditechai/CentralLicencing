@@ -58,7 +58,8 @@ namespace CentralLicenceApp.Services
                 ("HelpDeskTicketTables",     () => EnsureHelpDeskTicketTablesAsync(conn)),
                 ("TicketReportStoredProcs",  () => EnsureTicketReportStoredProcsAsync(conn)),
                 ("PayoutTables",             () => EnsurePayoutTablesAsync(conn)),
-                ("PayoutReportProcs",        () => EnsurePayoutReportProcsAsync(conn))
+                ("PayoutReportProcs",        () => EnsurePayoutReportProcsAsync(conn)),
+                ("AppUploadLog",             () => EnsureAppUploadLogTableAsync(conn))
             };
 
             foreach (var (name, action) in steps)
@@ -2621,6 +2622,26 @@ namespace CentralLicenceApp.Services
                 if (!string.IsNullOrEmpty(trimmed))
                     await conn.ExecuteAsync(trimmed);
             }
+        }
+
+        private static async Task EnsureAppUploadLogTableAsync(SqlConnection conn)
+        {
+            var sql = @"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'AppUploadLog')
+                BEGIN
+                    CREATE TABLE [dbo].[AppUploadLog] (
+                        [Id]            INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        [Platform]      NVARCHAR(10)   NOT NULL,
+                        [FileName]      NVARCHAR(260)  NOT NULL,
+                        [OriginalName]  NVARCHAR(260)  NOT NULL,
+                        [FileSizeBytes] BIGINT         NOT NULL DEFAULT 0,
+                        [DownloadUrl]   NVARCHAR(500)  NOT NULL,
+                        [UploadedBy]    NVARCHAR(100)  NOT NULL,
+                        [UploadedAt]    DATETIME       NOT NULL DEFAULT GETDATE(),
+                        [Notes]         NVARCHAR(500)  NULL
+                    );
+                END";
+            await conn.ExecuteAsync(sql);
         }
     }
 }

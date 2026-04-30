@@ -1,0 +1,472 @@
+@model List<CentralLicenceApp.Models.AppUploadLog>
+@{
+    ViewData["Title"] = "App File Upload";
+    var androidLatest = ViewBag.AndroidLatest as CentralLicenceApp.Models.AppUploadLog;
+    var iosLatest     = ViewBag.IosLatest     as CentralLicenceApp.Models.AppUploadLog;
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">App File Upload</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Upload APK / IPA release files — each upload replaces the previous file for the selected platform</p>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius:12px;">
+        <i class="bi bi-check-circle-fill me-2"></i>@Html.Raw(TempData["Success"])
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius:12px;">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>@Html.Raw(TempData["Error"])
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row g-4">
+
+    <!-- ── Upload Card ── -->
+    <div class="col-lg-5">
+        <div class="card h-100" style="border-radius:16px;border:none;box-shadow:0 2px 16px rgba(0,0,0,.07);">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-4" style="color:#1e293b;"><i class="bi bi-cloud-upload me-2" style="color:#6d28d9;"></i>Upload New Release</h6>
+
+                <form asp-action="Upload" method="post" enctype="multipart/form-data" id="uploadForm">
+                    @Html.AntiForgeryToken()
+
+                    <!-- Platform selector -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:.85rem;color:#475569;">Platform <span class="text-danger">*</span></label>
+                        <select name="platform" id="platformSelect" class="form-select" required onchange="onPlatformChange(this.value)">
+                            <option value="" disabled selected>— Select Platform —</option>
+                            <option value="Android">Android (.apk / .aab)</option>
+                            <option value="iOS">iOS (.ipa)</option>
+                        </select>
+                    </div>
+
+                    <!-- File picker -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size:.85rem;color:#475569;">App File <span class="text-danger">*</span></label>
+                        <div id="dropZone"
+                             style="border:2px dashed #c4b5fd;border-radius:12px;padding:32px 16px;text-align:center;cursor:pointer;transition:background .2s;background:#faf5ff;"
+                             onclick="document.getElementById('appFileInput').click()"
+                             ondragover="event.preventDefault();this.style.background='#ede9fe';"
+                             ondragleave="this.style.background='#faf5ff';"
+                             ondrop="onFileDrop(event)">
+                            <i class="bi bi-file-earmark-arrow-up fs-1" style="color:#8b5cf6;"></i>
+                            <p class="mb-1 mt-2 fw-semibold" style="color:#5b21b6;font-size:.9rem;">Click or drag &amp; drop file here</p>
+                            <p class="text-muted mb-0" id="allowedHint" style="font-size:.78rem;">Select a platform first</p>
+                        </div>
+                        <input type="file" name="appFile" id="appFileInput" class="d-none" required onchange="onFileSelected(this)" />
+                        <div id="fileInfo" class="mt-2 d-none">
+                            <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+                                <i class="bi bi-file-earmark-check text-success fs-5"></i>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="fw-semibold text-truncate" id="fileNameDisplay" style="font-size:.83rem;color:#166534;max-width:280px;"></div>
+                                    <div class="text-muted" id="fileSizeDisplay" style="font-size:.76rem;"></div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="clearFile()" title="Remove">
+                                    <i class="bi bi-x-circle-fill"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notes (optional) -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold" style="font-size:.85rem;color:#475569;">Release Notes <span class="text-muted fw-normal">(optional)</span></label>
+                        <textarea name="notes" class="form-control" rows="2" placeholder="e.g. v2.1.0 — Bug fixes and performance improvements" style="font-size:.85rem;resize:none;border-radius:10px;"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn w-100" id="submitBtn"
+                            style="background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;border-radius:10px;font-weight:600;padding:.6rem 1rem;">
+                        <i class="bi bi-cloud-upload me-2"></i>Upload &amp; Replace
+                    </button>
+
+                    <!-- Progress panel (hidden until upload starts) -->
+                    <div id="uploadProgressPanel" class="d-none mt-3 p-3 rounded-3" style="background:#f5f3ff;border:1px solid #ddd6fe;">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span id="progressLabel" class="fw-semibold" style="font-size:.82rem;color:#5b21b6;">
+                                <span class="spinner-border spinner-border-sm me-1" style="color:#7c3aed;"></span>Uploading…
+                            </span>
+                            <span id="progressPct" class="fw-bold" style="font-size:.9rem;color:#6d28d9;">0%</span>
+                        </div>
+                        <div class="progress" style="height:10px;border-radius:8px;background:#ede9fe;">
+                            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
+                                 role="progressbar" style="width:0%;background:linear-gradient(90deg,#7c3aed,#a78bfa);border-radius:8px;"
+                                 aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-1">
+                            <span id="progressBytes" class="text-muted" style="font-size:.76rem;"></span>
+                            <span id="progressSpeed" class="text-muted" style="font-size:.76rem;"></span>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Current Downloads Card ── -->
+    <div class="col-lg-7">
+        <div class="card h-100" style="border-radius:16px;border:none;box-shadow:0 2px 16px rgba(0,0,0,.07);">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-4" style="color:#1e293b;"><i class="bi bi-link-45deg me-2" style="color:#0ea5e9;"></i>Current Download Links</h6>
+
+                <!-- Android current -->
+                <div class="d-flex align-items-start gap-3 p-3 mb-3 rounded-3" style="background:#f0fdf4;border:1px solid #bbf7d0;">
+                    <div style="width:44px;height:44px;background:#22c55e;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="bi bi-android2 text-white fs-5"></i>
+                    </div>
+                    <div class="flex-grow-1 min-width-0">
+                        <div class="fw-bold mb-1" style="font-size:.88rem;color:#166534;">Android</div>
+                        @if (androidLatest != null)
+                        {
+                            <div class="text-muted mb-2" style="font-size:.78rem;">
+                                <i class="bi bi-file-earmark me-1"></i>@androidLatest.OriginalName
+                                &nbsp;|&nbsp;<i class="bi bi-hdd me-1"></i>@(Math.Round(androidLatest.FileSizeBytes / 1048576.0, 2)) MB
+                                &nbsp;|&nbsp;<i class="bi bi-clock me-1"></i>@androidLatest.UploadedAt.ToString("dd MMM yyyy, hh:mm tt")
+                                @if (!string.IsNullOrWhiteSpace(androidLatest.UploadedBy))
+                                {
+                                    <span>&nbsp;by <strong>@androidLatest.UploadedBy</strong></span>
+                                }
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(androidLatest.Notes))
+                            {
+                                <div class="text-muted mb-2" style="font-size:.77rem;"><i class="bi bi-info-circle me-1"></i>@androidLatest.Notes</div>
+                            }
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="text" class="form-control form-control-sm" readonly
+                                       value="@(Context.Request.Scheme)://@(Context.Request.Host)@androidLatest.DownloadUrl"
+                                       style="font-size:.78rem;background:#fff;border-radius:8px;" id="androidLinkInput" />
+                                <button class="btn btn-sm btn-outline-success" onclick="copyLink('androidLinkInput')" title="Copy link" style="border-radius:8px;white-space:nowrap;">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                                <a href="@androidLatest.DownloadUrl" class="btn btn-sm btn-success" download style="border-radius:8px;white-space:nowrap;">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted" style="font-size:.82rem;"><i class="bi bi-dash-circle me-1"></i>No Android file uploaded yet</span>
+                        }
+                    </div>
+                </div>
+
+                <!-- iOS current -->
+                <div class="d-flex align-items-start gap-3 p-3 rounded-3" style="background:#f0f9ff;border:1px solid #bae6fd;">
+                    <div style="width:44px;height:44px;background:#0ea5e9;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="bi bi-apple text-white fs-5"></i>
+                    </div>
+                    <div class="flex-grow-1 min-width-0">
+                        <div class="fw-bold mb-1" style="font-size:.88rem;color:#0c4a6e;">iOS</div>
+                        @if (iosLatest != null)
+                        {
+                            <div class="text-muted mb-2" style="font-size:.78rem;">
+                                <i class="bi bi-file-earmark me-1"></i>@iosLatest.OriginalName
+                                &nbsp;|&nbsp;<i class="bi bi-hdd me-1"></i>@(Math.Round(iosLatest.FileSizeBytes / 1048576.0, 2)) MB
+                                &nbsp;|&nbsp;<i class="bi bi-clock me-1"></i>@iosLatest.UploadedAt.ToString("dd MMM yyyy, hh:mm tt")
+                                @if (!string.IsNullOrWhiteSpace(iosLatest.UploadedBy))
+                                {
+                                    <span>&nbsp;by <strong>@iosLatest.UploadedBy</strong></span>
+                                }
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(iosLatest.Notes))
+                            {
+                                <div class="text-muted mb-2" style="font-size:.77rem;"><i class="bi bi-info-circle me-1"></i>@iosLatest.Notes</div>
+                            }
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="text" class="form-control form-control-sm" readonly
+                                       value="@(Context.Request.Scheme)://@(Context.Request.Host)@iosLatest.DownloadUrl"
+                                       style="font-size:.78rem;background:#fff;border-radius:8px;" id="iosLinkInput" />
+                                <button class="btn btn-sm btn-outline-primary" onclick="copyLink('iosLinkInput')" title="Copy link" style="border-radius:8px;white-space:nowrap;">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                                <a href="@iosLatest.DownloadUrl" class="btn btn-sm btn-primary" download style="border-radius:8px;white-space:nowrap;">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted" style="font-size:.82rem;"><i class="bi bi-dash-circle me-1"></i>No iOS file uploaded yet</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Upload History ── -->
+<div class="card mt-4" style="border-radius:16px;border:none;box-shadow:0 2px 16px rgba(0,0,0,.07);">
+    <div class="card-body p-0">
+        <div class="px-4 pt-4 pb-2 d-flex align-items-center justify-content-between">
+            <h6 class="fw-bold mb-0" style="color:#1e293b;"><i class="bi bi-clock-history me-2" style="color:#f59e0b;"></i>Upload History</h6>
+            <span class="text-muted" style="font-size:.8rem;">@Model.Count total upload@(Model.Count == 1 ? "" : "s")</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-4">#</th>
+                        <th>Platform</th>
+                        <th>Original File</th>
+                        <th>Size</th>
+                        <th>Release Notes</th>
+                        <th>Uploaded By</th>
+                        <th>Uploaded At</th>
+                        <th class="pe-4">Download</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="bi bi-cloud-upload fs-1 d-block mb-2"></i>No uploads yet
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        var idx = 0;
+                        foreach (var item in Model)
+                        {
+                            idx++;
+                            <tr>
+                                <td class="ps-4 text-muted" style="font-size:.8rem;">@idx</td>
+                                <td>
+                                    @if (item.Platform == "Android")
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#dcfce7;color:#166534;font-size:.75rem;">
+                                            <i class="bi bi-android2 me-1"></i>Android
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge rounded-pill px-2 py-1" style="background:#dbeafe;color:#1e40af;font-size:.75rem;">
+                                            <i class="bi bi-apple me-1"></i>iOS
+                                        </span>
+                                    }
+                                </td>
+                                <td style="font-size:.83rem;max-width:200px;" class="text-truncate" title="@item.OriginalName">@item.OriginalName</td>
+                                <td style="font-size:.82rem;white-space:nowrap;">@(Math.Round(item.FileSizeBytes / 1048576.0, 2)) MB</td>
+                                <td style="font-size:.8rem;max-width:200px;" class="text-truncate text-muted" title="@item.Notes">
+                                    @(string.IsNullOrWhiteSpace(item.Notes) ? "—" : item.Notes)
+                                </td>
+                                <td style="font-size:.82rem;">@item.UploadedBy</td>
+                                <td style="font-size:.82rem;white-space:nowrap;">@item.UploadedAt.ToString("dd MMM yyyy, hh:mm tt")</td>
+                                <td class="pe-4">
+                                    <a href="@item.DownloadUrl" class="btn btn-sm btn-outline-secondary py-0 px-2" download
+                                       title="Download @item.OriginalName" style="border-radius:8px;">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const allowedByPlatform = {
+        'Android': { extensions: ['.apk', '.aab'], hint: 'Android: .apk or .aab files only, max 500 MB' },
+        'iOS':     { extensions: ['.ipa'],          hint: 'iOS: .ipa files only, max 500 MB' }
+    };
+
+    function onPlatformChange(platform) {
+        const hint = document.getElementById('allowedHint');
+        const input = document.getElementById('appFileInput');
+        clearFile();
+        if (platform && allowedByPlatform[platform]) {
+            hint.textContent = allowedByPlatform[platform].hint;
+            const exts = allowedByPlatform[platform].extensions;
+            input.accept = exts.join(',');
+        } else {
+            hint.textContent = 'Select a platform first';
+            input.accept = '';
+        }
+    }
+
+    function onFileDrop(event) {
+        event.preventDefault();
+        document.getElementById('dropZone').style.background = '#faf5ff';
+        const file = event.dataTransfer?.files?.[0];
+        if (!file) return;
+        const fakeInput = document.getElementById('appFileInput');
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fakeInput.files = dt.files;
+        onFileSelected(fakeInput);
+    }
+
+    function onFileSelected(input) {
+        const file = input.files?.[0];
+        if (!file) return;
+        document.getElementById('fileNameDisplay').textContent = file.name;
+        document.getElementById('fileSizeDisplay').textContent = (file.size / 1048576).toFixed(2) + ' MB';
+        document.getElementById('fileInfo').classList.remove('d-none');
+    }
+
+    function clearFile() {
+        const input = document.getElementById('appFileInput');
+        input.value = '';
+        document.getElementById('fileInfo').classList.add('d-none');
+        document.getElementById('fileNameDisplay').textContent = '';
+        document.getElementById('fileSizeDisplay').textContent = '';
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const platform = document.getElementById('platformSelect').value;
+        const file = document.getElementById('appFileInput').files?.[0];
+
+        if (!platform) {
+            Swal.fire({ icon: 'warning', title: 'Platform Required', text: 'Please select Android or iOS before uploading.', confirmButtonColor: '#6d28d9' });
+            return;
+        }
+        if (!file) {
+            Swal.fire({ icon: 'warning', title: 'File Required', text: 'Please select an app file to upload.', confirmButtonColor: '#6d28d9' });
+            return;
+        }
+
+        const sizeMB = (file.size / 1048576).toFixed(2);
+        const platformIcon = platform === 'Android' ? '🤖' : '🍎';
+        Swal.fire({
+            title: `${platformIcon} Confirm Upload`,
+            html: `<div style="font-size:.9rem;line-height:1.6;">
+                     <div class="mb-2"><strong>${file.name}</strong></div>
+                     <div class="text-muted" style="font-size:.82rem;">Size: ${sizeMB} MB &nbsp;|&nbsp; Platform: <strong>${platform}</strong></div>
+                     <div class="mt-3 p-2 rounded" style="background:#fef9c3;color:#854d0e;font-size:.82rem;border:1px solid #fde68a;">
+                         <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                         This will <strong>replace</strong> the existing ${platform} file.
+                     </div>
+                   </div>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-cloud-upload me-1"></i> Yes, Upload',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#6d28d9',
+            cancelButtonColor: '#94a3b8',
+            reverseButtons: true,
+            focusCancel: true
+        }).then(result => {
+            if (result.isConfirmed) startXhrUpload(file);
+        });
+    });
+
+    function startXhrUpload(file) {
+        const form       = document.getElementById('uploadForm');
+        const btn        = document.getElementById('submitBtn');
+        const panel      = document.getElementById('uploadProgressPanel');
+        const bar        = document.getElementById('progressBar');
+        const pct        = document.getElementById('progressPct');
+        const bytesEl    = document.getElementById('progressBytes');
+        const speedEl    = document.getElementById('progressSpeed');
+        const labelEl    = document.getElementById('progressLabel');
+
+        // Disable form controls
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading…';
+        panel.classList.remove('d-none');
+
+        const formData = new FormData(form);
+        const xhr = new XMLHttpRequest();
+        const startTime = Date.now();
+
+        xhr.upload.addEventListener('progress', function (e) {
+            if (!e.lengthComputable) return;
+            const percent   = Math.round((e.loaded / e.total) * 100);
+            const elapsed   = (Date.now() - startTime) / 1000;        // seconds
+            const speedBps  = elapsed > 0 ? e.loaded / elapsed : 0;   // bytes/s
+            const remaining = speedBps > 0 ? (e.total - e.loaded) / speedBps : 0;
+
+            bar.style.width        = percent + '%';
+            bar.setAttribute('aria-valuenow', percent);
+            pct.textContent        = percent + '%';
+            bytesEl.textContent    = formatBytes(e.loaded) + ' / ' + formatBytes(e.total);
+            speedEl.textContent    = formatBytes(speedBps) + '/s' +
+                                     (remaining > 0 ? '  ·  ~' + formatTime(remaining) + ' left' : '');
+        });
+
+        xhr.addEventListener('load', function () {
+            if (xhr.status >= 200 && xhr.status < 400) {
+                // Upload complete — show 100% then redirect
+                bar.style.width     = '100%';
+                bar.setAttribute('aria-valuenow', 100);
+                bar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                bar.style.background = 'linear-gradient(90deg,#16a34a,#4ade80)';
+                pct.textContent      = '100%';
+                pct.style.color      = '#166534';
+                labelEl.innerHTML    = '<i class="bi bi-check-circle-fill text-success me-1"></i><span style="color:#166534;">Upload complete! Redirecting…</span>';
+                speedEl.textContent  = '';
+                setTimeout(() => { window.location.href = '/AppUpload'; }, 800);
+            } else {
+                showUploadError('Server returned status ' + xhr.status + '. Please try again.');
+                resetUploadUI(btn, panel);
+            }
+        });
+
+        xhr.addEventListener('error', function () {
+            showUploadError('Network error — upload failed. Please check your connection and try again.');
+            resetUploadUI(btn, panel);
+        });
+
+        xhr.addEventListener('timeout', function () {
+            showUploadError('Upload timed out. Try again with a stable connection.');
+            resetUploadUI(btn, panel);
+        });
+
+        xhr.open('POST', '/AppUpload/Upload');
+        // Pass anti-forgery token via header so ValidateAntiForgeryToken still works
+        const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                   || document.querySelector('meta[name="request-verification-token"]')?.getAttribute('content');
+        if (token) xhr.setRequestHeader('RequestVerificationToken', token);
+        xhr.timeout = 20 * 60 * 1000; // 20 min
+        xhr.send(formData);
+    }
+
+    function resetUploadUI(btn, panel) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-cloud-upload me-2"></i>Upload &amp; Replace';
+        panel.classList.add('d-none');
+        document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('progressPct').textContent = '0%';
+    }
+
+    function showUploadError(msg) {
+        Swal.fire({ icon: 'error', title: 'Upload Failed', text: msg, confirmButtonColor: '#6d28d9' });
+    }
+
+    function formatBytes(bytes) {
+        if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB';
+        if (bytes >= 1048576)    return (bytes / 1048576).toFixed(1)   + ' MB';
+        if (bytes >= 1024)       return (bytes / 1024).toFixed(0)      + ' KB';
+        return bytes + ' B';
+    }
+
+    function formatTime(seconds) {
+        if (seconds >= 60) return Math.round(seconds / 60) + 'm ' + Math.round(seconds % 60) + 's';
+        return Math.round(seconds) + 's';
+    }
+
+    function copyLink(inputId) {
+        const input = document.getElementById(inputId);
+        navigator.clipboard.writeText(input.value).then(() => {
+            Swal.fire({ icon: 'success', title: 'Copied!', text: 'Download link copied to clipboard.', timer: 1500, showConfirmButton: false, timerProgressBar: true });
+        }).catch(() => {
+            input.select();
+            document.execCommand('copy');
+        });
+    }
+</script>
+}
