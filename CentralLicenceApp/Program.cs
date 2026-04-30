@@ -165,7 +165,13 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+
+// Register MIME types for mobile app files so static files middleware serves them
+var mimeProvider = new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider();
+mimeProvider.Mappings[".apk"] = "application/vnd.android.package-archive";
+mimeProvider.Mappings[".aab"] = "application/x-authorware-bin";
+mimeProvider.Mappings[".ipa"] = "application/octet-stream";
+app.UseStaticFiles(new StaticFileOptions { ContentTypeProvider = mimeProvider });
 
 app.UseRouting();
 

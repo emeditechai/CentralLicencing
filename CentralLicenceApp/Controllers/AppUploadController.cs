@@ -94,16 +94,15 @@ namespace CentralLicenceApp.Controllers
             var targetDir = Path.Combine(_env.WebRootPath, "apps", folderName);
             Directory.CreateDirectory(targetDir);
 
-            // Always replace: use a fixed canonical file name per platform
-            var storedFileName = platform == "Android"
-                ? $"app-release{ext}"
-                : $"app-release{ext}";
+            // Use the original file name as-is (strip directory separators only)
+            var storedFileName = Path.GetFileName(appFile.FileName);
+
+            // Delete every existing file in the platform folder before uploading
+            // so only one file is ever present, regardless of name changes between uploads
+            foreach (var existing in Directory.GetFiles(targetDir))
+                System.IO.File.Delete(existing);
 
             var targetPath = Path.Combine(targetDir, storedFileName);
-
-            // Delete existing file before writing (replace)
-            if (System.IO.File.Exists(targetPath))
-                System.IO.File.Delete(targetPath);
 
             using (var stream = new FileStream(targetPath, FileMode.Create, FileAccess.Write))
             {
