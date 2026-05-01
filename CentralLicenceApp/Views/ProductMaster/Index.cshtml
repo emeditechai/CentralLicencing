@@ -14,7 +14,7 @@
                 <h3 class="fw-bold mb-1" style="color:#1e293b;">eProduct Master</h3>
                 <p class="mb-0" style="font-size:.9rem;color:#54657e;max-width:620px;">Manage your product catalog, pricing visibility, and promotional readiness from one place with a cleaner commercial overview.</p>
             </div>
-            <a asp-action="Create" class="btn btn-primary align-self-start" style="background:#180a3c;border:none;border-radius:14px;padding:.8rem 1.1rem;box-shadow:0 10px 24px rgba(24,10,60,.18);">
+            <a asp-action="Create" asp-permission="ProductMaster:Create" class="btn btn-primary align-self-start" style="background:#180a3c;border:none;border-radius:14px;padding:.8rem 1.1rem;box-shadow:0 10px 24px rgba(24,10,60,.18);">
                 <i class="bi bi-plus-lg me-1"></i> New Product
             </a>
         </div>
@@ -152,8 +152,8 @@
                                     <div class="d-flex gap-1 flex-wrap justify-content-end">
                                         <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm" title="View Product" style="border-radius:9px;background:#ecfeff;color:#0f766e;border:1px solid #a5f3fc;"><i class="bi bi-eye"></i></a>
                                         <a asp-controller="ProductRate" asp-action="Index" asp-route-productId="@item.Id" class="btn btn-sm" title="Rate List" style="border-radius:9px;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;"><i class="bi bi-tags me-1"></i>Rates</a>
-                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm" title="Edit" style="border-radius:9px;background:#f8fafc;color:#475569;border:1px solid #dbe4f0;"><i class="bi bi-pencil"></i></a>
-                                        <form asp-action="Delete" method="post"
+                                        <a asp-action="Edit" asp-permission="ProductMaster:Edit" asp-route-id="@item.Id" class="btn btn-sm" title="Edit" style="border-radius:9px;background:#f8fafc;color:#475569;border:1px solid #dbe4f0;"><i class="bi bi-pencil"></i></a>
+                                        <form asp-action="Delete" asp-permission="ProductMaster:Delete" method="post"
                                               data-swal-confirm="true"
                                               data-swal-title="Delete Product?"
                                               data-swal-text="Product <strong>@item.ProductName</strong> will be deleted permanently."

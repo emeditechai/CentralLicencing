@@ -42,11 +42,11 @@
     <div class="d-flex align-items-center gap-2 flex-wrap">
         @if (Model.CanViewSettlementReceipt)
         {
-            <a asp-action="SettlementReceipt" asp-route-id="@Model.Request.Id" target="_blank" class="btn btn-sm btn-outline-success" style="border-radius:8px;">
+            <a asp-action="SettlementReceipt" asp-permission="ExpenseRequest:Settle" asp-route-id="@Model.Request.Id" target="_blank" class="btn btn-sm btn-outline-success" style="border-radius:8px;">
                 <i class="bi bi-receipt me-1"></i> Settlement Receipt
             </a>
         }
-        <a asp-action="Print" asp-route-id="@Model.Request.Id" target="_blank" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
+        <a asp-action="Print" asp-permission="ExpenseRequest:Print" asp-route-id="@Model.Request.Id" target="_blank" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
             <i class="bi bi-printer me-1"></i> Print
         </a>
         <span class="badge @badgeClass rounded-pill px-3 py-2" style="font-size:.78rem;">@Model.Request.Status</span>
@@ -259,14 +259,14 @@
             <div class="card mb-4">
                 <div class="card-body p-4">
                     <h6 class="fw-bold mb-3" style="color:#1e293b;">Approval Action</h6>
-                    <form asp-action="Approve" method="post" class="mb-3">
+                    <form asp-action="Approve" asp-permission="ExpenseRequest:Approve" method="post" class="mb-3">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="RequestId" value="@Model.Request.Id" />
                         <label class="form-label fw-semibold" style="font-size:.82rem;">Approval Remarks</label>
                         <textarea name="Remarks" rows="3" class="form-control mb-3" style="border-radius:10px;"></textarea>
                         <button type="submit" class="btn text-white w-100" style="background:#166534;border:none;border-radius:10px;">Approve Request</button>
                     </form>
-                    <form asp-action="Reject" method="post">
+                    <form asp-action="Reject" asp-permission="ExpenseRequest:Reject" method="post">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="RequestId" value="@Model.Request.Id" />
                         <label class="form-label fw-semibold" style="font-size:.82rem;">Rejection Remarks</label>
@@ -313,7 +313,7 @@
                     </div>
                     @if (Model.CanSettle)
                     {
-                        <a asp-action="Settle" asp-route-id="@Model.Request.Id" class="btn btn-success w-100" style="border-radius:10px;">Complete Settlement</a>
+                        <a asp-action="Settle" asp-permission="ExpenseRequest:Settle" asp-route-id="@Model.Request.Id" class="btn btn-success w-100" style="border-radius:10px;">Complete Settlement</a>
                     }
                 </div>
             </div>

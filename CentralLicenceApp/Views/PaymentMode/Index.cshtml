@@ -45,7 +45,7 @@
                                     <span class="view-name-@mode.Id fw-semibold">@mode.Name</span>
                                     @if (User.IsInRole("Administrator"))
                                     {
-                                        <form class="edit-form-@mode.Id d-none" asp-action="Edit" asp-route-id="@mode.Id" method="post" style="display:inline-flex;gap:6px;align-items:center;">
+                                        <form class="edit-form-@mode.Id d-none" asp-action="Edit" asp-permission="PaymentMode:Edit" asp-route-id="@mode.Id" method="post" style="display:inline-flex;gap:6px;align-items:center;">
                                             @Html.AntiForgeryToken()
                                             <input type="text" name="name" value="@mode.Name" class="form-control form-control-sm" style="width:160px;" required />
                                             <input type="number" name="sortOrder" value="@mode.SortOrder" class="form-control form-control-sm" style="width:80px;" />
@@ -73,7 +73,7 @@
                                                     onclick="startEdit(@mode.Id)" title="Edit">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
-                                            <form asp-action="ToggleActive" asp-route-id="@mode.Id" method="post" style="display:inline;">
+                                            <form asp-action="ToggleActive" asp-permission="PaymentMode:Edit" asp-route-id="@mode.Id" method="post" style="display:inline;">
                                                 @Html.AntiForgeryToken()
                                                 <button type="submit" class="btn btn-sm py-0 px-2 @(mode.IsActive ? "btn-outline-danger" : "btn-outline-success")"
                                                         title="@(mode.IsActive ? "Deactivate" : "Activate")">
@@ -99,7 +99,7 @@
             <i class="bi bi-plus-circle me-1"></i> Add New Payment Mode
         </div>
         <div class="card-body">
-            <form asp-action="Create" method="post">
+            <form asp-action="Create" asp-permission="PaymentMode:Create" method="post">
                 @Html.AntiForgeryToken()
                 <div class="row g-2 align-items-end">
                     <div class="col-6">

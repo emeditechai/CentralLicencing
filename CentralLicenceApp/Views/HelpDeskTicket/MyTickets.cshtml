@@ -8,7 +8,7 @@
         <h4 class="fw-bold mb-0" style="color:#1e293b;">My Tickets</h4>
         <p class="text-muted mb-0" style="font-size:.85rem;">@Model.TotalCount ticket@(Model.TotalCount == 1 ? "" : "s") raised by you</p>
     </div>
-    <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
+    <a asp-action="Create" asp-permission="HelpDeskTicket:Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
         <i class="bi bi-plus-lg me-1"></i> New Ticket
     </a>
 </div>

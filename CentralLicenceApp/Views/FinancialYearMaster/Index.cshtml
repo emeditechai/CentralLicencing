@@ -53,7 +53,7 @@
                                     </span>
                                     @if (User.IsInRole("Administrator"))
                                     {
-                                        <form class="edit-form-@fy.Id d-none" asp-action="Edit" asp-route-id="@fy.Id" method="post"
+                                        <form class="edit-form-@fy.Id d-none" asp-action="Edit" asp-permission="FinancialYearMaster:Edit" asp-route-id="@fy.Id" method="post"
                                               style="display:inline-flex;gap:6px;align-items:center;">
                                             @Html.AntiForgeryToken()
                                             <input type="date" name="startDate" value="@fy.StartDate.ToString("yyyy-MM-dd")"
@@ -110,7 +110,7 @@
                                                     onclick="startEdit(@fy.Id)" title="Edit">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
-                                            <form asp-action="ToggleActive" asp-route-id="@fy.Id" method="post" style="display:inline;">
+                                            <form asp-action="ToggleActive" asp-permission="FinancialYearMaster:Edit" asp-route-id="@fy.Id" method="post" style="display:inline;">
                                                 @Html.AntiForgeryToken()
                                                 <button type="submit" class="btn btn-sm py-0 px-2 @(fy.IsActive ? "btn-outline-danger" : "btn-outline-success")"
                                                         title="@(fy.IsActive ? "Deactivate" : "Activate")">
@@ -136,7 +136,7 @@
             <i class="bi bi-plus-circle me-1"></i> Add New Financial Year
         </div>
         <div class="card-body">
-            <form asp-action="Create" method="post">
+            <form asp-action="Create" asp-permission="FinancialYearMaster:Create" method="post">
                 @Html.AntiForgeryToken()
                 <div class="row g-2 align-items-end">
                     <div class="col-md-3">

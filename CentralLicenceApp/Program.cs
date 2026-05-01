@@ -9,12 +9,27 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 
+// Offline tooling: emit dynamic-auth seed SQL scripts and exit (no app startup, no DB).
+//   dotnet run -- emit-auth-sql [outputDir]
+if (args.Length > 0 && args[0] == "emit-auth-sql")
+{
+    var outDir = args.Length > 1 ? args[1] : System.IO.Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "SqlScripts");
+    outDir = System.IO.Path.GetFullPath(outDir);
+    CentralLicenceApp.Services.DynamicAuthSeeder.EmitSqlScripts(outDir);
+    Console.WriteLine($"Auth seed SQL written to: {outDir}");
+    return;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 var connStr = builder.Configuration.GetConnectionString("DefaultConnection")!;
 
 // Add services to the container.
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add<CentralLicenceApp.Filters.DynamicPageAuthorizationFilter>();
+});
+builder.Services.AddMemoryCache();
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "RequestVerificationToken";
@@ -74,6 +89,11 @@ builder.Services.AddScoped<ISalesInvoiceAssignmentRepository>(_ => new SalesInvo
 builder.Services.AddScoped<ISalesCommissionBatchRepository>(_ => new SalesCommissionBatchRepository(connStr));
 builder.Services.AddScoped<ISalesCommissionReportRepository>(_ => new SalesCommissionReportRepository(connStr));
 builder.Services.AddScoped<IAppUploadRepository>(_ => new AppUploadRepository(connStr));
+builder.Services.AddScoped<IMenuRepository>(_ => new MenuRepository(connStr));
+builder.Services.AddScoped<IPermissionMasterRepository>(_ => new PermissionMasterRepository(connStr));
+builder.Services.AddScoped<IRolePermissionRepository>(_ => new RolePermissionRepository(connStr));
+builder.Services.AddScoped<IUserPermissionRepository>(_ => new UserPermissionRepository(connStr));
+builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IClientDetailsReportExportService, ClientDetailsReportExportService>();
 builder.Services.AddScoped<IExpenseReportExportService, ExpenseReportExportService>();
 builder.Services.AddScoped<ISettlementReportExportService, SettlementReportExportService>();
@@ -195,6 +215,15 @@ using (var scope = app.Services.CreateScope())
         scope.ServiceProvider.GetRequiredService<IConfiguration>(),
         scope.ServiceProvider.GetRequiredService<ILogger<DatabaseSeeder>>());
     await seeder.SeedAsync();
+
+    // NOTE: Dynamic authorization tables/seed data are NOT created at startup.
+    // Run the SQL scripts manually in this order before first use:
+    //   077_CreateDynamicAuthorizationTables.sql
+    //   078_SeedPermissionMaster.sql
+    //   079_SeedMenuMaster.sql
+    //   080_SeedRolePermissionMap.sql
+    // The C# generator that produced 078-080 can be re-run with:
+    //   dotnet run -- emit-auth-sql
 
     // Ensure DailyTaskLog tables exist
     try

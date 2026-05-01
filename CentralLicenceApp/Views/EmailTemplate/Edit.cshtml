@@ -44,7 +44,7 @@
                 <div class="fw-semibold" style="color:#1e293b;font-size:.9rem;"><i class="bi bi-pencil me-2" style="color:#8b5cf6;"></i>Edit Template</div>
             </div>
             <div class="card-body px-4 py-4">
-                <form asp-action="Edit" method="post">
+                <form asp-action="Edit" asp-permission="EmailTemplate:Edit" method="post">
                     @Html.AntiForgeryToken()
                     <input type="hidden" asp-for="Id" />
                     <input type="hidden" asp-for="TemplateKey" />

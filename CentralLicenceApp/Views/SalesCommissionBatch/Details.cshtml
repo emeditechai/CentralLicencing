@@ -204,7 +204,7 @@
 
                 @if (Model.CanApproveL1)
                 {
-                    <form asp-action="Approve" method="post" class="w-100 swal-confirm-form"
+                    <form asp-action="Approve" asp-permission="SalesCommissionBatch:Approve" method="post" class="w-100 swal-confirm-form"
                           data-swal-title="L1 Approve?"
                           data-swal-text="Approve this batch at Level 1."
                           data-swal-icon="question"
@@ -217,7 +217,7 @@
                             <i class="bi bi-check-circle me-1"></i> L1 Approve
                         </button>
                     </form>
-                    <form asp-action="Approve" method="post" class="w-100 swal-confirm-form"
+                    <form asp-action="Approve" asp-permission="SalesCommissionBatch:Approve" method="post" class="w-100 swal-confirm-form"
                           data-swal-title="Reject Batch?" data-swal-text="This batch will be rejected." data-swal-icon="warning"
                           data-swal-confirm="Yes, Reject" data-swal-danger="true">
                         <input type="hidden" name="id" value="@b.Id" />
@@ -232,7 +232,7 @@
 
                 @if (Model.CanApproveL2)
                 {
-                    <form asp-action="Approve" method="post" class="w-100 swal-confirm-form"
+                    <form asp-action="Approve" asp-permission="SalesCommissionBatch:Approve" method="post" class="w-100 swal-confirm-form"
                           data-swal-title="Final Approve?" data-swal-text="The batch will be ready for settlement." data-swal-icon="question"
                           data-swal-confirm="Yes, Approve">
                         <input type="hidden" name="id" value="@b.Id" />
@@ -243,7 +243,7 @@
                             <i class="bi bi-check-circle me-1"></i> L2 Final Approve
                         </button>
                     </form>
-                    <form asp-action="Approve" method="post" class="w-100 swal-confirm-form"
+                    <form asp-action="Approve" asp-permission="SalesCommissionBatch:Approve" method="post" class="w-100 swal-confirm-form"
                           data-swal-title="Reject Batch?" data-swal-text="This batch will be rejected." data-swal-icon="warning"
                           data-swal-confirm="Yes, Reject" data-swal-danger="true">
                         <input type="hidden" name="id" value="@b.Id" />
@@ -258,14 +258,14 @@
 
                 @if (Model.CanSettle)
                 {
-                    <a asp-action="Settle" asp-route-id="@b.Id" class="btn btn-success btn-sm w-100" style="border-radius:10px;">
+                    <a asp-action="Settle" asp-permission="SalesCommissionBatch:Settle" asp-route-id="@b.Id" class="btn btn-success btn-sm w-100" style="border-radius:10px;">
                         <i class="bi bi-cash-stack me-1"></i> Settle Payment
                     </a>
                 }
 
                 @if (Model.CanDelete)
                 {
-                    <form asp-action="Delete" method="post" class="w-100 swal-confirm-form"
+                    <form asp-action="Delete" asp-permission="SalesCommissionBatch:Delete" method="post" class="w-100 swal-confirm-form"
                           data-swal-title="Delete Draft?" data-swal-text="This draft batch will be permanently deleted."
                           data-swal-icon="warning" data-swal-confirm="Yes, Delete" data-swal-danger="true">
                         <input type="hidden" name="id" value="@b.Id" />

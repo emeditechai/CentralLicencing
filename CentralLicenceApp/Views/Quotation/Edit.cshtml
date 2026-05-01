@@ -64,7 +64,7 @@
                             </select>
                             <span asp-validation-for="PartyId" class="text-danger small"></span>
                             <div class="mt-1">
-                                <a asp-controller="PartyMaster" asp-action="Create" target="_blank"
+                                <a asp-controller="PartyMaster" asp-action="Create" asp-permission="PartyMaster:Create" target="_blank"
                                    style="font-size:.76rem;">
                                     <i class="bi bi-plus-circle me-1"></i>Add new party
                                 </a>

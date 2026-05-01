@@ -23,7 +23,7 @@
                     }
                 </p>
             </div>
-            <a asp-action="Create" asp-route-productRateId="@Model.SelectedProductRateId" class="btn btn-primary align-self-start" style="background:#180a3c;border:none;border-radius:14px;padding:.8rem 1.1rem;box-shadow:0 10px 24px rgba(24,10,60,.18);">
+            <a asp-action="Create" asp-permission="ProductRateDiscount:Create" asp-route-productRateId="@Model.SelectedProductRateId" class="btn btn-primary align-self-start" style="background:#180a3c;border:none;border-radius:14px;padding:.8rem 1.1rem;box-shadow:0 10px 24px rgba(24,10,60,.18);">
                 <i class="bi bi-plus-lg me-1"></i> New Discount Offer
             </a>
         </div>
@@ -196,8 +196,8 @@
                                 </td>
                                 <td class="pe-3">
                                     <div class="d-flex gap-1">
-                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm" style="border-radius:9px;background:#f8fafc;color:#475569;border:1px solid #dbe4f0;"><i class="bi bi-pencil"></i></a>
-                                        <form asp-action="Delete" method="post"
+                                        <a asp-action="Edit" asp-permission="ProductRateDiscount:Edit" asp-route-id="@item.Id" class="btn btn-sm" style="border-radius:9px;background:#f8fafc;color:#475569;border:1px solid #dbe4f0;"><i class="bi bi-pencil"></i></a>
+                                        <form asp-action="Delete" asp-permission="ProductRateDiscount:Delete" method="post"
                                               data-swal-confirm="true"
                                               data-swal-title="Delete Discount Offer?"
                                               data-swal-text="Discount offer <strong>@item.DiscountName</strong> will be deleted permanently."

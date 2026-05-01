@@ -22,7 +22,7 @@
     </div>
     @if (!Model.IsVoided)
     {
-        <a asp-action="Print" asp-route-id="@Model.Id" target="_blank"
+        <a asp-action="Print" asp-permission="InvoicePayment:Print" asp-route-id="@Model.Id" target="_blank"
            class="btn btn-sm btn-outline-primary py-1">
             <i class="bi bi-printer me-1"></i> Print
         </a>
@@ -249,7 +249,7 @@
                             This payment has been voided. You can now issue a refund of up to
                             <strong>₹@refundable.ToString("N2")</strong> to the party.
                         </p>
-                        <a asp-action="Refund" asp-route-id="@Model.Id"
+                        <a asp-action="Refund" asp-permission="InvoicePayment:Refund" asp-route-id="@Model.Id"
                            class="btn w-100 text-white" style="background:#ea580c;border:none;border-radius:10px;">
                             <i class="bi bi-arrow-counterclockwise me-1"></i> Issue Refund
                         </a>

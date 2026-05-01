@@ -22,7 +22,7 @@
             <span class="ms-1" style="color:#6366f1;">(@fromVal.Replace("-","/") – @toVal.Replace("-","/"))</span>
         </p>
     </div>
-    <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
+    <a asp-action="Create" asp-permission="Quotation:Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
         <i class="bi bi-plus-lg me-1"></i> New Quotation
     </a>
 </div>
@@ -208,11 +208,11 @@
                                         </a>
                                         @if (User.IsInRole("Administrator") && item.Status != "Converted")
                                         {
-                                            <a asp-action="Edit" asp-route-id="@item.Id"
+                                            <a asp-action="Edit" asp-permission="Quotation:Edit" asp-route-id="@item.Id"
                                                class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;" title="Edit">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
-                                            <form asp-action="Delete" asp-route-id="@item.Id" method="post"
+                                            <form asp-action="Delete" asp-permission="Quotation:Delete" asp-route-id="@item.Id" method="post"
                                                   data-swal-confirm="true"
                                                   data-swal-title="Delete Quotation?"
                                                   data-swal-text="Delete @item.QuotationNo?"

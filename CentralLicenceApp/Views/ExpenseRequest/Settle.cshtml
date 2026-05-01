@@ -15,7 +15,7 @@
     <div class="col-xl-8">
         <div class="card">
             <div class="card-body p-4">
-                <form asp-action="Settle" method="post">
+                <form asp-action="Settle" asp-permission="ExpenseRequest:Settle" method="post">
                     @Html.AntiForgeryToken()
                     <input asp-for="RequestId" type="hidden" />
                     <input asp-for="RequestNumber" type="hidden" />

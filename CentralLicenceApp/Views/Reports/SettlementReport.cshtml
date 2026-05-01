@@ -18,14 +18,14 @@
         </p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <a asp-action="ExportSettlementReportExcel"
+        <a asp-action="ExportSettlementReportExcel" asp-permission="Reports:Export"
            asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
            asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
            class="btn btn-success"
            style="border-radius:10px;background:#15803d;border:none;">
             <i class="bi bi-file-earmark-excel me-1"></i>Excel
         </a>
-        <a asp-action="ExportSettlementReportPdf"
+        <a asp-action="ExportSettlementReportPdf" asp-permission="Reports:Export"
            asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
            asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
            class="btn btn-danger"
@@ -78,7 +78,7 @@
             </div>
             <div class="col-md-auto">
                 <button type="submit" class="btn btn-primary" style="background:#1d4ed8;border:none;border-radius:10px;"><i class="bi bi-funnel me-1"></i>Filter</button>
-                <a asp-action="SettlementReport" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
+                <a asp-action="SettlementReport" asp-permission="Reports:Settle" class="btn btn-outline-secondary ms-1" style="border-radius:10px;">Clear</a>
             </div>
         </form>
         @if (!ViewContext.ViewData.ModelState.IsValid)
@@ -149,7 +149,7 @@
                             <td style="font-size:.83rem;">
                                 @if (!string.IsNullOrWhiteSpace(row.SettlementReceiptNumber))
                                 {
-                                    <a asp-controller="ExpenseRequest" asp-action="SettlementReceipt" asp-route-id="@row.Id"
+                                    <a asp-controller="ExpenseRequest" asp-action="SettlementReceipt" asp-permission="ExpenseRequest:Settle" asp-route-id="@row.Id"
                                        class="text-success" title="View receipt">
                                         <i class="bi bi-receipt me-1"></i>@row.SettlementReceiptNumber
                                     </a>
@@ -181,7 +181,7 @@
                     @if (Model.PageNumber > 1)
                     {
                         <li class="page-item">
-                            <a class="page-link" asp-action="SettlementReport"
+                            <a class="page-link" asp-action="SettlementReport" asp-permission="Reports:Settle"
                                asp-route-page="@(Model.PageNumber - 1)"
                                asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
                                asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">&laquo;</a>
@@ -195,7 +195,7 @@
                     @for (int pg = startPg; pg <= endPg; pg++)
                     {
                         <li class="page-item @(pg == Model.PageNumber ? "active" : "")">
-                            <a class="page-link" asp-action="SettlementReport"
+                            <a class="page-link" asp-action="SettlementReport" asp-permission="Reports:Settle"
                                asp-route-page="@pg"
                                asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
                                asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">@pg</a>
@@ -204,7 +204,7 @@
                     @if (Model.PageNumber < Model.TotalPages)
                     {
                         <li class="page-item">
-                            <a class="page-link" asp-action="SettlementReport"
+                            <a class="page-link" asp-action="SettlementReport" asp-permission="Reports:Settle"
                                asp-route-page="@(Model.PageNumber + 1)"
                                asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
                                asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))">&raquo;</a>

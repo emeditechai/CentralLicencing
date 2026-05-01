@@ -16,7 +16,7 @@
         <span class="badge badge-neu rounded-pill px-3 py-2" style="font-size:.78rem;">@Model.Request.Status</span>
         @if (Model.CanEdit)
         {
-            <a asp-action="AddLine" asp-route-requestId="@Model.Request.Id" class="btn btn-outline-primary" style="border-radius:10px;">
+            <a asp-action="AddLine" asp-permission="ExpenseRequest:Create" asp-route-requestId="@Model.Request.Id" class="btn btn-outline-primary" style="border-radius:10px;">
                 <i class="bi bi-plus-lg me-1"></i> Add Expense / Booking
             </a>
         }
@@ -51,7 +51,7 @@
                         <div class="fw-semibold">@Model.Request.ItemCount</div>
                     </div>
                 </div>
-                <form asp-action="UpdateDraft" method="post">
+                <form asp-action="UpdateDraft" asp-permission="ExpenseRequest:Edit" method="post">
                     @Html.AntiForgeryToken()
                     <input type="hidden" asp-for="RequestForm.Id" />
                     <div class="row g-3">
@@ -162,8 +162,8 @@
                                             @if (Model.CanEdit)
                                             {
                                                 <div class="d-flex gap-1">
-                                                    <a asp-action="EditLine" asp-route-id="@line.Id" class="btn btn-sm btn-outline-secondary" style="border-radius:7px;"><i class="bi bi-pencil"></i></a>
-                                                    <form asp-action="DeleteLine" method="post"
+                                                    <a asp-action="EditLine" asp-permission="ExpenseRequest:Edit" asp-route-id="@line.Id" class="btn btn-sm btn-outline-secondary" style="border-radius:7px;"><i class="bi bi-pencil"></i></a>
+                                                    <form asp-action="DeleteLine" asp-permission="ExpenseRequest:Delete" method="post"
                                                           data-swal-confirm="true"
                                                           data-swal-title="Delete Line?"
                                                           data-swal-text="This transaction line will be removed from the request."

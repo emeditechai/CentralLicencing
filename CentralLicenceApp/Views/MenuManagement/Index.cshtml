@@ -1,0 +1,89 @@
+@model List<CentralLicenceApp.Models.MenuMaster>
+@{
+    ViewData["Title"] = "Menu Management";
+    var byParent = Model.ToLookup(m => m.ParentId);
+
+    // Flatten the tree iteratively into (menu, depth) pairs
+    var flat = new List<(CentralLicenceApp.Models.MenuMaster Menu, int Depth)>();
+    void Flatten(int? parentId, int depth)
+    {
+        foreach (var m in byParent[parentId].OrderBy(x => x.SortOrder))
+        {
+            flat.Add((m, depth));
+            Flatten(m.Id, depth + 1);
+        }
+    }
+    Flatten(null, 0);
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">Menu Management</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Configure the dynamic side navigation: sections, collapsible groups, and links.</p>
+    </div>
+    <a asp-action="Upsert" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i> New Menu
+    </a>
+</div>
+
+@if (TempData["SuccessMessage"] is string ok)
+{
+    <div class="alert alert-success py-2">@ok</div>
+}
+@if (TempData["ErrorMessage"] is string err)
+{
+    <div class="alert alert-danger py-2">@err</div>
+}
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table tbl-clean mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3" style="width:34%">Menu</th>
+                        <th>Type</th>
+                        <th>Controller / Action</th>
+                        <th>Icon</th>
+                        <th>Sort</th>
+                        <th>Status</th>
+                        <th class="pe-3 text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in flat)
+                    {
+                        var m = item.Menu;
+                        <tr>
+                            <td class="ps-3" style="padding-left:@(12 + item.Depth * 22)px;">
+                                <i class="@m.IconClass me-1 text-muted"></i>
+                                <span class="fw-semibold">@m.MenuName</span>
+                            </td>
+                            <td><span class="badge bg-light text-dark border">@m.MenuType</span></td>
+                            <td class="text-muted" style="font-size:.82rem;">
+                                @(string.IsNullOrWhiteSpace(m.ControllerName) ? "—" : $"{m.ControllerName}/{m.ActionName ?? "Index"}")
+                            </td>
+                            <td class="text-muted" style="font-size:.78rem;">@m.IconClass</td>
+                            <td>@m.SortOrder</td>
+                            <td>
+                                @if (m.IsActive) { <span class="badge bg-success">Active</span> }
+                                else { <span class="badge bg-secondary">Inactive</span> }
+                            </td>
+                            <td class="pe-3 text-end">
+                                <a asp-action="Upsert" asp-route-id="@m.Id" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                                <form asp-action="Delete" asp-route-id="@m.Id" method="post" class="d-inline"
+                                      data-swal-confirm="true"
+                                      data-swal-title="Delete Menu?"
+                                      data-swal-text="This will remove the menu and any role/user permission grants linked to it."
+                                      data-swal-confirm-button="Delete">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -22,7 +22,7 @@
                 <i class="bi bi-arrow-counterclockwise me-1" style="color:#ea580c;"></i> Refund Details
             </div>
             <div class="card-body">
-                <form asp-action="Refund" asp-route-id="@Model.Id" method="post" id="refundForm">
+                <form asp-action="Refund" asp-permission="InvoicePayment:Refund" asp-route-id="@Model.Id" method="post" id="refundForm">
                     @Html.AntiForgeryToken()
 
                     <!-- Refund Amount -->

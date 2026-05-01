@@ -87,7 +87,7 @@
                             <a asp-action="Details" asp-route-id="@b.Id" class="btn btn-sm btn-outline-primary me-1" style="border-radius:8px;font-size:.75rem;">
                                 <i class="bi bi-eye"></i>
                             </a>
-                            <a asp-action="Settle" asp-route-id="@b.Id" class="btn btn-sm btn-success" style="border-radius:8px;font-size:.75rem;">
+                            <a asp-action="Settle" asp-permission="PayoutBatch:Settle" asp-route-id="@b.Id" class="btn btn-sm btn-success" style="border-radius:8px;font-size:.75rem;">
                                 <i class="bi bi-cash-stack me-1"></i> Settle
                             </a>
                         </td>

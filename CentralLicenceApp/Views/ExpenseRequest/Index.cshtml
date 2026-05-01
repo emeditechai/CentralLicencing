@@ -172,7 +172,7 @@ else
         </div>
         @if (Model.ShowCreateButton)
         {
-            <a asp-action="Create" class="btn btn-primary expense-list-create-btn" style="background:#180a3c;border:none;border-radius:10px;">
+            <a asp-action="Create" asp-permission="ExpenseRequest:Create" class="btn btn-primary expense-list-create-btn" style="background:#180a3c;border:none;border-radius:10px;">
                 <i class="bi bi-plus-lg me-1"></i> New Request
             </a>
         }
@@ -283,15 +283,15 @@ else
                                         }
                                         @if (Model.ShowFinanceActions && item.Status == CentralLicenceApp.Models.ExpenseRequestStatus.ReimbursementInProcess)
                                         {
-                                            <a asp-action="Settle" asp-route-id="@item.Id" class="btn btn-sm btn-outline-success" style="border-radius:7px;">Settle</a>
+                                            <a asp-action="Settle" asp-permission="ExpenseRequest:Settle" asp-route-id="@item.Id" class="btn btn-sm btn-outline-success" style="border-radius:7px;">Settle</a>
                                         }
                                         @if (item.Status == CentralLicenceApp.Models.ExpenseRequestStatus.Settled)
                                         {
-                                            <a asp-action="SettlementReceipt" asp-route-id="@item.Id" target="_blank" class="btn btn-sm btn-outline-success" style="border-radius:7px;" title="Settlement Receipt">
+                                            <a asp-action="SettlementReceipt" asp-permission="ExpenseRequest:Settle" asp-route-id="@item.Id" target="_blank" class="btn btn-sm btn-outline-success" style="border-radius:7px;" title="Settlement Receipt">
                                                 <i class="bi bi-receipt"></i>
                                             </a>
                                         }
-                                        <a asp-action="Print" asp-route-id="@item.Id" target="_blank" class="btn btn-sm btn-outline-secondary" style="border-radius:7px;" title="Print Request">
+                                        <a asp-action="Print" asp-permission="ExpenseRequest:Print" asp-route-id="@item.Id" target="_blank" class="btn btn-sm btn-outline-secondary" style="border-radius:7px;" title="Print Request">
                                             <i class="bi bi-printer"></i>
                                         </a>
                                     </div>

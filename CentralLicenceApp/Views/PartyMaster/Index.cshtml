@@ -8,7 +8,7 @@
         <h4 class="fw-bold mb-0" style="color:#1e293b;">Party Master</h4>
         <p class="text-muted mb-0" style="font-size:.85rem;">@Model.Count part@(Model.Count == 1 ? "y" : "ies") configured</p>
     </div>
-    <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
+    <a asp-action="Create" asp-permission="PartyMaster:Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
         <i class="bi bi-plus-lg me-1"></i> New Party
     </a>
 </div>
@@ -96,11 +96,11 @@
                                            class="btn btn-sm btn-outline-info" style="border-radius:8px;font-size:.78rem;">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        <a asp-action="Edit" asp-route-id="@item.Id"
+                                        <a asp-action="Edit" asp-permission="PartyMaster:Edit" asp-route-id="@item.Id"
                                            class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-                                        <form asp-action="Delete" asp-route-id="@item.Id" method="post"
+                                        <form asp-action="Delete" asp-permission="PartyMaster:Delete" asp-route-id="@item.Id" method="post"
                                               data-swal-confirm="true"
                                               data-swal-title="Delete Party?"
                                               data-swal-text="This will permanently remove @item.PartyName."

@@ -10,7 +10,7 @@
         <h4 class="fw-bold mb-0" style="color:#1e293b;">User Management</h4>
         <p class="text-muted mb-0" style="font-size:.85rem;">@Model.TotalCount @(hasFilters ? "matching" : "system") user(s)</p>
     </div>
-    <a asp-action="Create" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;">
+    <a asp-action="Create" asp-permission="User:Create" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;">
         <i class="bi bi-plus-lg me-1"></i> New User
     </a>
 </div>
@@ -161,10 +161,10 @@
                             <td class="pe-3">
                                 <div class="d-flex gap-1">
                                     <a asp-action="Details" asp-route-id="@u.Id" class="btn btn-sm btn-outline-primary" title="View" style="border-radius:7px;border-color:#c7d2fe;color:#4f46e5;"><i class="bi bi-eye"></i></a>
-                                    <a asp-action="Edit" asp-route-id="@u.Id" class="btn btn-sm btn-outline-secondary" title="Edit" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
+                                    <a asp-action="Edit" asp-permission="User:Edit" asp-route-id="@u.Id" class="btn btn-sm btn-outline-secondary" title="Edit" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
                                     @if (u.Id != currentUserId)
                                     {
-                                        <form asp-action="Delete" method="post"
+                                        <form asp-action="Delete" asp-permission="User:Delete" method="post"
                                               data-swal-confirm="true"
                                               data-swal-title="Delete User?"
                                               data-swal-text="User <strong>@u.Username</strong> will be deleted permanently."

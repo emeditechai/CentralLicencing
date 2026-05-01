@@ -11,14 +11,14 @@
         </p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <a asp-action="ExportClientDueExcel"
+        <a asp-action="ExportClientDueExcel" asp-permission="Reports:Export"
            asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
            asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
            class="btn btn-success"
            style="border-radius:10px;background:#15803d;border:none;">
             <i class="bi bi-file-earmark-excel me-1"></i>Excel
         </a>
-        <a asp-action="ExportClientDuePdf"
+        <a asp-action="ExportClientDuePdf" asp-permission="Reports:Export"
            asp-route-fromDate="@(Model.FromDate?.ToString("yyyy-MM-dd"))"
            asp-route-toDate="@(Model.ToDate?.ToString("yyyy-MM-dd"))"
            class="btn btn-danger"

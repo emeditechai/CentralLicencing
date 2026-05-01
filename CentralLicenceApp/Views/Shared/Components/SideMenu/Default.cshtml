@@ -1,0 +1,72 @@
+@using System.Linq
+@using CentralLicenceApp.Models
+@model CentralLicenceApp.ViewComponents.SideMenuViewModel
+
+@functions {
+    string CollapseId(MenuMaster m) => "section-menu-" + m.Id;
+}
+
+@{
+    var url = Url;
+    string LinkHref(MenuMaster m)
+    {
+        var ctrl = m.ControllerName ?? "";
+        var act = string.IsNullOrWhiteSpace(m.ActionName) ? "Index" : m.ActionName!;
+        return url.Action(act, ctrl) ?? "#";
+    }
+
+    void RenderNode(MenuMaster m, int depth)
+    {
+        if (m.MenuType == "Section")
+        {
+            <div class="nav-lbl mt-2">@m.MenuName</div>
+            foreach (var c in m.Children) { RenderNode(c, depth + 1); }
+            return;
+        }
+
+        if (m.MenuType == "Collapsible" || (m.Children != null && m.Children.Count > 0))
+        {
+            var cid = CollapseId(m);
+            if (depth == 0)
+            {
+                <a href="#@cid" data-bs-toggle="collapse"
+                   class="nav-lbl nav-lbl-toggle mt-2"
+                   aria-expanded="@(m.IsExpanded ? "true" : "false")"
+                   style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                    <span class="nav-lbl-toggle-copy"><i class="@m.IconClass"></i><span>@m.MenuName</span></span>
+                    <i class="bi bi-chevron-down nav-lbl-arrow @(m.IsExpanded ? "rotated" : "")"></i>
+                </a>
+                <div class="collapse @(m.IsExpanded ? "show" : "")" id="@cid">
+                    @foreach (var c in m.Children) { RenderNode(c, depth + 1); }
+                </div>
+            }
+            else
+            {
+                <div class="nav-item nav-item-nested">
+                    <a href="#@cid" data-bs-toggle="collapse" class="@(m.IsExpanded ? "active" : "")" aria-expanded="@(m.IsExpanded ? "true" : "false")">
+                        <i class="@m.IconClass"></i> @m.MenuName
+                        <i class="bi bi-chevron-down submenu-arrow"></i>
+                    </a>
+                </div>
+                <div class="collapse @(m.IsExpanded ? "show" : "")" id="@cid">
+                    @foreach (var c in m.Children) { RenderNode(c, depth + 1); }
+                </div>
+            }
+            return;
+        }
+
+        var cssClass = m.IsActiveItem ? "active" : "";
+        var wrapClass = depth >= 2 ? "nav-sub-item nav-sub-item-deep" : "nav-item";
+        var href = LinkHref(m);
+        <div class="@wrapClass">
+            <a href="@href" class="@cssClass">
+                <i class="@m.IconClass"></i> @m.MenuName
+            </a>
+        </div>
+    }
+}
+
+@foreach (var root in Model.Roots)
+{
+    RenderNode(root, 0);
+}

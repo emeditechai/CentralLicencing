@@ -35,7 +35,7 @@
             <div class="card-body p-4">
                 <h6 class="fw-bold mb-4" style="color:#1e293b;"><i class="bi bi-cloud-upload me-2" style="color:#6d28d9;"></i>Upload New Release</h6>
 
-                <form asp-action="Upload" method="post" enctype="multipart/form-data" id="uploadForm">
+                <form asp-action="Upload" asp-permission="AppUpload:Create" method="post" enctype="multipart/form-data" id="uploadForm">
                     @Html.AntiForgeryToken()
 
                     <!-- Platform selector -->

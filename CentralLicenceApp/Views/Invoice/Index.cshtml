@@ -27,7 +27,7 @@
     </div>
     @if (User.IsInRole("Administrator"))
     {
-        <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
+        <a asp-action="Create" asp-permission="Invoice:Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
             <i class="bi bi-plus-lg me-1"></i> New Invoice
         </a>
     }
@@ -220,7 +220,7 @@
                                         {
                                             @if (item.ReceivedAmount == 0)
                                             {
-                                                <a asp-action="Edit" asp-route-id="@item.Id"
+                                                <a asp-action="Edit" asp-permission="Invoice:Edit" asp-route-id="@item.Id"
                                                    class="btn btn-sm btn-outline-secondary" style="border-radius:8px;font-size:.78rem;" title="Edit">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>

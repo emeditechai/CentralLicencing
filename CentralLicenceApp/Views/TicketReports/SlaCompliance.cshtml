@@ -13,14 +13,14 @@
             <small class="text-muted">Track response and resolution time compliance against SLA targets</small>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-            <a asp-action="ExportSlaComplianceExcel"
+            <a asp-action="ExportSlaComplianceExcel" asp-permission="TicketReports:Export"
                asp-route-fromDate="@fromVal"
                asp-route-toDate="@toVal"
                class="btn btn-sm text-white"
                style="border-radius:10px;background:#15803d;border:none;">
                 <i class="bi bi-file-earmark-excel me-1"></i>Excel
             </a>
-            <a asp-action="ExportSlaCompliancePdf"
+            <a asp-action="ExportSlaCompliancePdf" asp-permission="TicketReports:Export"
                asp-route-fromDate="@fromVal"
                asp-route-toDate="@toVal"
                class="btn btn-sm text-white"

@@ -113,7 +113,7 @@
             </div>
             @if (isAdmin)
             {
-                <a asp-action="Create" asp-route-productType="@selectedPT" class="btn btn-light cl-new-btn" style="background:rgba(255,255,255,.95)!important;color:#6366f1!important;">
+                <a asp-action="Create" asp-permission="ClientLicense:Create" asp-route-productType="@selectedPT" class="btn btn-light cl-new-btn" style="background:rgba(255,255,255,.95)!important;color:#6366f1!important;">
                     <i class="bi bi-plus-lg me-1"></i> New Licence
                 </a>
             }
@@ -265,7 +265,7 @@
                                 </a>
                                 @if (isAdmin)
                                 {
-                                    <a asp-action="Edit" asp-route-id="@lic.Id" class="cl-action-btn" title="Edit">
+                                    <a asp-action="Edit" asp-permission="ClientLicense:Edit" asp-route-id="@lic.Id" class="cl-action-btn" title="Edit">
                                         <i class="bi bi-pencil-square"></i>
                                     </a>
                                 }

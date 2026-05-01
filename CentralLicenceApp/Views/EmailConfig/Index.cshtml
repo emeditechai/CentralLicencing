@@ -13,7 +13,7 @@
             <p class="text-muted mb-0" style="font-size:.83rem;">SMTP mail server configurations</p>
         </div>
     </div>
-    <a asp-action="Create" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;">
+    <a asp-action="Create" asp-permission="EmailConfig:Create" class="btn btn-primary" style="background:#6366f1;border:none;border-radius:10px;">
         <i class="bi bi-plus-lg me-1"></i> New Configuration
     </a>
 </div>
@@ -61,10 +61,10 @@ else
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <span class="badge @badgeCls rounded-pill px-3 py-2" style="font-size:.75rem;">@badgeTxt</span>
-                    <a asp-action="Edit" asp-route-id="@cfg.Id" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
+                    <a asp-action="Edit" asp-permission="EmailConfig:Edit" asp-route-id="@cfg.Id" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">
                         <i class="bi bi-pencil me-1"></i> Edit
                     </a>
-                      <form asp-action="ToggleActive" method="post" class="d-inline"
+                      <form asp-action="ToggleActive" asp-permission="EmailConfig:Edit" method="post" class="d-inline"
                           data-swal-confirm="true"
                           data-swal-title="@toggleTitle"
                           data-swal-text="@toggleMessage"

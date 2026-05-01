@@ -8,7 +8,7 @@
         <h4 class="fw-bold mb-0" style="color:#1e293b;">Bank Master</h4>
         <p class="text-muted mb-0" style="font-size:.85rem;">Manage bank accounts and UPI details</p>
     </div>
-    <a asp-action="Create" class="btn btn-primary" style="border-radius:10px;">
+    <a asp-action="Create" asp-permission="BankMaster:Create" class="btn btn-primary" style="border-radius:10px;">
         <i class="bi bi-plus-lg me-1"></i> Add Bank
     </a>
 </div>
@@ -20,7 +20,7 @@
             <div class="text-center py-5 text-muted">
                 <i class="bi bi-bank2" style="font-size:2.5rem;opacity:.3;"></i>
                 <p class="mt-2 mb-0">No bank accounts added yet.</p>
-                <a asp-action="Create" class="btn btn-sm btn-outline-primary mt-3" style="border-radius:8px;">
+                <a asp-action="Create" asp-permission="BankMaster:Create" class="btn btn-sm btn-outline-primary mt-3" style="border-radius:8px;">
                     <i class="bi bi-plus-lg me-1"></i> Add First Bank
                 </a>
             </div>
@@ -80,11 +80,11 @@
                                     </span>
                                 </td>
                                 <td class="text-end pe-3">
-                                    <a asp-action="Edit" asp-route-id="@bank.Id"
+                                    <a asp-action="Edit" asp-permission="BankMaster:Edit" asp-route-id="@bank.Id"
                                        class="btn btn-sm btn-outline-primary me-1" style="border-radius:7px;" title="Edit">
                                         <i class="bi bi-pencil"></i>
                                     </a>
-                                    <form asp-action="Delete" asp-route-id="@bank.Id" method="post" style="display:inline;"
+                                    <form asp-action="Delete" asp-permission="BankMaster:Delete" asp-route-id="@bank.Id" method="post" style="display:inline;"
                                           data-swal-confirm="true"
                                           data-swal-title="Delete Bank?"
                                           data-swal-text="Delete '@bank.BankName'? This cannot be undone."

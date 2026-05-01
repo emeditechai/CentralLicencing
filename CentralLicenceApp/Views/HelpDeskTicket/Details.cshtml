@@ -146,7 +146,7 @@
                                     }
                                     else
                                     {
-                                        <a asp-action="DownloadAttachment" asp-route-id="@att.Id" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" style="border-radius:8px;font-size:.78rem;">
+                                        <a asp-action="DownloadAttachment" asp-permission="HelpDeskTicket:Export" asp-route-id="@att.Id" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" style="border-radius:8px;font-size:.78rem;">
                                             <i class="bi bi-download"></i> @att.FileName
                                         </a>
                                     }
@@ -198,7 +198,7 @@
                                         }
                                         else
                                         {
-                                            <a asp-action="DownloadAttachment" asp-route-id="@att.Id" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" style="border-radius:7px;font-size:.76rem;">
+                                            <a asp-action="DownloadAttachment" asp-permission="HelpDeskTicket:Export" asp-route-id="@att.Id" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" style="border-radius:7px;font-size:.76rem;">
                                                 <i class="bi bi-download"></i> @att.FileName
                                             </a>
                                         }
@@ -397,7 +397,7 @@
                     <h6 class="fw-bold mb-3" style="font-size:.85rem;color:#64748b;"><i class="bi bi-gear me-1"></i> Actions</h6>
 
                     <!-- Status Update -->
-                    <form id="statusForm" asp-action="UpdateStatus" method="post" class="mb-3">
+                    <form id="statusForm" asp-action="UpdateStatus" asp-permission="HelpDeskTicket:Edit" method="post" class="mb-3">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="ticketId" value="@ticket.Id" />
                         <input type="hidden" name="statusNote" id="agentStatusNote" />
@@ -442,7 +442,7 @@
                     <button type="button" class="btn btn-sm btn-success w-100" style="border-radius:8px;" onclick="openStatusNoteModal('Closed', 'clientCloseForm')">
                         <i class="bi bi-check-circle me-1"></i> Confirm &amp; Close Ticket
                     </button>
-                    <form id="clientCloseForm" asp-action="UpdateStatus" method="post" class="d-none">
+                    <form id="clientCloseForm" asp-action="UpdateStatus" asp-permission="HelpDeskTicket:Edit" method="post" class="d-none">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="ticketId" value="@ticket.Id" />
                         <input type="hidden" name="newStatus" value="Closed" />

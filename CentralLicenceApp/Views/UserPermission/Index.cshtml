@@ -1,0 +1,124 @@
+@model CentralLicenceApp.Models.ViewModels.UserPermissionGridViewModel
+@{
+    ViewData["Title"] = "User Permissions";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h4 class="fw-bold mb-0" style="color:#1e293b;">User Permissions</h4>
+        <p class="text-muted mb-0" style="font-size:.85rem;">Per-user overrides. <strong>Inherit</strong> = use role grant. <strong>Allow</strong> = grant regardless of role. <strong>Deny</strong> = block even if role grants it.</p>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] is string ok)
+{
+    <div class="alert alert-success py-2">@ok</div>
+}
+
+<form method="get" asp-action="Index" class="card mb-3">
+    <div class="card-body d-flex align-items-end gap-3 flex-wrap">
+        <div style="min-width:300px;">
+            <label class="form-label">User</label>
+            <select name="userId" class="form-select" onchange="this.form.submit()">
+                @foreach (var u in Model.Users)
+                {
+                    <option value="@u.Id" selected="@(u.Id == Model.UserId)">@u.Username — @u.FullName</option>
+                }
+            </select>
+        </div>
+        <div style="min-width:240px;">
+            <label class="form-label">Role context</label>
+            <select name="roleId" class="form-select" onchange="this.form.submit()">
+                @foreach (var r in Model.Roles)
+                {
+                    <option value="@r.Id" selected="@(r.Id == Model.RoleId)">@r.RoleName</option>
+                }
+            </select>
+        </div>
+    </div>
+</form>
+
+@if (Model.UserId == 0 || Model.RoleId == 0)
+{
+    <div class="alert alert-info">Select a user and role context.</div>
+}
+else
+{
+    <form asp-action="Save" method="post" class="card">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="userId" value="@Model.UserId" />
+        <input type="hidden" name="roleId" value="@Model.RoleId" />
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table tbl-clean mb-0 align-middle">
+                    <thead style="background:#f8fafc;">
+                        <tr>
+                            <th class="ps-3" style="min-width:320px;">Menu</th>
+                            @foreach (var p in Model.AllPermissions)
+                            {
+                                <th class="text-center" style="min-width:140px;">@p.DisplayName</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.Rows)
+                        {
+                            <tr>
+                                <td class="ps-3" style="padding-left:@(12 + row.Depth * 22)px;">
+                                    <i class="@row.Menu.IconClass me-1 text-muted"></i>
+                                    <span class="@(row.Menu.MenuType == "Link" ? "" : "fw-bold")">@row.Menu.MenuName</span>
+                                </td>
+                                @foreach (var p in Model.AllPermissions)
+                                {
+                                    var supported = row.Permissions.Any(rp => rp.Id == p.Id);
+                                    var inheritedGrant = row.RoleGranted.Contains(p.Id);
+                                    var state = row.CellState.TryGetValue(p.Id, out var s) ? s : "Inherit";
+                                    <td class="text-center">
+                                        @if (supported)
+                                        {
+                                            <select name="overrides_dummy" class="form-select form-select-sm user-perm-cell"
+                                                    data-menu="@row.Menu.Id" data-perm="@p.Id">
+                                                <option value="Inherit" selected="@(state == "Inherit")">
+                                                    Inherit (@(inheritedGrant ? "Allowed" : "Denied"))
+                                                </option>
+                                                <option value="Allow" selected="@(state == "Allow")">Allow</option>
+                                                <option value="Deny" selected="@(state == "Deny")">Deny</option>
+                                            </select>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer text-end">
+            <button type="submit" class="btn btn-primary btn-sm" id="user-perm-save"><i class="bi bi-save me-1"></i> Save Overrides</button>
+        </div>
+        <div id="user-perm-hidden"></div>
+    </form>
+
+    <script>
+        // On submit, materialise non-Inherit selections into hidden "overrides" inputs.
+        document.querySelector('form[action$="Save"]').addEventListener('submit', function (e) {
+            var hidden = document.getElementById('user-perm-hidden');
+            hidden.innerHTML = '';
+            document.querySelectorAll('.user-perm-cell').forEach(function (sel) {
+                if (sel.value === 'Allow' || sel.value === 'Deny') {
+                    var inp = document.createElement('input');
+                    inp.type = 'hidden';
+                    inp.name = 'overrides';
+                    inp.value = sel.dataset.menu + ':' + sel.dataset.perm + ':' + sel.value;
+                    hidden.appendChild(inp);
+                }
+            });
+            // remove dummy name from the selects so they don't post
+            document.querySelectorAll('.user-perm-cell').forEach(function (sel) { sel.removeAttribute('name'); });
+        });
+    </script>
+}

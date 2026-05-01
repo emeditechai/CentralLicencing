@@ -8,7 +8,7 @@
         <h4 class="fw-bold mb-0" style="color:#1e293b;">Expense Category</h4>
         <p class="text-muted mb-0" style="font-size:.85rem;">@Model.Count expense categor@(Model.Count == 1 ? "y" : "ies") configured</p>
     </div>
-    <a asp-action="Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
+    <a asp-action="Create" asp-permission="ExpenseCategory:Create" class="btn btn-primary" style="background:#180a3c;border:none;border-radius:10px;">
         <i class="bi bi-plus-lg me-1"></i> New Expense Category
     </a>
 </div>
@@ -62,8 +62,8 @@
                                 <td style="font-size:.82rem;">@item.CreatedAt.ToString("dd MMM yyyy")</td>
                                 <td class="pe-3">
                                     <div class="d-flex gap-1">
-                                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" title="Edit" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
-                                        <form asp-action="Delete" method="post"
+                                        <a asp-action="Edit" asp-permission="ExpenseCategory:Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" title="Edit" style="border-radius:7px;border-color:#e2e8f0;"><i class="bi bi-pencil"></i></a>
+                                        <form asp-action="Delete" asp-permission="ExpenseCategory:Delete" method="post"
                                               data-swal-confirm="true"
                                               data-swal-title="Delete Expense Category?"
                                               data-swal-text="Expense category <strong>@item.CategoryName</strong> will be deleted permanently."

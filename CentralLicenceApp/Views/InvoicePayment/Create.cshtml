@@ -34,7 +34,7 @@
     </div>
 }
 
-<form asp-action="Create" method="post" id="paymentForm">
+<form asp-action="Create" asp-permission="InvoicePayment:Create" method="post" id="paymentForm">
     @Html.AntiForgeryToken()
 
     <div class="row g-4">
