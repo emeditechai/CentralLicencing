@@ -72,5 +72,13 @@ namespace CentralLicenceApp.Repositories
                 "SELECT * FROM LicenseValidationHistory WHERE ClientCode = @Code ORDER BY CreatedAt DESC",
                 new { Code = clientCode });
         }
+
+        public async Task<int> PurgeOldLogsAsync(int daysToKeep)
+        {
+            using var conn = CreateConnection();
+            return await conn.ExecuteAsync(
+                "DELETE FROM LicenseValidationHistory WHERE CreatedAt < DATEADD(DAY, -@Days, GETUTCDATE())",
+                new { Days = daysToKeep });
+        }
     }
 }

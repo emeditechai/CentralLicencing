@@ -141,6 +141,15 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         {
             OnValidatePrincipal = async context =>
             {
+                // Only re-validate against the database every 30 minutes to avoid a DB
+                // round-trip on every single request (which was causing slow login / page loads).
+                var lastValidated = context.Properties.IssuedUtc;
+                if (lastValidated.HasValue &&
+                    DateTimeOffset.UtcNow - lastValidated.Value < TimeSpan.FromMinutes(30))
+                {
+                    return;
+                }
+
                 var userIdValue = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (!int.TryParse(userIdValue, out var userId))
                 {
@@ -164,7 +173,12 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
                 {
                     context.RejectPrincipal();
                     await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                    return;
                 }
+
+                // Stamp the issue time so the 30-minute window resets.
+                context.Properties.IssuedUtc = DateTimeOffset.UtcNow;
+                context.ShouldRenew = true;
             }
         };
     });

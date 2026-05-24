@@ -22,21 +22,60 @@
             <p class="text-muted mb-0" style="font-size:.85rem;">@total validation event(s)</p>
         }
     </div>
-    <form method="get" class="d-flex align-items-center gap-2">
-        <label class="fw-semibold mb-0" style="font-size:.82rem;color:#64748b;white-space:nowrap;">Product Type</label>
-        <select name="productType" class="form-select form-select-sm" style="min-width:160px;border-radius:10px;"
-                onchange="this.form.submit()">
-            <option value="">All Products</option>
-            @foreach (var pt in availableProductTypes)
-            {
-                <option value="@pt" selected="@(selectedPT == pt)">@pt</option>
-            }
-        </select>
-        @if (!string.IsNullOrEmpty(selectedPT))
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        @if (TempData["PurgeSuccess"] != null)
         {
-            <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;white-space:nowrap;">Clear</a>
+            <span class="badge bg-success px-3 py-2" style="border-radius:8px;font-size:.8rem;">
+                <i class="bi bi-check-circle me-1"></i>@TempData["PurgeSuccess"]
+            </span>
         }
-    </form>
+        <button type="button" class="btn btn-sm btn-outline-danger" style="border-radius:10px;"
+                data-bs-toggle="modal" data-bs-target="#purgeLogs7DaysModal">
+            <i class="bi bi-trash3 me-1"></i> Keep Last 7 Days
+        </button>
+        <form method="get" class="d-flex align-items-center gap-2">
+            <label class="fw-semibold mb-0" style="font-size:.82rem;color:#64748b;white-space:nowrap;">Product Type</label>
+            <select name="productType" class="form-select form-select-sm" style="min-width:160px;border-radius:10px;"
+                    onchange="this.form.submit()">
+                <option value="">All Products</option>
+                @foreach (var pt in availableProductTypes)
+                {
+                    <option value="@pt" selected="@(selectedPT == pt)">@pt</option>
+                }
+            </select>
+            @if (!string.IsNullOrEmpty(selectedPT))
+            {
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;white-space:nowrap;">Clear</a>
+            }
+        </form>
+    </div>
+</div>
+
+<!-- Purge Confirmation Modal -->
+<div class="modal fade" id="purgeLogs7DaysModal" tabindex="-1" aria-labelledby="purgeLogs7DaysModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:14px;overflow:hidden;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="purgeLogs7DaysModalLabel" style="color:#1e293b;">
+                    <i class="bi bi-trash3 me-2 text-danger"></i>Remove Old Validation Logs
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <p class="mb-1" style="color:#334155;">This will permanently delete all validation history records older than <strong>7 days</strong>.</p>
+                <p class="text-muted mb-0" style="font-size:.83rem;">Only the <code>LicenseValidationHistory</code> log table is affected. All licence, client, and configuration data remains untouched.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" style="border-radius:10px;" data-bs-dismiss="modal">Cancel</button>
+                <form asp-action="PurgeOldLogs" method="post" style="display:inline;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-danger" style="border-radius:10px;">
+                        <i class="bi bi-trash3 me-1"></i> Yes, Delete Old Records
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Filters -->

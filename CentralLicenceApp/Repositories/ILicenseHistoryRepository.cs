@@ -10,5 +10,6 @@ namespace CentralLicenceApp.Repositories
         Task<(IEnumerable<LicenseValidationHistory> Items, int TotalCount)> GetPagedAsync(
             string? clientCode, string? validFilter, string? productType, int page, int pageSize);
         Task<IEnumerable<LicenseValidationHistory>> GetByClientCodeAsync(string clientCode);
+        Task<int> PurgeOldLogsAsync(int daysToKeep);
     }
 }

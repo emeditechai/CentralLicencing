@@ -33,5 +33,15 @@ namespace CentralLicenceApp.Controllers
 
             return View(items.ToList());
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PurgeOldLogs()
+        {
+            const int daysToKeep = 7;
+            int deleted = await _repo.PurgeOldLogsAsync(daysToKeep);
+            TempData["PurgeSuccess"] = $"{deleted} record(s) older than {daysToKeep} days were removed.";
+            return RedirectToAction(nameof(Index));
+        }
     }
 }
