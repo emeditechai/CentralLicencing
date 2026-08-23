@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
-using System.Net.Mail;
+using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CentralLicenceApp.Models;
 using CentralLicenceApp.Repositories;
+using MailKit.Net.Smtp;
+using MailKit.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using MimeKit;
 
 namespace CentralLicenceApp.Services
 {
@@ -66,44 +69,91 @@ namespace CentralLicenceApp.Services
 
             try
             {
-#pragma warning disable CA1416
-                using var client = new SmtpClient(config.SmtpServer, config.SmtpPort)
+                var message = new MimeMessage();
+
+                // Sender & Reply-To (using dynamic config)
+                var senderName = string.IsNullOrWhiteSpace(config.FromName) ? config.FromEmail : config.FromName;
+                var senderAddress = new MailboxAddress(senderName, config.FromEmail);
+                message.From.Add(senderAddress);
+                message.ReplyTo.Add(senderAddress);
+
+                // Recipient(s) - handle single or comma/semicolon delimited email addresses
+                var recipientList = toEmail.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                foreach (var recipient in recipientList)
                 {
-                    EnableSsl   = config.EnableSSL,
-                    Credentials = new NetworkCredential(config.SmtpUsername, config.SmtpPassword)
+                    if (MailboxAddress.TryParse(recipient, out var parsedAddress))
+                    {
+                        if (string.IsNullOrWhiteSpace(parsedAddress.Name) && !string.IsNullOrWhiteSpace(toName) && recipientList.Length == 1)
+                        {
+                            message.To.Add(new MailboxAddress(toName, parsedAddress.Address));
+                        }
+                        else
+                        {
+                            message.To.Add(parsedAddress);
+                        }
+                    }
+                    else
+                    {
+                        message.To.Add(new MailboxAddress(toName ?? string.Empty, recipient));
+                    }
+                }
+
+                message.Subject = subject ?? string.Empty;
+
+                // Message Body (HTML + Plain text fallback)
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = htmlBody ?? string.Empty,
+                    TextBody = !string.IsNullOrWhiteSpace(htmlBody)
+                        ? Regex.Replace(htmlBody, "<[^>]+>", " ").Trim()
+                        : string.Empty
                 };
 
-                using var mail = new MailMessage
-                {
-                    From       = new MailAddress(config.FromEmail, config.FromName),
-                    Subject    = subject,
-                    Body       = htmlBody,
-                    IsBodyHtml = true
-                };
-                mail.To.Add(new MailAddress(toEmail, toName));
-
-                MemoryStream? attachStream = null;
+                // Attachment (if any)
                 if (attachmentBytes != null && attachmentBytes.Length > 0 && !string.IsNullOrWhiteSpace(attachmentFileName))
                 {
-                    attachStream = new MemoryStream(attachmentBytes);
-                    mail.Attachments.Add(new Attachment(attachStream, attachmentFileName, "application/pdf"));
+                    builder.Attachments.Add(attachmentFileName, attachmentBytes);
                 }
 
-                try
+                message.Body = builder.ToMessageBody();
+
+                using var client = new SmtpClient();
+                client.Timeout = 25000; // 25s timeout
+
+                // Accept self-signed / corporate TLS certificates to prevent unexpected handshake disconnects
+                client.ServerCertificateValidationCallback = (s, cert, chain, errors) => true;
+
+                // Set EHLO/HELO local domain based on sender or username domain for corporate mail filter compliance
+                var localDomain = ResolveLocalDomain(config);
+                if (!string.IsNullOrWhiteSpace(localDomain))
                 {
-                    await client.SendMailAsync(mail);
+                    client.LocalDomain = localDomain;
                 }
-                finally
+
+                // Resolve SecureSocketOptions dynamically based on Port and EnableSSL
+                var secureSocketOptions = ResolveSecureSocketOptions(config.SmtpPort, config.EnableSSL);
+
+                await client.ConnectAsync(config.SmtpServer, config.SmtpPort, secureSocketOptions);
+
+                // Authenticate if credentials are provided
+                if (!string.IsNullOrWhiteSpace(config.SmtpUsername))
                 {
-                    attachStream?.Dispose();
+                    await client.AuthenticateAsync(config.SmtpUsername, config.SmtpPassword ?? string.Empty);
                 }
-#pragma warning restore CA1416
-                _logger.LogInformation("Email sent to {Email} | Subject: {Subject}", toEmail, subject);
+
+                await client.SendAsync(message);
+                await client.DisconnectAsync(true);
+
+                _logger.LogInformation("Email successfully sent to {Email} via {SmtpServer}:{Port} | Subject: {Subject}",
+                    toEmail, config.SmtpServer, config.SmtpPort, subject);
+
                 await LogEmailAsync(emailType, templateKey, toEmail, toName, subject, htmlBody, "Sent", null);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send email to {Email}.", toEmail);
+                _logger.LogError(ex, "Failed to send email to {Email} via {SmtpServer}:{Port}.",
+                    toEmail, config?.SmtpServer, config?.SmtpPort);
+
                 await LogEmailAsync(emailType, templateKey, toEmail, toName, subject, htmlBody, "Failed", ex.Message);
             }
         }
@@ -209,6 +259,44 @@ namespace CentralLicenceApp.Services
             foreach (var kv in placeholders)
                 text = text.Replace($"{{{{{kv.Key}}}}}", kv.Value, StringComparison.OrdinalIgnoreCase);
             return text;
+        }
+
+        private static string? ResolveLocalDomain(MailConfiguration config)
+        {
+            if (!string.IsNullOrWhiteSpace(config.FromEmail) && config.FromEmail.Contains('@'))
+            {
+                var domain = config.FromEmail.Split('@').Last().Trim();
+                if (!string.IsNullOrWhiteSpace(domain)) return domain;
+            }
+
+            if (!string.IsNullOrWhiteSpace(config.SmtpUsername) && config.SmtpUsername.Contains('@'))
+            {
+                var domain = config.SmtpUsername.Split('@').Last().Trim();
+                if (!string.IsNullOrWhiteSpace(domain)) return domain;
+            }
+
+            if (!string.IsNullOrWhiteSpace(config.SmtpServer))
+            {
+                return config.SmtpServer.Trim();
+            }
+
+            return null;
+        }
+
+        private static SecureSocketOptions ResolveSecureSocketOptions(int port, bool enableSsl)
+        {
+            if (!enableSsl)
+            {
+                return SecureSocketOptions.None;
+            }
+
+            return port switch
+            {
+                465 => SecureSocketOptions.SslOnConnect,
+                587 => SecureSocketOptions.StartTls,
+                25  => SecureSocketOptions.StartTlsWhenAvailable,
+                _   => SecureSocketOptions.Auto
+            };
         }
     }
 }

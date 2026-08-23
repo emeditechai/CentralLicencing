@@ -12,7 +12,25 @@
 </div>
 
 <div class="row justify-content-center">
-    <div class="col-lg-8">
+    <div class="col-lg-9">
+        <!-- Quick Preset Selection Bar -->
+        <div class="card mb-3" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+            <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <span class="fw-semibold text-muted" style="font-size:.8rem;"><i class="bi bi-lightning-charge-fill text-warning me-1"></i>Quick Presets:</span>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-sm btn-outline-primary" style="font-size:.76rem;border-radius:8px;" onclick="applyPreset('gmail')">
+                        <i class="bi bi-google me-1"></i> Gmail (587 TLS)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" style="font-size:.76rem;border-radius:8px;" onclick="applyPreset('corporate')">
+                        <i class="bi bi-globe me-1"></i> Corporate / Webmail (465 SSL)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" style="font-size:.76rem;border-radius:8px;" onclick="applyPreset('m365')">
+                        <i class="bi bi-microsoft me-1"></i> Microsoft 365 (587 TLS)
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <form asp-action="Edit" asp-permission="EmailConfig:Edit" asp-route-id="@Model.Id" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" asp-for="Id" />
@@ -20,66 +38,73 @@
             <input type="hidden" asp-for="CreatedBy" />
 
             <div class="card mb-3">
-                <div class="card-header"><i class="bi bi-server me-2" style="color:#6366f1;"></i>SMTP Server Settings</div>
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <span><i class="bi bi-server me-2" style="color:#6366f1;"></i>SMTP Server Settings</span>
+                    <span class="badge rounded-pill" style="background:#ede9fe;color:#6366f1;font-size:.72rem;">Supports all domains &amp; custom certificates</span>
+                </div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-8">
-                            <label class="form-label">SMTP Server <span class="text-danger">*</span></label>
-                            <input asp-for="SmtpServer" class="form-control" placeholder="e.g. smtp.gmail.com" />
+                            <label class="form-label">SMTP Server Host <span class="text-danger">*</span></label>
+                            <input asp-for="SmtpServer" id="smtpServer" class="form-control" placeholder="e.g. webmail.emeditechplus.com or smtp.gmail.com" />
                             <span asp-validation-for="SmtpServer" class="text-danger" style="font-size:.78rem;"></span>
+                            <div class="form-text" style="font-size:.73rem;">Hostname of your mail provider or corporate mail server.</div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Port <span class="text-danger">*</span></label>
-                            <input asp-for="SmtpPort" class="form-control" type="number" />
+                            <input asp-for="SmtpPort" id="smtpPort" class="form-control" type="number" />
                             <span asp-validation-for="SmtpPort" class="text-danger" style="font-size:.78rem;"></span>
+                            <div class="form-text" style="font-size:.73rem;"><strong>465</strong> (SSL) &bull; <strong>587</strong> (TLS) &bull; <strong>25</strong></div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Username <span class="text-danger">*</span></label>
-                            <input asp-for="SmtpUsername" class="form-control" autocomplete="off" />
+                            <label class="form-label">Username / Account Email <span class="text-danger">*</span></label>
+                            <input asp-for="SmtpUsername" id="smtpUsername" class="form-control" autocomplete="off" />
                             <span asp-validation-for="SmtpUsername" class="text-danger" style="font-size:.78rem;"></span>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">App Password <span class="text-danger">*</span></label>
+                            <label class="form-label">App Password / Password <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <input asp-for="SmtpPassword" class="form-control" type="password" id="smtpPwd" autocomplete="new-password" />
                                 <button class="btn btn-outline-secondary" type="button" onclick="togglePwd()" style="border-radius:0 8px 8px 0;"><i class="bi bi-eye" id="eyeIcon"></i></button>
                             </div>
                             <span asp-validation-for="SmtpPassword" class="text-danger" style="font-size:.78rem;"></span>
+                            <div class="form-text" style="font-size:.73rem;">For Gmail, use Google 16-char App Password. For corporate mail, use mailbox password.</div>
                         </div>
                         <div class="col-12">
                             <div class="form-check form-switch">
                                 <input asp-for="EnableSSL" class="form-check-input" type="checkbox" role="switch" id="enableSSL" />
-                                <label class="form-check-label" for="enableSSL">Enable SSL / TLS</label>
+                                <label class="form-check-label fw-semibold" for="enableSSL">Enable SSL / TLS Encryption</label>
                             </div>
+                            <div class="form-text" style="font-size:.73rem;">Automatically negotiates SSL/TLS based on port (Port 465 SslOnConnect, Port 587 StartTls).</div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="card mb-3">
-                <div class="card-header"><i class="bi bi-envelope me-2" style="color:#6366f1;"></i>Sender & Notification</div>
+                <div class="card-header"><i class="bi bi-envelope me-2" style="color:#6366f1;"></i>Sender &amp; Notification</div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">From Email <span class="text-danger">*</span></label>
-                            <input asp-for="FromEmail" class="form-control" />
+                            <input asp-for="FromEmail" id="fromEmail" class="form-control" />
                             <span asp-validation-for="FromEmail" class="text-danger" style="font-size:.78rem;"></span>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">From Name <span class="text-danger">*</span></label>
-                            <input asp-for="FromName" class="form-control" />
+                            <input asp-for="FromName" id="fromName" class="form-control" />
                             <span asp-validation-for="FromName" class="text-danger" style="font-size:.78rem;"></span>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Admin Notification Email</label>
                             <input asp-for="AdminNotificationEmail" class="form-control" />
                             <span asp-validation-for="AdminNotificationEmail" class="text-danger" style="font-size:.78rem;"></span>
-                            <div class="form-text">Receives system alerts and notifications.</div>
+                            <div class="form-text" style="font-size:.73rem;">Receives system alerts, test emails, and administrative updates.</div>
                         </div>
                         <div class="col-md-6 d-flex align-items-center">
                             <div class="form-check form-switch mt-4">
                                 <input asp-for="IsActive" class="form-check-input" type="checkbox" role="switch" id="isActive" />
-                                <label class="form-check-label" for="isActive">Active</label>
+                                <label class="form-check-label fw-semibold" for="isActive">Active</label>
                             </div>
                         </div>
                     </div>
@@ -117,6 +142,26 @@
             var i = document.getElementById('eyeIcon');
             if (f.type === 'password') { f.type = 'text'; i.className = 'bi bi-eye-slash'; }
             else { f.type = 'password'; i.className = 'bi bi-eye'; }
+        }
+
+        function applyPreset(type) {
+            var server = document.getElementById('smtpServer');
+            var port = document.getElementById('smtpPort');
+            var ssl = document.getElementById('enableSSL');
+
+            if (type === 'gmail') {
+                server.value = 'smtp.gmail.com';
+                port.value = 587;
+                ssl.checked = true;
+            } else if (type === 'corporate') {
+                server.value = 'webmail.emeditechplus.com';
+                port.value = 465;
+                ssl.checked = true;
+            } else if (type === 'm365') {
+                server.value = 'smtp.office365.com';
+                port.value = 587;
+                ssl.checked = true;
+            }
         }
     </script>
 }
