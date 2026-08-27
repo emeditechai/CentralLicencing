@@ -32,6 +32,8 @@ namespace CentralLicenceApp.Models
         public string? ProjectModuleName { get; set; }
         public string? AssignedToUserName { get; set; }
 
+        public bool IsCurrentUserTagged { get; set; }
+
         // Attachments
         public List<TaskAttachment> Attachments { get; set; } = new();
     }

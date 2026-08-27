@@ -29,7 +29,8 @@ namespace CentralLicenceApp.Repositories
                    pm.Name AS ProjectModuleName,
                    ISNULL(tlog.TotalTime, 0) AS TotalTimeSpentMinutes,
                    tlog.LastLogDate,
-                   ISNULL(tlog.LogCount, 0) AS TimeLogCount
+                   ISNULL(tlog.LogCount, 0) AS TimeLogCount,
+                   CAST(ISNULL(commentTag.Tagged, 0) AS BIT) AS IsCurrentUserTagged
             FROM DailyTaskLog t
             INNER JOIN UserMaster u ON u.Id = t.UserId
             LEFT JOIN UserMaster au ON au.Id = t.AssignedToUserId
@@ -42,9 +43,14 @@ namespace CentralLicenceApp.Repositories
                        MAX(LogDate) AS LastLogDate,
                        COUNT(*) AS LogCount
                 FROM TaskTimeLog WHERE TaskId = t.Id
-            ) tlog";
+            ) tlog
+            OUTER APPLY (
+                SELECT TOP 1 1 AS Tagged
+                FROM TaskComment tc 
+                WHERE tc.TaskId = t.Id AND tc.CommentText LIKE '%' + @CurrentUserFullName + '%'
+            ) commentTag";
 
-        public async Task<IEnumerable<DailyTaskLog>> GetTasksAsync(int userId, DateTime? from, DateTime? to,
+        public async Task<IEnumerable<DailyTaskLog>> GetTasksAsync(int userId, string currentUserFullName, DateTime? from, DateTime? to,
             int? taskTypeId, int? categoryId, string? status, string? search)
         {
             using var conn = CreateConnection();
@@ -53,6 +59,7 @@ namespace CentralLicenceApp.Repositories
             var sql = BaseSelectSql + " WHERE (t.UserId = @UserId OR t.AssignedToUserId = @UserId)";
             var p = new DynamicParameters();
             p.Add("UserId", userId);
+            p.Add("CurrentUserFullName", currentUserFullName);
 
             AppendFilters(ref sql, p, from, to, taskTypeId, categoryId, status, search);
             sql += " ORDER BY ISNULL(tlog.LastLogDate, t.TaskDate) DESC, t.CreatedAt DESC";
@@ -60,7 +67,7 @@ namespace CentralLicenceApp.Repositories
             return await conn.QueryAsync<DailyTaskLog>(sql, p);
         }
 
-        public async Task<IEnumerable<DailyTaskLog>> GetAssignedTasksAsync(int userId, DateTime? from, DateTime? to,
+        public async Task<IEnumerable<DailyTaskLog>> GetAssignedTasksAsync(int userId, string currentUserFullName, DateTime? from, DateTime? to,
             int? taskTypeId, int? categoryId, string? status, string? search)
         {
             using var conn = CreateConnection();
@@ -79,7 +86,8 @@ namespace CentralLicenceApp.Repositories
                    pm.Name AS ProjectModuleName,
                    ISNULL(tlog.TotalTime, 0) AS TotalTimeSpentMinutes,
                    tlog.LastLogDate,
-                   ISNULL(tlog.LogCount, 0) AS TimeLogCount
+                   ISNULL(tlog.LogCount, 0) AS TimeLogCount,
+                   CAST(ISNULL(commentTag.Tagged, 0) AS BIT) AS IsCurrentUserTagged
             FROM DailyTaskLog t
             INNER JOIN UserMaster u ON u.Id = t.UserId
             LEFT JOIN UserMaster au ON au.Id = t.AssignedToUserId
@@ -93,9 +101,15 @@ namespace CentralLicenceApp.Repositories
                        COUNT(*) AS LogCount
                 FROM TaskTimeLog WHERE TaskId = t.Id AND UserId = @UserId
             ) tlog
+            OUTER APPLY (
+                SELECT TOP 1 1 AS Tagged
+                FROM TaskComment tc 
+                WHERE tc.TaskId = t.Id AND tc.CommentText LIKE '%' + @CurrentUserFullName + '%'
+            ) commentTag
             WHERE t.AssignedToUserId = @UserId";
             var p = new DynamicParameters();
             p.Add("UserId", userId);
+            p.Add("CurrentUserFullName", currentUserFullName);
 
             AppendFilters(ref sql, p, from, to, taskTypeId, categoryId, status, search);
             sql += " ORDER BY ISNULL(tlog.LastLogDate, t.TaskDate) DESC, t.CreatedAt DESC";
@@ -103,7 +117,7 @@ namespace CentralLicenceApp.Repositories
             return await conn.QueryAsync<DailyTaskLog>(sql, p);
         }
 
-        public async Task<IEnumerable<DailyTaskLog>> GetTeamTasksAsync(IEnumerable<int> userIds, DateTime? from, DateTime? to,
+        public async Task<IEnumerable<DailyTaskLog>> GetTeamTasksAsync(IEnumerable<int> userIds, string currentUserFullName, DateTime? from, DateTime? to,
             int? taskTypeId, int? categoryId, string? status, int? userFilter, string? search)
         {
             using var conn = CreateConnection();
@@ -113,6 +127,7 @@ namespace CentralLicenceApp.Repositories
             var sql = BaseSelectSql + " WHERE t.UserId IN @UserIds";
             var p = new DynamicParameters();
             p.Add("UserIds", ids);
+            p.Add("CurrentUserFullName", currentUserFullName);
 
             if (userFilter.HasValue)
             {
@@ -126,12 +141,12 @@ namespace CentralLicenceApp.Repositories
             return await conn.QueryAsync<DailyTaskLog>(sql, p);
         }
 
-        public async Task<DailyTaskLog?> GetByIdAsync(int id)
+        public async Task<DailyTaskLog?> GetByIdAsync(int id, string currentUserFullName = "")
         {
             using var conn = CreateConnection();
             await ((SqlConnection)conn).OpenAsync();
-            return await conn.QuerySingleOrDefaultAsync<DailyTaskLog>(
-                BaseSelectSql + " WHERE t.Id = @Id", new { Id = id });
+            var sql = BaseSelectSql + " WHERE t.Id = @Id";
+            return await conn.QueryFirstOrDefaultAsync<DailyTaskLog>(sql, new { Id = id, CurrentUserFullName = currentUserFullName });
         }
 
         public async Task<int> CreateAsync(DailyTaskLog task)

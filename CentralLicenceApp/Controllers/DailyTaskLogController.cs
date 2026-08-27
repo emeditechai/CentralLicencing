@@ -41,13 +41,14 @@ namespace CentralLicenceApp.Controllers
         public async Task<IActionResult> Index(DateTime? from, DateTime? to,
             int? taskType, int? category, string? status, string? search)
         {
-            var userId = GetCurrentUserId();
-            if (userId == 0) return Challenge();
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Challenge();
+            var userId = currentUser.Id;
 
             var isAgent = !IsAdminOrTicketAdmin;
             var tasks = isAgent
-                ? (await _taskRepo.GetAssignedTasksAsync(userId, from, to, taskType, category, status, search)).ToList()
-                : (await _taskRepo.GetTasksAsync(userId, from, to, taskType, category, status, search)).ToList();
+                ? (await _taskRepo.GetAssignedTasksAsync(userId, currentUser.FullName ?? "", from, to, taskType, category, status, search)).ToList()
+                : (await _taskRepo.GetTasksAsync(userId, currentUser.FullName ?? "", from, to, taskType, category, status, search)).ToList();
             var summary = isAgent
                 ? await _taskRepo.GetAssignedSummaryAsync(userId, from, to)
                 : await _taskRepo.GetSummaryAsync(userId, from, to);
@@ -77,6 +78,10 @@ namespace CentralLicenceApp.Controllers
                 CanCreateTask = IsAdminOrTicketAdmin,
                 CanEditDelete = IsAdminOrTicketAdmin
             };
+
+            ViewBag.CurrentUserId = currentUser.Id;
+            ViewBag.CurrentUserFullName = currentUser.FullName;
+            ViewBag.IsCoreMember = currentUser.IsCoreMember;
 
             return View(vm);
         }
@@ -111,7 +116,7 @@ namespace CentralLicenceApp.Controllers
                 }
             }
 
-            var tasks = (await _taskRepo.GetTeamTasksAsync(teamIds, from, to, taskType, category, status, user, search)).ToList();
+            var tasks = (await _taskRepo.GetTeamTasksAsync(teamIds, currentUser.FullName ?? "", from, to, taskType, category, status, user, search)).ToList();
             var summary = await _taskRepo.GetTeamSummaryAsync(teamIds, from, to);
             var taskTypes = (await _taskRepo.GetTaskTypesAsync()).ToList();
             var categories = (await _taskRepo.GetTaskCategoriesAsync()).ToList();
@@ -141,6 +146,10 @@ namespace CentralLicenceApp.Controllers
                 CanCreateTask = IsAdminOrTicketAdmin,
                 CanEditDelete = IsAdminOrTicketAdmin
             };
+
+            ViewBag.CurrentUserId = currentUser.Id;
+            ViewBag.CurrentUserFullName = currentUser.FullName;
+            ViewBag.IsCoreMember = currentUser.IsCoreMember;
 
             return View("Index", vm);
         }
@@ -211,13 +220,15 @@ namespace CentralLicenceApp.Controllers
         [HttpGet]
         public async Task<IActionResult> Details(int id)
         {
-            var task = await _taskRepo.GetByIdAsync(id);
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Challenge();
+            var userId = currentUser.Id;
+
+            var task = await _taskRepo.GetByIdAsync(id, currentUser.FullName ?? "");
             if (task == null) return NotFound();
 
-            var userId = GetCurrentUserId();
-
-            // Non-admin roles can only view tasks they own or are assigned to
-            if (!IsAdminOrTicketAdmin)
+            // Non-admin/core roles can only view tasks they own or are assigned to
+            if (!IsAdminOrTicketAdmin && !currentUser.IsCoreMember)
             {
                 if (task.UserId != userId && task.AssignedToUserId != userId)
                     return Forbid();
@@ -230,7 +241,9 @@ namespace CentralLicenceApp.Controllers
             ViewBag.TimeLogs = timeLogs;
             ViewBag.Attachments = attachments;
             ViewBag.Comments = comments;
-            ViewBag.CanEditDelete = IsAdminOrTicketAdmin;
+            ViewBag.CurrentUserId = currentUser.Id;
+            ViewBag.CurrentUserFullName = currentUser.FullName;
+            ViewBag.IsCoreMember = currentUser.IsCoreMember;
             ViewBag.AssignableUsers = await _taskRepo.GetAssignableUsersAsync();
             return View(task);
         }
@@ -240,13 +253,14 @@ namespace CentralLicenceApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddComment(int TaskId, string CommentText)
         {
-            var userId = GetCurrentUserId();
-            if (userId == 0) return Challenge();
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Challenge();
+            var userId = currentUser.Id;
 
-            var task = await _taskRepo.GetByIdAsync(TaskId);
+            var task = await _taskRepo.GetByIdAsync(TaskId, currentUser.FullName ?? "");
             if (task == null) return NotFound();
 
-            if (!IsAdminOrTicketAdmin)
+            if (!IsAdminOrTicketAdmin && !currentUser.IsCoreMember)
             {
                 if (task.UserId != userId && task.AssignedToUserId != userId)
                     return Forbid();
@@ -275,13 +289,12 @@ namespace CentralLicenceApp.Controllers
 
                 if (taggedUsers.Any())
                 {
-                    var currentUser = await GetCurrentUserAsync();
                     var senderName = currentUser?.FullName ?? "Someone";
                     foreach (var taggedUser in taggedUsers)
                     {
                         if (!string.IsNullOrEmpty(taggedUser.Email))
                         {
-                            _ = Task.Run(() => _taskEmailService.NotifyTaskCommentMentionAsync(task, senderName, taggedUser.FullName, taggedUser.Email, CommentText));
+                            _ = Task.Run(() => _taskEmailService.NotifyTaskCommentMentionAsync(task, senderName, taggedUser.FullName ?? "", taggedUser.Email, CommentText));
                         }
                     }
                 }
@@ -291,16 +304,18 @@ namespace CentralLicenceApp.Controllers
             return RedirectToAction("Details", new { id = TaskId });
         }
 
-        // ── Edit Task (Admin / Ticket Admin only) ──
+        // ── Edit Task ──
         [HttpGet]
-        [Authorize(Roles = "Administrator,Ticket Admin")]
         public async Task<IActionResult> Edit(int id)
         {
-            var task = await _taskRepo.GetByIdAsync(id);
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Challenge();
+            var userId = currentUser.Id;
+
+            var task = await _taskRepo.GetByIdAsync(id, currentUser.FullName ?? "");
             if (task == null) return NotFound();
 
-            var userId = GetCurrentUserId();
-            if (task.UserId != userId && !IsAdminOrTicketAdmin)
+            if (task.UserId != userId && task.AssignedToUserId != userId && !currentUser.IsCoreMember)
                 return Forbid();
 
             var vm = await BuildFormViewModelAsync(task, isEdit: true);
@@ -310,14 +325,16 @@ namespace CentralLicenceApp.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrator,Ticket Admin")]
         public async Task<IActionResult> Edit(int id, DailyTaskLogFormViewModel model)
         {
-            var existing = await _taskRepo.GetByIdAsync(id);
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Challenge();
+            var userId = currentUser.Id;
+
+            var existing = await _taskRepo.GetByIdAsync(id, currentUser.FullName ?? "");
             if (existing == null) return NotFound();
 
-            var userId = GetCurrentUserId();
-            if (existing.UserId != userId && !IsAdminOrTicketAdmin)
+            if (existing.UserId != userId && existing.AssignedToUserId != userId && !currentUser.IsCoreMember)
                 return Forbid();
 
             if (string.IsNullOrWhiteSpace(model.Task.TaskTitle) || model.Task.TaskTypeId == 0 || model.Task.TaskCategoryId == 0)
@@ -393,19 +410,20 @@ namespace CentralLicenceApp.Controllers
             return RedirectToAction("Details", new { id });
         }
 
-        // ── Delete Task (Admin / Ticket Admin only, AJAX) ──
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrator,Ticket Admin")]
         public async Task<IActionResult> Delete(int id)
         {
-            var task = await _taskRepo.GetByIdAsync(id);
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false, message = "Not authenticated." });
+            var userId = currentUser.Id;
+
+            var task = await _taskRepo.GetByIdAsync(id, currentUser.FullName ?? "");
             if (task == null) return Json(new { success = false, message = "Task not found." });
 
-            var userId = GetCurrentUserId();
-            // Only the creator can delete
-            if (task.UserId != userId)
-                return Json(new { success = false, message = "Only the task creator can delete this task." });
+            // Only the creator or Core Member or Admin can delete
+            if (task.UserId != userId && !currentUser.IsCoreMember)
+                return Json(new { success = false, message = "Only the task creator or admin can delete this task." });
 
             // Cannot delete if time has been logged
             var timeLogs = (await _taskRepo.GetTimeLogsAsync(id)).ToList();
@@ -421,14 +439,20 @@ namespace CentralLicenceApp.Controllers
             return Json(new { success = true, message = "Task deleted successfully." });
         }
 
-        // ── Delete Attachment (Admin / Ticket Admin only, AJAX) ──
+        // ── Delete Attachment (AJAX) ──
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrator,Ticket Admin")]
         public async Task<IActionResult> DeleteAttachment(int id)
         {
             var att = await _taskRepo.GetAttachmentByIdAsync(id);
             if (att == null) return Json(new { success = false, message = "Attachment not found." });
+
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false, message = "Not authenticated." });
+
+            var task = await _taskRepo.GetByIdAsync(att.TaskId, currentUser.FullName ?? "");
+            if (task != null && task.UserId != currentUser.Id && task.AssignedToUserId != currentUser.Id && !currentUser.IsCoreMember)
+                return Json(new { success = false, message = "Not authorized to delete attachments for this task." });
 
             DeletePhysicalFile(att.FilePath);
             await _taskRepo.DeleteAttachmentAsync(id);
@@ -436,22 +460,26 @@ namespace CentralLicenceApp.Controllers
             return Json(new { success = true, message = "Attachment deleted." });
         }
 
-        // ── Cancel Task (Admin / Ticket Admin only, AJAX) ──
+        // ── Cancel Task (AJAX) ──
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Administrator,Ticket Admin")]
         public async Task<IActionResult> CancelTask(int taskId, string? note)
         {
-            var task = await _taskRepo.GetByIdAsync(taskId);
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false, message = "Not authenticated." });
+            var userId = currentUser.Id;
+
+            var task = await _taskRepo.GetByIdAsync(taskId, currentUser.FullName ?? "");
             if (task == null) return Json(new { success = false, message = "Task not found." });
+
+            if (task.UserId != userId && task.AssignedToUserId != userId && !currentUser.IsCoreMember)
+                return Json(new { success = false, message = "Not authorized to cancel this task." });
 
             if (task.Status == "Cancelled")
                 return Json(new { success = false, message = "Task is already cancelled." });
 
             if (string.IsNullOrWhiteSpace(note))
                 return Json(new { success = false, message = "Please provide a reason for cancellation." });
-
-            var userId = GetCurrentUserId();
             await _taskRepo.UpdateTaskStatusAsync(taskId, "Cancelled");
 
             // Log the cancellation as a 0-minute time entry
@@ -472,21 +500,18 @@ namespace CentralLicenceApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> LogTime(int taskId, DateTime logDate, int hours, int minutes, string? remarks)
         {
-            var userId = GetCurrentUserId();
-            if (userId == 0) return Json(new { success = false, message = "Not authenticated." });
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false, message = "Not authenticated." });
+            var userId = currentUser.Id;
 
-            var task = await _taskRepo.GetByIdAsync(taskId);
+            var task = await _taskRepo.GetByIdAsync(taskId, currentUser.FullName ?? "");
             if (task == null) return Json(new { success = false, message = "Task not found." });
 
             if (task.Status == "Completed")
                 return Json(new { success = false, message = "Cannot log time on a completed task." });
 
-            // Ticket Agent can only log time on tasks assigned to them or created by them
-            if (!IsAdminOrTicketAdmin)
-            {
-                if (task.UserId != userId && task.AssignedToUserId != userId)
-                    return Json(new { success = false, message = "Not authorized." });
-            }
+            if (task.UserId != userId && task.AssignedToUserId != userId && !task.IsCurrentUserTagged && !currentUser.IsCoreMember)
+                return Json(new { success = false, message = "Not authorized to log time for this task." });
 
             var totalMinutes = hours * 60 + minutes;
             if (totalMinutes <= 0)
@@ -510,24 +535,23 @@ namespace CentralLicenceApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ChangeStatus(int taskId, string status, string? note)
         {
-            var userId = GetCurrentUserId();
-            if (userId == 0) return Json(new { success = false, message = "Not authenticated." });
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false, message = "Not authenticated." });
+            var userId = currentUser.Id;
 
-            var validStatuses = new[] { "Pending", "Started", "In Progress", "On Hold", "Completed", "Cancelled" };
+            var validStatuses = new[] { "Pending", "Started", "In Progress", "On Hold", "Completed", "Cancelled", "Resolved" };
             if (string.IsNullOrWhiteSpace(status) || !validStatuses.Contains(status))
                 return Json(new { success = false, message = "Invalid status." });
 
             if (string.IsNullOrWhiteSpace(note))
                 return Json(new { success = false, message = "Please provide a note / reason for the status change." });
 
-            var task = await _taskRepo.GetByIdAsync(taskId);
+            var task = await _taskRepo.GetByIdAsync(taskId, currentUser.FullName ?? "");
             if (task == null) return Json(new { success = false, message = "Task not found." });
 
-            // Ticket Agent can only change status on tasks assigned to them
-            if (!IsAdminOrTicketAdmin)
+            if (task.UserId != userId && task.AssignedToUserId != userId && !task.IsCurrentUserTagged && !currentUser.IsCoreMember)
             {
-                if (task.AssignedToUserId != userId)
-                    return Json(new { success = false, message = "Not authorized." });
+                return Json(new { success = false, message = "Not authorized to change status on this task." });
             }
 
             await _taskRepo.UpdateTaskStatusAsync(taskId, status);
@@ -572,8 +596,11 @@ namespace CentralLicenceApp.Controllers
             var log = await _taskRepo.GetTimeLogByIdAsync(id);
             if (log == null) return Json(new { success = false, message = "Time log not found." });
 
-            var userId = GetCurrentUserId();
-            if (log.UserId != userId && !IsAdminOrTicketAdmin)
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Json(new { success = false, message = "Not authenticated." });
+
+            var task = await _taskRepo.GetByIdAsync(log.TaskId, currentUser.FullName ?? "");
+            if (task != null && task.UserId != currentUser.Id && log.UserId != currentUser.Id && !currentUser.IsCoreMember)
                 return Json(new { success = false, message = "Not authorized." });
 
             await _taskRepo.DeleteTimeLogAsync(id);

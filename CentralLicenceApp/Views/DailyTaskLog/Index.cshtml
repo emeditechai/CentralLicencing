@@ -147,8 +147,8 @@
         <div class="col-md-2 col-sm-4">
             <label class="form-label mb-1" style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;">Status</label>
             <select name="status" class="form-select form-select-sm">
-                <option value="">All Statuses</option>
-                @foreach (var s in new[] { "Pending", "Started", "In Progress", "On Hold", "Completed", "Cancelled" }) { <option value="@s" selected="@(Model.StatusFilter == s)">@s</option> }
+                <option value="">-- Select Status --</option>
+                @foreach (var s in new[] { "Pending", "Started", "In Progress", "On Hold", "Resolved", "Completed", "Cancelled" }) { <option value="@s" selected="@(Model.StatusFilter == s)">@s</option> }
             </select>
         </div>
         @if (Model.IsManagerView && Model.TeamMembers.Any())
@@ -209,10 +209,17 @@ else
                     </tr>
                 </thead>
                 <tbody>
+                    @{
+                        bool isCoreMember = (bool?)ViewBag.IsCoreMember ?? false;
+                        int currentUserId = (int?)ViewBag.CurrentUserId ?? 0;
+                    }
                     @foreach (var t in Model.Tasks)
                     {
-                        var statusCls = t.Status == "Completed" ? "tl-status-completed" : t.Status == "Cancelled" ? "tl-status-cancelled" : t.Status == "In Progress" ? "tl-status-inprogress" : t.Status == "Started" ? "tl-status-started" : t.Status == "On Hold" ? "tl-status-onhold" : "tl-status-pending";
+                        var statusCls = t.Status == "Completed" || t.Status == "Resolved" ? "tl-status-completed" : t.Status == "Cancelled" ? "tl-status-cancelled" : t.Status == "In Progress" ? "tl-status-inprogress" : t.Status == "Started" ? "tl-status-started" : t.Status == "On Hold" ? "tl-status-onhold" : "tl-status-pending";
                         var typeCls = t.TaskTypeName == "Development" ? "tl-type-dev" : "tl-type-sup";
+                        var canEditDelete = isCoreMember || t.UserId == currentUserId || t.AssignedToUserId == currentUserId;
+                        var canDelete = isCoreMember || t.UserId == currentUserId;
+                        var canChangeStatusOrLog = canEditDelete || t.IsCurrentUserTagged;
                         <tr>
                             @if (Model.IsManagerView) { <td style="font-size:.82rem;font-weight:600;color:#1e293b;">@t.UserName</td> }
                             <td>
@@ -268,32 +275,44 @@ else
                             <td class="text-center">
                                 <div class="d-flex gap-1 justify-content-center">
                                     <a asp-action="Details" asp-route-id="@t.Id" class="tl-action-btn" title="View Task"><i class="bi bi-eye"></i></a>
-                                    @if (t.Status != "Completed" && t.Status != "Cancelled")
+                                    @if (canChangeStatusOrLog)
                                     {
-                                        <button type="button" class="tl-action-btn tl-action-btn-time" title="Log Time" onclick="openLogTime(@t.Id, '@t.TaskTitle.Replace("'", "\\'")')"><i class="bi bi-clock-history"></i></button>
-                                    }
-                                    else
-                                    {
-                                        <button type="button" class="tl-action-btn" title="@(t.Status == "Cancelled" ? "Task Cancelled" : "Task Completed") – Time logging disabled" disabled style="opacity:.4;cursor:not-allowed;"><i class="bi bi-clock-history"></i></button>
-                                    }
-                                    @if (t.Status != "Cancelled")
-                                    {
-                                        <button type="button" class="tl-action-btn" title="Change Status" style="border-color:#f59e0b;color:#d97706;" onclick="openChangeStatus(@t.Id, '@t.TaskTitle.Replace("'", "\\'")', '@t.Status')"><i class="bi bi-arrow-repeat"></i></button>
-                                    }
-                                    @if (Model.CanEditDelete && t.Status != "Cancelled")
-                                    {
-                                        <button type="button" class="tl-action-btn" title="Cancel Task" style="border-color:#64748b;color:#64748b;" onclick="cancelTask(@t.Id, '@t.TaskTitle.Replace("'", "\\'")')"><i class="bi bi-x-circle"></i></button>
-                                    }
-                                    @if (Model.CanEditDelete)
-                                    {
-                                        @if (t.Status == "Cancelled")
+                                        @if (t.Status != "Completed" && t.Status != "Cancelled" && t.Status != "Resolved")
                                         {
-                                            <span class="tl-action-btn" title="Task Cancelled – Edit disabled" style="opacity:.4;cursor:not-allowed;"><i class="bi bi-pencil-square"></i></span>
-                                            <span class="tl-action-btn" title="Task Cancelled – Delete disabled" style="opacity:.4;cursor:not-allowed;"><i class="bi bi-trash3"></i></span>
+                                            <button type="button" class="tl-action-btn tl-action-btn-time" title="Log Time" onclick="openLogTime(@t.Id, '@t.TaskTitle.Replace("'", "\\'")')"><i class="bi bi-clock-history"></i></button>
                                         }
                                         else
                                         {
+                                            <button type="button" class="tl-action-btn" title="@(t.Status == "Cancelled" ? "Task Cancelled" : "Task Completed/Resolved") – Time logging disabled" disabled style="opacity:.4;cursor:not-allowed;"><i class="bi bi-clock-history"></i></button>
+                                        }
+                                        @if (t.Status != "Cancelled")
+                                        {
+                                            <button type="button" class="tl-action-btn" title="Change Status" style="border-color:#f59e0b;color:#d97706;" onclick="openChangeStatus(@t.Id, '@t.TaskTitle.Replace("'", "\\'")', '@t.Status')"><i class="bi bi-arrow-repeat"></i></button>
+                                        }
+                                    }
+                                    @if (canEditDelete && t.Status != "Cancelled")
+                                    {
+                                        <button type="button" class="tl-action-btn" title="Cancel Task" style="border-color:#64748b;color:#64748b;" onclick="cancelTask(@t.Id, '@t.TaskTitle.Replace("'", "\\'")')"><i class="bi bi-x-circle"></i></button>
+                                    }
+                                    @if (t.Status == "Cancelled")
+                                    {
+                                        @if (canEditDelete)
+                                        {
+                                            <span class="tl-action-btn" title="Task Cancelled – Edit disabled" style="opacity:.4;cursor:not-allowed;"><i class="bi bi-pencil-square"></i></span>
+                                        }
+                                        @if (canDelete)
+                                        {
+                                            <span class="tl-action-btn" title="Task Cancelled – Delete disabled" style="opacity:.4;cursor:not-allowed;"><i class="bi bi-trash3"></i></span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        @if (canEditDelete)
+                                        {
                                             <a asp-action="Edit" asp-permission="DailyTaskLog:Edit" asp-route-id="@t.Id" class="tl-action-btn" title="Edit Task"><i class="bi bi-pencil-square"></i></a>
+                                        }
+                                        @if (canDelete)
+                                        {
                                             <button type="button" class="tl-action-btn tl-action-btn-danger" title="Delete" onclick="deleteTask(@t.Id)"><i class="bi bi-trash3"></i></button>
                                         }
                                     }
@@ -366,6 +385,7 @@ else
                         <option value="Started">Started</option>
                         <option value="In Progress">In Progress</option>
                         <option value="On Hold">On Hold</option>
+                        <option value="Resolved">Resolved</option>
                         <option value="Completed">Completed</option>
                         <option value="Cancelled">Cancelled</option>
                     </select>

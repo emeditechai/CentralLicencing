@@ -189,7 +189,7 @@
                 <div class="col-md-6">
                     <label class="form-label">Status</label>
                     <select name="Task.Status" class="form-select">
-                        @foreach (var s in new[] { "Pending", "Started", "In Progress", "On Hold", "Completed" })
+                        @foreach (var s in new[] { "Pending", "Started", "In Progress", "On Hold", "Resolved", "Completed" })
                         {
                             <option value="@s" selected="@(task.Status == s)">@s</option>
                         }

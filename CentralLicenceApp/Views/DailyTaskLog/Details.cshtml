@@ -3,7 +3,9 @@
     ViewData["Title"] = "Task Details";
     var timeLogs = (List<CentralLicenceApp.Models.TaskTimeLog>)ViewBag.TimeLogs;
     var attachments = (List<CentralLicenceApp.Models.TaskAttachment>)(ViewBag.Attachments ?? new List<CentralLicenceApp.Models.TaskAttachment>());
-    bool canEditDelete = ViewBag.CanEditDelete;
+    bool isCoreMember = ViewBag.IsCoreMember ?? false;
+    int currentUserId = ViewBag.CurrentUserId ?? 0;
+    bool canEditDelete = isCoreMember || Model.UserId == currentUserId || Model.AssignedToUserId == currentUserId;
     var statusCls = Model.Status == "Completed" ? "td-status-completed" : Model.Status == "In Progress" ? "td-status-inprogress" : Model.Status == "Started" ? "td-status-started" : Model.Status == "On Hold" ? "td-status-onhold" : "td-status-pending";
     var typeCls = Model.TaskTypeName == "Development" ? "td-type-dev" : "td-type-sup";
 }

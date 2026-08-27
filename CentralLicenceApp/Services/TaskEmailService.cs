@@ -40,7 +40,7 @@ namespace CentralLicenceApp.Services
                 var company = await _companyRepo.GetParentCompanyAsync();
                 var companyName = ResolveCompanyName(company);
 
-                var subject = $"[Task Assigned] {task.TaskTitle}";
+                var subject = task.TaskNumber != null ? $"[Task Assigned] {task.TaskNumber}: {task.TaskTitle}" : $"[Task Assigned] {task.TaskTitle}";
                 var body = BuildTaskEmailHtml(
                     companyName:    companyName,
                     heading:        "A New Task Has Been Assigned to You",
@@ -70,7 +70,7 @@ namespace CentralLicenceApp.Services
                 var company = await _companyRepo.GetParentCompanyAsync();
                 var companyName = ResolveCompanyName(company);
 
-                var subject = $"[Task Updated] {task.TaskTitle}";
+                var subject = task.TaskNumber != null ? $"[Task Updated] {task.TaskNumber}: {task.TaskTitle}" : $"[Task Updated] {task.TaskTitle}";
                 var body = BuildTaskEmailHtml(
                     companyName:    companyName,
                     heading:        "A Task Assigned to You Has Been Updated",
@@ -100,7 +100,7 @@ namespace CentralLicenceApp.Services
                 var company = await _companyRepo.GetParentCompanyAsync();
                 var companyName = ResolveCompanyName(company);
 
-                var subject = $"[Mention] You were mentioned in a task: {task.TaskTitle}";
+                var subject = task.TaskNumber != null ? $"[Mention] You were mentioned in {task.TaskNumber}: {task.TaskTitle}" : $"[Mention] You were mentioned in a task: {task.TaskTitle}";
                 var body = BuildTaskEmailHtml(
                     companyName:    companyName,
                     heading:        "You Were Mentioned in a Comment",
@@ -145,6 +145,7 @@ namespace CentralLicenceApp.Services
             // Build the details rows
             var rows = new (string Label, string Value)[]
             {
+                ("Task Number",     task.TaskNumber ?? "—"),
                 ("Task Title",      task.TaskTitle),
                 ("Task Date",       task.TaskDate.ToString("dd MMM yyyy")),
                 ("Task Type",       task.TaskTypeName),

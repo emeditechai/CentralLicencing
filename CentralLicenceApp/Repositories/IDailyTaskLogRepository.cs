@@ -6,13 +6,13 @@ namespace CentralLicenceApp.Repositories
     public interface IDailyTaskLogRepository
     {
         // Task CRUD
-        Task<IEnumerable<DailyTaskLog>> GetTasksAsync(int userId, DateTime? from, DateTime? to,
+        Task<IEnumerable<DailyTaskLog>> GetTasksAsync(int userId, string currentUserFullName, DateTime? from, DateTime? to,
             int? taskTypeId, int? categoryId, string? status, string? search);
-        Task<IEnumerable<DailyTaskLog>> GetAssignedTasksAsync(int userId, DateTime? from, DateTime? to,
+        Task<IEnumerable<DailyTaskLog>> GetAssignedTasksAsync(int userId, string currentUserFullName, DateTime? from, DateTime? to,
             int? taskTypeId, int? categoryId, string? status, string? search);
-        Task<IEnumerable<DailyTaskLog>> GetTeamTasksAsync(IEnumerable<int> userIds, DateTime? from, DateTime? to,
+        Task<IEnumerable<DailyTaskLog>> GetTeamTasksAsync(IEnumerable<int> userIds, string currentUserFullName, DateTime? from, DateTime? to,
             int? taskTypeId, int? categoryId, string? status, int? userFilter, string? search);
-        Task<DailyTaskLog?> GetByIdAsync(int id);
+        Task<DailyTaskLog?> GetByIdAsync(int id, string currentUserFullName = "");
         Task<int> CreateAsync(DailyTaskLog task);
         Task<bool> UpdateAsync(DailyTaskLog task);
         Task<bool> UpdateTaskStatusAsync(int id, string status);
