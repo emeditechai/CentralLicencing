@@ -51,5 +51,15 @@ namespace CentralLicenceApp.Repositories
 
         // Ensure tables exist
         Task EnsureTablesAsync();
+
+        // Attachments
+        Task<IEnumerable<TaskAttachment>> GetAttachmentsAsync(int taskId);
+        Task<TaskAttachment?> GetAttachmentByIdAsync(int id);
+        Task<int> AddAttachmentAsync(TaskAttachment attachment);
+        Task<bool> DeleteAttachmentAsync(int id);
+
+        // Comments
+        Task<IEnumerable<TaskComment>> GetCommentsAsync(int taskId);
+        Task<int> AddCommentAsync(TaskComment comment);
     }
 }

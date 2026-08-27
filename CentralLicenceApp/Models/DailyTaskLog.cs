@@ -9,6 +9,7 @@ namespace CentralLicenceApp.Models
         public int TaskTypeId { get; set; }
         public int TaskCategoryId { get; set; }
         public string TaskTitle { get; set; } = string.Empty;
+        public string? TaskNumber { get; set; }
         public string? Description { get; set; }
         public int? TicketId { get; set; }
         public int? ProjectModuleId { get; set; }
@@ -30,6 +31,9 @@ namespace CentralLicenceApp.Models
         public string? TicketSubject { get; set; }
         public string? ProjectModuleName { get; set; }
         public string? AssignedToUserName { get; set; }
+
+        // Attachments
+        public List<TaskAttachment> Attachments { get; set; } = new();
     }
 
     public class TaskTimeLog
@@ -82,5 +86,16 @@ namespace CentralLicenceApp.Models
         public DateTime CreatedAt { get; set; }
 
         public string ApprovedByName { get; set; } = string.Empty;
+    }
+    public class TaskComment
+    {
+        public int Id { get; set; }
+        public int TaskId { get; set; }
+        public int UserId { get; set; }
+        public string CommentText { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+
+        public string UserName { get; set; } = string.Empty;
+        public string? ProfileImagePath { get; set; }
     }
 }

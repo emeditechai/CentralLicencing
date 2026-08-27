@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CentralLicenceApp.Models;
 using CentralLicenceApp.Models.ViewModels;
 using CentralLicenceApp.Repositories;
+using CentralLicenceApp.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,15 +14,24 @@ namespace CentralLicenceApp.Controllers
         private readonly IDailyTaskLogRepository _taskRepo;
         private readonly IUserRepository _userRepo;
         private readonly ILogger<DailyTaskLogController> _logger;
+        private readonly IWebHostEnvironment _env;
+        private readonly ITaskEmailService _taskEmailService;
+
+        private static readonly string[] AllowedExtensions = { ".pdf", ".png", ".jpg", ".jpeg" };
+        private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10 MB per file
 
         public DailyTaskLogController(
             IDailyTaskLogRepository taskRepo,
             IUserRepository userRepo,
-            ILogger<DailyTaskLogController> logger)
+            ILogger<DailyTaskLogController> logger,
+            IWebHostEnvironment env,
+            ITaskEmailService taskEmailService)
         {
-            _taskRepo = taskRepo;
-            _userRepo = userRepo;
-            _logger   = logger;
+            _taskRepo         = taskRepo;
+            _userRepo         = userRepo;
+            _logger           = logger;
+            _env              = env;
+            _taskEmailService = taskEmailService;
         }
 
         private bool IsAdminOrTicketAdmin =>
@@ -176,8 +186,25 @@ namespace CentralLicenceApp.Controllers
                 });
             }
 
+            // Save attachments
+            await SaveAttachmentsAsync(model.Attachments, taskId, userId);
+
+            // Email notification — fire after save, do NOT await to keep request fast
+            if (model.Task.AssignedToUserId.HasValue)
+            {
+                var fullTask = await _taskRepo.GetByIdAsync(taskId);
+                if (fullTask != null && !string.IsNullOrWhiteSpace(fullTask.AssignedToUserName))
+                {
+                    var assignee = await _userRepo.GetByIdAsync(model.Task.AssignedToUserId.Value);
+                    if (assignee != null && !string.IsNullOrWhiteSpace(assignee.Email))
+                    {
+                        _ = Task.Run(() => _taskEmailService.NotifyTaskAssignedAsync(fullTask, assignee.FullName ?? assignee.Username, assignee.Email));
+                    }
+                }
+            }
+
             TempData["Success"] = "Task created successfully.";
-            return RedirectToAction("Index");
+            return RedirectToAction("Details", new { id = taskId });
         }
 
         // ── View Task Details ──
@@ -197,9 +224,71 @@ namespace CentralLicenceApp.Controllers
             }
 
             var timeLogs = (await _taskRepo.GetTimeLogsAsync(id)).ToList();
+            var attachments = (await _taskRepo.GetAttachmentsAsync(id)).ToList();
+            var comments = (await _taskRepo.GetCommentsAsync(id)).ToList();
+
             ViewBag.TimeLogs = timeLogs;
+            ViewBag.Attachments = attachments;
+            ViewBag.Comments = comments;
             ViewBag.CanEditDelete = IsAdminOrTicketAdmin;
+            ViewBag.AssignableUsers = await _taskRepo.GetAssignableUsersAsync();
             return View(task);
+        }
+
+        // ── Comments ──
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddComment(int TaskId, string CommentText)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == 0) return Challenge();
+
+            var task = await _taskRepo.GetByIdAsync(TaskId);
+            if (task == null) return NotFound();
+
+            if (!IsAdminOrTicketAdmin)
+            {
+                if (task.UserId != userId && task.AssignedToUserId != userId)
+                    return Forbid();
+            }
+
+            if (!string.IsNullOrWhiteSpace(CommentText))
+            {
+                var comment = new TaskComment
+                {
+                    TaskId = TaskId,
+                    UserId = userId,
+                    CommentText = CommentText
+                };
+                await _taskRepo.AddCommentAsync(comment);
+
+                // Handle Mentions
+                var assignableUsers = await _taskRepo.GetAssignableUsersAsync();
+                var taggedUsers = new List<UserMaster>();
+                foreach (var u in assignableUsers)
+                {
+                    if (CommentText.Contains($"@{u.FullName}", StringComparison.OrdinalIgnoreCase))
+                    {
+                        taggedUsers.Add(u);
+                    }
+                }
+
+                if (taggedUsers.Any())
+                {
+                    var currentUser = await GetCurrentUserAsync();
+                    var senderName = currentUser?.FullName ?? "Someone";
+                    foreach (var taggedUser in taggedUsers)
+                    {
+                        if (!string.IsNullOrEmpty(taggedUser.Email))
+                        {
+                            _ = Task.Run(() => _taskEmailService.NotifyTaskCommentMentionAsync(task, senderName, taggedUser.FullName, taggedUser.Email, CommentText));
+                        }
+                    }
+                }
+
+                TempData["Success"] = "Comment added successfully.";
+            }
+            return RedirectToAction("Details", new { id = TaskId });
         }
 
         // ── Edit Task (Admin / Ticket Admin only) ──
@@ -215,6 +304,7 @@ namespace CentralLicenceApp.Controllers
                 return Forbid();
 
             var vm = await BuildFormViewModelAsync(task, isEdit: true);
+            vm.ExistingAttachments = (await _taskRepo.GetAttachmentsAsync(id)).ToList();
             return View("Create", vm);
         }
 
@@ -235,15 +325,72 @@ namespace CentralLicenceApp.Controllers
                 TempData["Error"] = "Please fill all required fields (Title, Task Type, Category).";
                 model.Task.Id = id;
                 var vm = await BuildFormViewModelAsync(model.Task, isEdit: true);
+                vm.ExistingAttachments = (await _taskRepo.GetAttachmentsAsync(id)).ToList();
                 return View("Create", vm);
             }
 
             model.Task.Id = id;
             model.Task.UserId = existing.UserId;
 
+            // ── Detect changes before persisting ──
+            var changes = new List<string>();
+
+            if (!string.Equals(existing.TaskTitle, model.Task.TaskTitle, StringComparison.Ordinal))
+                changes.Add($"Title: \"{existing.TaskTitle}\" → \"{model.Task.TaskTitle}\"");
+
+            if (existing.TaskDate.Date != model.Task.TaskDate.Date)
+                changes.Add($"Task Date: {existing.TaskDate:dd MMM yyyy} → {model.Task.TaskDate:dd MMM yyyy}");
+
+            if (existing.TaskTypeId != model.Task.TaskTypeId)
+                changes.Add($"Task Type changed");
+
+            if (existing.TaskCategoryId != model.Task.TaskCategoryId)
+                changes.Add($"Category changed");
+
+            if (!string.Equals(existing.Description?.Trim(), model.Task.Description?.Trim(), StringComparison.Ordinal))
+                changes.Add("Description updated");
+
+            if (existing.AssignedToUserId != model.Task.AssignedToUserId)
+            {
+                var oldName = string.IsNullOrWhiteSpace(existing.AssignedToUserName) ? "Unassigned" : existing.AssignedToUserName;
+                var newUser = model.Task.AssignedToUserId.HasValue
+                    ? (await _userRepo.GetByIdAsync(model.Task.AssignedToUserId.Value))?.FullName ?? "Unknown"
+                    : "Unassigned";
+                changes.Add($"Assigned To: \"{oldName}\" → \"{newUser}\"");
+            }
+
+            if (!string.Equals(existing.Status, model.Task.Status, StringComparison.Ordinal))
+                changes.Add($"Status: \"{existing.Status}\" → \"{model.Task.Status}\"");
+
+            if (existing.ProjectModuleId != model.Task.ProjectModuleId)
+                changes.Add("Project / Module changed");
+
+            if (existing.TicketId != model.Task.TicketId)
+                changes.Add("Linked Ticket changed");
+
             await _taskRepo.UpdateAsync(model.Task);
+
+            // Save any newly-uploaded attachments
+            await SaveAttachmentsAsync(model.Attachments, id, userId);
+
+            // Email notification — only fire when something actually changed AND assignee has an email
+            if (changes.Count > 0 && model.Task.AssignedToUserId.HasValue)
+            {
+                var fullTask = await _taskRepo.GetByIdAsync(id);
+                if (fullTask != null)
+                {
+                    var assignee = await _userRepo.GetByIdAsync(model.Task.AssignedToUserId.Value);
+                    if (assignee != null && !string.IsNullOrWhiteSpace(assignee.Email))
+                    {
+                        var capturedChanges = changes.ToList(); // capture for the closure
+                        _ = Task.Run(() => _taskEmailService.NotifyTaskUpdatedAsync(
+                            fullTask, assignee.FullName ?? assignee.Username, assignee.Email, capturedChanges));
+                    }
+                }
+            }
+
             TempData["Success"] = "Task updated successfully.";
-            return RedirectToAction("Index");
+            return RedirectToAction("Details", new { id });
         }
 
         // ── Delete Task (Admin / Ticket Admin only, AJAX) ──
@@ -265,8 +412,28 @@ namespace CentralLicenceApp.Controllers
             if (timeLogs.Any(tl => tl.TimeSpentMinutes > 0))
                 return Json(new { success = false, message = "This task has logged time and cannot be deleted. Use 'Cancel Task' instead." });
 
+            // Delete attachment files from disk before deleting task
+            var attachments = (await _taskRepo.GetAttachmentsAsync(id)).ToList();
+            foreach (var att in attachments)
+                DeletePhysicalFile(att.FilePath);
+
             await _taskRepo.DeleteAsync(id);
             return Json(new { success = true, message = "Task deleted successfully." });
+        }
+
+        // ── Delete Attachment (Admin / Ticket Admin only, AJAX) ──
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Administrator,Ticket Admin")]
+        public async Task<IActionResult> DeleteAttachment(int id)
+        {
+            var att = await _taskRepo.GetAttachmentByIdAsync(id);
+            if (att == null) return Json(new { success = false, message = "Attachment not found." });
+
+            DeletePhysicalFile(att.FilePath);
+            await _taskRepo.DeleteAttachmentAsync(id);
+
+            return Json(new { success = true, message = "Attachment deleted." });
         }
 
         // ── Cancel Task (Admin / Ticket Admin only, AJAX) ──
@@ -462,6 +629,59 @@ namespace CentralLicenceApp.Controllers
                 AssignableUsers = (await _taskRepo.GetAssignableUsersAsync()).ToList(),
                 IsEdit = isEdit
             };
+        }
+
+        /// <summary>
+        /// Validates and persists uploaded IFormFile list to disk + DB.
+        /// </summary>
+        private async Task SaveAttachmentsAsync(IEnumerable<IFormFile>? files, int taskId, int userId)
+        {
+            if (files == null) return;
+
+            var uploadRoot = Path.Combine(_env.WebRootPath, "uploads", "task-attachments", taskId.ToString());
+            Directory.CreateDirectory(uploadRoot);
+
+            foreach (var file in files)
+            {
+                if (file == null || file.Length == 0) continue;
+
+                var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (!AllowedExtensions.Contains(ext)) continue;
+                if (file.Length > MaxFileSizeBytes) continue;
+
+                var storedName = $"{Guid.NewGuid()}{ext}";
+                var physicalPath = Path.Combine(uploadRoot, storedName);
+
+                using (var fs = new FileStream(physicalPath, FileMode.Create))
+                    await file.CopyToAsync(fs);
+
+                var relPath = $"/uploads/task-attachments/{taskId}/{storedName}";
+
+                await _taskRepo.AddAttachmentAsync(new TaskAttachment
+                {
+                    TaskId = taskId,
+                    FileName = storedName,
+                    OriginalName = file.FileName,
+                    FilePath = relPath,
+                    FileSize = file.Length,
+                    UploadedById = userId
+                });
+            }
+        }
+
+        /// <summary>Deletes physical file from wwwroot using its relative web path.</summary>
+        private void DeletePhysicalFile(string relPath)
+        {
+            try
+            {
+                var physical = Path.Combine(_env.WebRootPath, relPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                if (System.IO.File.Exists(physical))
+                    System.IO.File.Delete(physical);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete attachment file: {Path}", relPath);
+            }
         }
     }
 }

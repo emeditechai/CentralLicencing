@@ -19,7 +19,7 @@ namespace CentralLicenceApp.Repositories
 
         private const string BaseSelectSql = @"
             SELECT t.Id, t.UserId, t.AssignedToUserId, t.TaskDate, t.TaskTypeId, t.TaskCategoryId,
-                   t.TaskTitle, t.Description, t.TicketId, t.ProjectModuleId,
+                   t.TaskTitle, t.TaskNumber, t.Description, t.TicketId, t.ProjectModuleId,
                    t.TimeSpentMinutes, t.Status, t.CreatedAt, t.UpdatedAt,
                    u.FullName AS UserName,
                    au.FullName AS AssignedToUserName,
@@ -69,7 +69,7 @@ namespace CentralLicenceApp.Repositories
             // Uses user-scoped time log aggregation so agent sees only their own logged time
             var sql = @"
             SELECT t.Id, t.UserId, t.AssignedToUserId, t.TaskDate, t.TaskTypeId, t.TaskCategoryId,
-                   t.TaskTitle, t.Description, t.TicketId, t.ProjectModuleId,
+                   t.TaskTitle, t.TaskNumber, t.Description, t.TicketId, t.ProjectModuleId,
                    t.TimeSpentMinutes, t.Status, t.CreatedAt, t.UpdatedAt,
                    u.FullName AS UserName,
                    au.FullName AS AssignedToUserName,
@@ -138,16 +138,18 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             await ((SqlConnection)conn).OpenAsync();
+            task.TaskNumber = await GenerateTaskNumberAsync(conn);
+
             const string sql = @"
-                INSERT INTO DailyTaskLog (UserId, AssignedToUserId, TaskDate, TaskTypeId, TaskCategoryId, TaskTitle,
+                INSERT INTO DailyTaskLog (UserId, AssignedToUserId, TaskDate, TaskTypeId, TaskCategoryId, TaskTitle, TaskNumber,
                     Description, TicketId, ProjectModuleId, TimeSpentMinutes, Status, CreatedAt)
-                VALUES (@UserId, @AssignedToUserId, @TaskDate, @TaskTypeId, @TaskCategoryId, @TaskTitle,
+                VALUES (@UserId, @AssignedToUserId, @TaskDate, @TaskTypeId, @TaskCategoryId, @TaskTitle, @TaskNumber,
                     @Description, @TicketId, @ProjectModuleId, @TimeSpentMinutes, @Status, GETDATE());
                 SELECT CAST(SCOPE_IDENTITY() AS INT);";
             return await conn.ExecuteScalarAsync<int>(sql, new
             {
                 task.UserId, task.AssignedToUserId, task.TaskDate, task.TaskTypeId, task.TaskCategoryId,
-                task.TaskTitle, task.Description, task.TicketId, task.ProjectModuleId,
+                task.TaskTitle, task.TaskNumber, task.Description, task.TicketId, task.ProjectModuleId,
                 task.TimeSpentMinutes, task.Status
             });
         }
@@ -416,17 +418,115 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             await ((SqlConnection)conn).OpenAsync();
-            var scriptPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "SqlScripts", "062_CreateDailyTaskLogTables.sql");
-            if (!File.Exists(scriptPath)) return;
-            var sql = await File.ReadAllTextAsync(scriptPath);
-            foreach (var batch in sql.Split(new[] { "\nGO\n", "\nGO\r\n" }, StringSplitOptions.RemoveEmptyEntries))
+
+            var scripts = new[] { "062_CreateDailyTaskLogTables.sql", "081_CreateTaskAttachmentTable.sql", "082_CreateTaskCommentTable.sql", "083_AddTaskNumberToDailyTaskLog.sql" };
+            foreach (var scriptFile in scripts)
             {
-                if (!string.IsNullOrWhiteSpace(batch))
-                    await conn.ExecuteAsync(batch);
+                var scriptPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "SqlScripts", scriptFile);
+                if (!File.Exists(scriptPath)) continue;
+                var sql = await File.ReadAllTextAsync(scriptPath);
+                foreach (var batch in sql.Split(new[] { "\nGO\n", "\nGO\r\n" }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (!string.IsNullOrWhiteSpace(batch))
+                        await conn.ExecuteAsync(batch);
+                }
             }
         }
 
+        // ── Attachments ──
+
+        public async Task<IEnumerable<TaskAttachment>> GetAttachmentsAsync(int taskId)
+        {
+            using var conn = CreateConnection();
+            await ((SqlConnection)conn).OpenAsync();
+            return await conn.QueryAsync<TaskAttachment>(
+                @"SELECT a.Id, a.TaskId, a.FileName, a.OriginalName, a.FilePath, a.FileSize,
+                         a.UploadedById, a.CreatedAt,
+                         u.FullName AS UploadedByName
+                  FROM TaskAttachment a
+                  INNER JOIN UserMaster u ON u.Id = a.UploadedById
+                  WHERE a.TaskId = @TaskId
+                  ORDER BY a.CreatedAt DESC",
+                new { TaskId = taskId });
+        }
+
+        public async Task<TaskAttachment?> GetAttachmentByIdAsync(int id)
+        {
+            using var conn = CreateConnection();
+            await ((SqlConnection)conn).OpenAsync();
+            return await conn.QuerySingleOrDefaultAsync<TaskAttachment>(
+                @"SELECT a.Id, a.TaskId, a.FileName, a.OriginalName, a.FilePath, a.FileSize,
+                         a.UploadedById, a.CreatedAt,
+                         u.FullName AS UploadedByName
+                  FROM TaskAttachment a
+                  INNER JOIN UserMaster u ON u.Id = a.UploadedById
+                  WHERE a.Id = @Id",
+                new { Id = id });
+        }
+
+        public async Task<int> AddAttachmentAsync(TaskAttachment attachment)
+        {
+            using var conn = CreateConnection();
+            await ((SqlConnection)conn).OpenAsync();
+            return await conn.ExecuteScalarAsync<int>(
+                @"INSERT INTO TaskAttachment (TaskId, FileName, OriginalName, FilePath, FileSize, UploadedById, CreatedAt)
+                  VALUES (@TaskId, @FileName, @OriginalName, @FilePath, @FileSize, @UploadedById, GETDATE());
+                  SELECT CAST(SCOPE_IDENTITY() AS INT);",
+                new { attachment.TaskId, attachment.FileName, attachment.OriginalName,
+                      attachment.FilePath, attachment.FileSize, attachment.UploadedById });
+        }
+
+        public async Task<bool> DeleteAttachmentAsync(int id)
+        {
+            using var conn = CreateConnection();
+            await ((SqlConnection)conn).OpenAsync();
+            return await conn.ExecuteAsync("DELETE FROM TaskAttachment WHERE Id = @Id", new { Id = id }) > 0;
+        }
+
+        // ── Comments ──
+
+        public async Task<IEnumerable<TaskComment>> GetCommentsAsync(int taskId)
+        {
+            using var conn = CreateConnection();
+            await ((SqlConnection)conn).OpenAsync();
+            return await conn.QueryAsync<TaskComment>(
+                @"SELECT c.Id, c.TaskId, c.UserId, c.CommentText, c.CreatedAt,
+                         u.FullName AS UserName, u.ProfileImagePath
+                  FROM TaskComment c
+                  INNER JOIN UserMaster u ON u.Id = c.UserId
+                  WHERE c.TaskId = @TaskId
+                  ORDER BY c.CreatedAt ASC",
+                new { TaskId = taskId });
+        }
+
+        public async Task<int> AddCommentAsync(TaskComment comment)
+        {
+            using var conn = CreateConnection();
+            await ((SqlConnection)conn).OpenAsync();
+            return await conn.ExecuteScalarAsync<int>(
+                @"INSERT INTO TaskComment (TaskId, UserId, CommentText, CreatedAt)
+                  VALUES (@TaskId, @UserId, @CommentText, GETDATE());
+                  SELECT CAST(SCOPE_IDENTITY() AS INT);",
+                new { comment.TaskId, comment.UserId, comment.CommentText });
+        }
+
         // ── Private Helpers ──
+
+        private async Task<string> GenerateTaskNumberAsync(IDbConnection conn)
+        {
+            var today = DateTime.Today;
+            // Financial year starts April 1st
+            var startYear = today.Month >= 4 ? today.Year : today.Year - 1;
+            var fyPrefix = $"T-{(startYear % 100):00}{(startYear + 1) % 100:00}"; // e.g. T-2627
+
+            var sql = @"
+                SELECT MAX(CAST(SUBSTRING(TaskNumber, 8, 6) AS INT)) 
+                FROM DailyTaskLog 
+                WHERE TaskNumber LIKE @Prefix + '%' AND ISNUMERIC(SUBSTRING(TaskNumber, 8, 6)) = 1";
+            
+            var maxNumber = await conn.ExecuteScalarAsync<int?>(sql, new { Prefix = fyPrefix }) ?? 0;
+            return $"{fyPrefix}{(maxNumber + 1):D6}";
+        }
 
         private static void AppendFilters(ref string sql, DynamicParameters p,
             DateTime? from, DateTime? to, int? taskTypeId, int? categoryId, string? status, string? search)

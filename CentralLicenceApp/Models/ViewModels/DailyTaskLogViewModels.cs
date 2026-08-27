@@ -1,4 +1,5 @@
 using CentralLicenceApp.Models;
+using Microsoft.AspNetCore.Http;
 
 namespace CentralLicenceApp.Models.ViewModels
 {
@@ -41,6 +42,11 @@ namespace CentralLicenceApp.Models.ViewModels
         public List<ProjectModuleMaster> Projects { get; set; } = new();
         public List<UserMaster> AssignableUsers { get; set; } = new();
         public bool IsEdit { get; set; }
+
+        // Attachment upload (Create & Edit)
+        public List<IFormFile> Attachments { get; set; } = new();
+        // Already-persisted attachments (Edit only — shown with delete option)
+        public List<TaskAttachment> ExistingAttachments { get; set; } = new();
     }
 
     public class TaskLogDashboardViewModel

@@ -411,158 +411,59 @@ namespace CentralLicenceApp.Services
               );
             END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductMaster')
-                AND name = 'Id')
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductMaster') AND name = 'Id')
             BEGIN
               THROW 50003, 'ProductMaster table exists but does not contain Id column. Fix the legacy table before running this migration.', 1;
             END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductMaster')
-                AND name = 'ProductCode')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductMaster') AND name = 'ProductCode')
               ALTER TABLE dbo.ProductMaster ADD [ProductCode] NVARCHAR(50) NULL;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductMaster')
-                AND name = 'ProductName')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductMaster') AND name = 'ProductName')
               ALTER TABLE dbo.ProductMaster ADD [ProductName] NVARCHAR(150) NULL;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductMaster')
-                AND name = 'ProductType')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductMaster') AND name = 'ProductType')
               ALTER TABLE dbo.ProductMaster ADD [ProductType] NVARCHAR(50) NULL;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductMaster')
-                AND name = 'IsActive')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductMaster') AND name = 'IsActive')
               ALTER TABLE dbo.ProductMaster ADD [IsActive] BIT NOT NULL DEFAULT 1;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductMaster')
-                AND name = 'CreatedAt')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductMaster') AND name = 'CreatedAt')
               ALTER TABLE dbo.ProductMaster ADD [CreatedAt] DATETIME NOT NULL DEFAULT GETDATE();
-            END
+          ");
 
-            EXEC(N'
+          await conn.ExecuteAsync(@"
               UPDATE dbo.ProductMaster
-              SET ProductCode = ''PRD-'' + RIGHT(''00000'' + CAST(Id AS VARCHAR(5)), 5)
-              WHERE NULLIF(LTRIM(RTRIM(ProductCode)), '''') IS NULL;
+              SET ProductCode = 'PRD-' + RIGHT('00000' + CAST(Id AS VARCHAR(5)), 5)
+              WHERE NULLIF(LTRIM(RTRIM(ProductCode)), '') IS NULL;
 
               UPDATE dbo.ProductMaster
               SET ProductName = ProductCode
-              WHERE NULLIF(LTRIM(RTRIM(ProductName)), '''') IS NULL;
+              WHERE NULLIF(LTRIM(RTRIM(ProductName)), '') IS NULL;
 
               UPDATE dbo.ProductMaster
-              SET ProductType = ''Healthcare''
-              WHERE NULLIF(LTRIM(RTRIM(ProductType)), '''') IS NULL;
+              SET ProductType = 'Healthcare'
+              WHERE NULLIF(LTRIM(RTRIM(ProductType)), '') IS NULL;
 
               ALTER TABLE dbo.ProductMaster ALTER COLUMN [ProductCode] NVARCHAR(50) NOT NULL;
               ALTER TABLE dbo.ProductMaster ALTER COLUMN [ProductName] NVARCHAR(150) NOT NULL;
               ALTER TABLE dbo.ProductMaster ALTER COLUMN [ProductType] NVARCHAR(50) NOT NULL;
-            ')
+          ");
 
+          await conn.ExecuteAsync(@"
             IF NOT EXISTS (
               SELECT 1
               FROM sys.key_constraints kc
-              INNER JOIN sys.index_columns ic
-                ON ic.object_id = kc.parent_object_id
-               AND ic.index_id = kc.unique_index_id
-              INNER JOIN sys.columns c
-                ON c.object_id = ic.object_id
-               AND c.column_id = ic.column_id
-              WHERE kc.parent_object_id = OBJECT_ID('dbo.ProductMaster')
-                AND kc.type IN ('PK', 'UQ')
+              INNER JOIN sys.index_columns ic ON ic.object_id = kc.parent_object_id AND ic.index_id = kc.unique_index_id
+              INNER JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+              WHERE kc.parent_object_id = OBJECT_ID('dbo.ProductMaster') AND kc.type IN ('PK', 'UQ')
               GROUP BY kc.name
               HAVING COUNT(*) = 1 AND MAX(c.name) = 'Id')
             BEGIN
-              EXEC(N'
                 IF EXISTS (SELECT 1 FROM dbo.ProductMaster WHERE Id IS NULL)
                 BEGIN
-                  THROW 50004, ''ProductMaster contains NULL Id values. Fix those rows before running this migration.'', 1;
+                  THROW 50004, 'ProductMaster contains NULL Id values. Fix those rows before running this migration.', 1;
                 END;
-
-                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='ClientPurchasedProduct')
-                BEGIN
-                  CREATE TABLE [dbo].[ClientPurchasedProduct] (
-                    [Id]                 INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
-                    [ClientDetailsId]    INT            NOT NULL REFERENCES [dbo].[ClientDetails]([ID]) ON DELETE CASCADE,
-                    [ClientCode]         VARCHAR(20)    NOT NULL,
-                    [ProductId]          INT            NOT NULL REFERENCES [dbo].[ProductMaster]([Id]),
-                    [ProductRateId]      INT            NOT NULL REFERENCES [dbo].[ProductRate]([Id]),
-                    [ProductCode]        NVARCHAR(50)   NOT NULL,
-                    [ProductName]        NVARCHAR(150)  NOT NULL,
-                    [PricingModel]       NVARCHAR(50)   NOT NULL,
-                    [BillingModel]       NVARCHAR(20)   NOT NULL DEFAULT ''One Time'',
-                    [BillingFrequency]   NVARCHAR(20)   NOT NULL DEFAULT '''',
-                    [BasePrice]          DECIMAL(18,2)  NOT NULL,
-                    [AmcCalculationType] NVARCHAR(20)   NOT NULL,
-                    [AmcPercentage]      DECIMAL(18,4)  NOT NULL,
-                    [AmcAmount]          DECIMAL(18,2)  NOT NULL,
-                    [IsActive]           BIT            NOT NULL DEFAULT 1,
-                    [CreatedAt]          DATETIME       NOT NULL DEFAULT GETDATE()
-                  );
-                END
-                ELSE
-                BEGIN
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ClientCode')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ClientCode] VARCHAR(20) NULL;
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ProductId')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ProductId] INT NULL;
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ProductRateId')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ProductRateId] INT NULL;
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ProductCode')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ProductCode] NVARCHAR(50) NULL;
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ProductName')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ProductName] NVARCHAR(150) NULL;
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='PricingModel')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [PricingModel] NVARCHAR(50) NULL;
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='BillingModel')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [BillingModel] NVARCHAR(20) NULL;
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='BillingFrequency')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [BillingFrequency] NVARCHAR(20) NULL;
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='BasePrice')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [BasePrice] DECIMAL(18,2) NULL;
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='AmcCalculationType')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [AmcCalculationType] NVARCHAR(20) NULL;
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='AmcPercentage')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [AmcPercentage] DECIMAL(18,4) NULL;
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='AmcAmount')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [AmcAmount] DECIMAL(18,2) NULL;
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='IsActive')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [IsActive] BIT NOT NULL DEFAULT 1;
-                  IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='CreatedAt')
-                    ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [CreatedAt] DATETIME NOT NULL DEFAULT GETDATE();
-                END
-
-                UPDATE dbo.ClientPurchasedProduct
-                SET BillingModel = 'One Time'
-                WHERE NULLIF(LTRIM(RTRIM(BillingModel)), '') IS NULL;
-
-                UPDATE dbo.ClientPurchasedProduct
-                SET BillingFrequency = ''
-                WHERE BillingFrequency IS NULL;
-
-                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_ClientPurchasedProduct_ClientCode' AND object_id=OBJECT_ID('ClientPurchasedProduct'))
-                  CREATE INDEX [IX_ClientPurchasedProduct_ClientCode] ON [dbo].[ClientPurchasedProduct]([ClientCode], [ProductName], [PricingModel]);
-
-                IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='UX_ClientPurchasedProduct_ClientDetailsId_ProductRateId' AND object_id=OBJECT_ID('ClientPurchasedProduct'))
-                  CREATE UNIQUE INDEX [UX_ClientPurchasedProduct_ClientDetailsId_ProductRateId] ON [dbo].[ClientPurchasedProduct]([ClientDetailsId], [ProductRateId]);
 
                 IF EXISTS (
                   SELECT Id
@@ -571,22 +472,20 @@ namespace CentralLicenceApp.Services
                   HAVING COUNT(1) > 1
                 )
                 BEGIN
-                  THROW 50005, ''ProductMaster contains duplicate Id values. Fix those rows before running this migration.'', 1;
+                  THROW 50005, 'ProductMaster contains duplicate Id values. Fix those rows before running this migration.', 1;
                 END;
 
-                ALTER TABLE dbo.ProductMaster
-                ADD CONSTRAINT UQ_ProductMaster_Id UNIQUE (Id);
-              ')
+                ALTER TABLE dbo.ProductMaster ADD CONSTRAINT UQ_ProductMaster_Id UNIQUE (Id);
             END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.indexes
-              WHERE name = 'UX_ProductMaster_ProductCode'
-                AND object_id = OBJECT_ID('ProductMaster'))
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_ProductMaster_ProductCode' AND object_id = OBJECT_ID('ProductMaster'))
             BEGIN
-              EXEC(N'CREATE UNIQUE INDEX UX_ProductMaster_ProductCode ON dbo.ProductMaster(ProductCode);')
+              CREATE UNIQUE INDEX UX_ProductMaster_ProductCode ON dbo.ProductMaster(ProductCode);
             END
+          ");
 
+          // Ensure ProductRate is created BEFORE ClientPurchasedProduct
+          await conn.ExecuteAsync(@"
             IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='ProductRate')
             BEGIN
               CREATE TABLE [dbo].[ProductRate] (
@@ -606,130 +505,54 @@ namespace CentralLicenceApp.Services
               );
             END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductRate')
-                AND name = 'ProductId')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductRate') AND name = 'ProductId')
               ALTER TABLE dbo.ProductRate ADD [ProductId] INT NULL;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductRate')
-                AND name = 'PricingModel')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductRate') AND name = 'PricingModel')
               ALTER TABLE dbo.ProductRate ADD [PricingModel] NVARCHAR(50) NULL;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductRate')
-                AND name = 'BillingModel')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductRate') AND name = 'BillingModel')
               ALTER TABLE dbo.ProductRate ADD [BillingModel] NVARCHAR(20) NULL;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductRate')
-                AND name = 'BillingFrequency')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductRate') AND name = 'BillingFrequency')
               ALTER TABLE dbo.ProductRate ADD [BillingFrequency] NVARCHAR(20) NULL;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductRate')
-                AND name = 'ProductSpecification')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductRate') AND name = 'ProductSpecification')
               ALTER TABLE dbo.ProductRate ADD [ProductSpecification] NVARCHAR(500) NULL;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductRate')
-                AND name = 'Features')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductRate') AND name = 'Features')
               ALTER TABLE dbo.ProductRate ADD [Features] NVARCHAR(2000) NULL;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductRate')
-                AND name = 'Rate')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductRate') AND name = 'Rate')
               ALTER TABLE dbo.ProductRate ADD [Rate] DECIMAL(18,2) NOT NULL DEFAULT 0;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductRate')
-                AND name = 'AmcCalculationType')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductRate') AND name = 'AmcCalculationType')
               ALTER TABLE dbo.ProductRate ADD [AmcCalculationType] NVARCHAR(20) NULL;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductRate')
-                AND name = 'AmcPercentage')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductRate') AND name = 'AmcPercentage')
               ALTER TABLE dbo.ProductRate ADD [AmcPercentage] DECIMAL(18,4) NULL;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductRate')
-                AND name = 'AmcAmount')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductRate') AND name = 'AmcAmount')
               ALTER TABLE dbo.ProductRate ADD [AmcAmount] DECIMAL(18,2) NULL;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductRate')
-                AND name = 'IsActive')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductRate') AND name = 'IsActive')
               ALTER TABLE dbo.ProductRate ADD [IsActive] BIT NOT NULL DEFAULT 1;
-            END
 
-            IF NOT EXISTS (
-              SELECT 1 FROM sys.columns
-              WHERE object_id = OBJECT_ID('dbo.ProductRate')
-                AND name = 'CreatedAt')
-            BEGIN
+            IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.ProductRate') AND name = 'CreatedAt')
               ALTER TABLE dbo.ProductRate ADD [CreatedAt] DATETIME NOT NULL DEFAULT GETDATE();
-            END
+          ");
 
-            EXEC(N'
-              UPDATE dbo.ProductRate
-              SET PricingModel = ''Basic''
-              WHERE NULLIF(LTRIM(RTRIM(PricingModel)), '''') IS NULL;
-
-              UPDATE dbo.ProductRate
-              SET BillingModel = ''One Time''
-              WHERE NULLIF(LTRIM(RTRIM(BillingModel)), '''') IS NULL;
-
-              UPDATE dbo.ProductRate
-              SET BillingFrequency = ''''
-              WHERE BillingFrequency IS NULL;
-
-              UPDATE dbo.ProductRate
-              SET AmcCalculationType = ''Percentage''
-              WHERE NULLIF(LTRIM(RTRIM(AmcCalculationType)), '''') IS NULL;
-
-              UPDATE dbo.ProductRate
-              SET AmcPercentage = 0
-              WHERE AmcPercentage IS NULL;
-
-              UPDATE dbo.ProductRate
-              SET AmcAmount = 0
-              WHERE AmcAmount IS NULL;
+          await conn.ExecuteAsync(@"
+              UPDATE dbo.ProductRate SET PricingModel = 'Basic' WHERE NULLIF(LTRIM(RTRIM(PricingModel)), '') IS NULL;
+              UPDATE dbo.ProductRate SET BillingModel = 'One Time' WHERE NULLIF(LTRIM(RTRIM(BillingModel)), '') IS NULL;
+              UPDATE dbo.ProductRate SET BillingFrequency = '' WHERE BillingFrequency IS NULL;
+              UPDATE dbo.ProductRate SET AmcCalculationType = 'Percentage' WHERE NULLIF(LTRIM(RTRIM(AmcCalculationType)), '') IS NULL;
+              UPDATE dbo.ProductRate SET AmcPercentage = 0 WHERE AmcPercentage IS NULL;
+              UPDATE dbo.ProductRate SET AmcAmount = 0 WHERE AmcAmount IS NULL;
 
               IF EXISTS (SELECT 1 FROM dbo.ProductRate WHERE ProductId IS NULL)
               BEGIN
-                THROW 50001, ''ProductRate contains rows with NULL ProductId. Fix those rows before running this migration.'', 1;
+                THROW 50001, 'ProductRate contains rows with NULL ProductId. Fix those rows before running this migration.', 1;
               END;
 
               IF EXISTS (
@@ -739,7 +562,7 @@ namespace CentralLicenceApp.Services
                 WHERE pm.Id IS NULL
               )
               BEGIN
-                THROW 50002, ''ProductRate contains rows pointing to missing ProductMaster records. Fix those rows before running this migration.'', 1;
+                THROW 50002, 'ProductRate contains rows pointing to missing ProductMaster records. Fix those rows before running this migration.', 1;
               END;
 
               ALTER TABLE dbo.ProductRate ALTER COLUMN [ProductId] INT NOT NULL;
@@ -749,34 +572,91 @@ namespace CentralLicenceApp.Services
               ALTER TABLE dbo.ProductRate ALTER COLUMN [AmcCalculationType] NVARCHAR(20) NOT NULL;
               ALTER TABLE dbo.ProductRate ALTER COLUMN [AmcPercentage] DECIMAL(18,4) NOT NULL;
               ALTER TABLE dbo.ProductRate ALTER COLUMN [AmcAmount] DECIMAL(18,2) NOT NULL;
-            ')
+          ");
 
+          await conn.ExecuteAsync(@"
             IF NOT EXISTS (
-              SELECT 1 FROM sys.foreign_keys
-              WHERE name = 'FK_ProductRate_ProductMaster')
+              SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_ProductRate_ProductMaster')
             BEGIN
-              EXEC(N'
-                ALTER TABLE dbo.ProductRate
-                WITH CHECK ADD CONSTRAINT FK_ProductRate_ProductMaster
-                FOREIGN KEY (ProductId) REFERENCES dbo.ProductMaster(Id);
-              ')
+                ALTER TABLE dbo.ProductRate WITH CHECK ADD CONSTRAINT FK_ProductRate_ProductMaster FOREIGN KEY (ProductId) REFERENCES dbo.ProductMaster(Id);
             END
 
             IF EXISTS (
-              SELECT 1 FROM sys.indexes
-              WHERE name = 'UX_ProductRate_ProductId_PricingModel'
-                AND object_id = OBJECT_ID('ProductRate'))
+              SELECT 1 FROM sys.indexes WHERE name = 'UX_ProductRate_ProductId_PricingModel' AND object_id = OBJECT_ID('ProductRate'))
             BEGIN
               DROP INDEX UX_ProductRate_ProductId_PricingModel ON dbo.ProductRate;
             END
 
             IF NOT EXISTS (
-              SELECT 1 FROM sys.indexes
-              WHERE name = 'UX_ProductRate_ProductId_PricingModel_BillingModel_BillingFrequency'
-                AND object_id = OBJECT_ID('ProductRate'))
+              SELECT 1 FROM sys.indexes WHERE name = 'UX_ProductRate_ProductId_PricingModel_BillingModel_BillingFrequency' AND object_id = OBJECT_ID('ProductRate'))
             BEGIN
-              EXEC(N'CREATE UNIQUE INDEX UX_ProductRate_ProductId_PricingModel_BillingModel_BillingFrequency ON dbo.ProductRate(ProductId, PricingModel, BillingModel, BillingFrequency);')
+              CREATE UNIQUE INDEX UX_ProductRate_ProductId_PricingModel_BillingModel_BillingFrequency ON dbo.ProductRate(ProductId, PricingModel, BillingModel, BillingFrequency);
             END
+          ");
+
+          // NOW Create ClientPurchasedProduct
+          await conn.ExecuteAsync(@"
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name='ClientPurchasedProduct')
+            BEGIN
+              CREATE TABLE [dbo].[ClientPurchasedProduct] (
+                [Id]                 INT            IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                [ClientDetailsId]    INT            NOT NULL REFERENCES [dbo].[ClientDetails]([ID]) ON DELETE CASCADE,
+                [ClientCode]         VARCHAR(20)    NOT NULL,
+                [ProductId]          INT            NOT NULL REFERENCES [dbo].[ProductMaster]([Id]),
+                [ProductRateId]      INT            NOT NULL REFERENCES [dbo].[ProductRate]([Id]),
+                [ProductCode]        NVARCHAR(50)   NOT NULL,
+                [ProductName]        NVARCHAR(150)  NOT NULL,
+                [PricingModel]       NVARCHAR(50)   NOT NULL,
+                [BillingModel]       NVARCHAR(20)   NOT NULL DEFAULT 'One Time',
+                [BillingFrequency]   NVARCHAR(20)   NOT NULL DEFAULT '',
+                [BasePrice]          DECIMAL(18,2)  NOT NULL,
+                [AmcCalculationType] NVARCHAR(20)   NOT NULL,
+                [AmcPercentage]      DECIMAL(18,4)  NOT NULL,
+                [AmcAmount]          DECIMAL(18,2)  NOT NULL,
+                [IsActive]           BIT            NOT NULL DEFAULT 1,
+                [CreatedAt]          DATETIME       NOT NULL DEFAULT GETDATE()
+              );
+            END
+
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ClientCode')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ClientCode] VARCHAR(20) NULL;
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ProductId')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ProductId] INT NULL;
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ProductRateId')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ProductRateId] INT NULL;
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ProductCode')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ProductCode] NVARCHAR(50) NULL;
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='ProductName')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [ProductName] NVARCHAR(150) NULL;
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='PricingModel')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [PricingModel] NVARCHAR(50) NULL;
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='BillingModel')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [BillingModel] NVARCHAR(20) NULL;
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='BillingFrequency')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [BillingFrequency] NVARCHAR(20) NULL;
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='BasePrice')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [BasePrice] DECIMAL(18,2) NULL;
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='AmcCalculationType')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [AmcCalculationType] NVARCHAR(20) NULL;
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='AmcPercentage')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [AmcPercentage] DECIMAL(18,4) NULL;
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='AmcAmount')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [AmcAmount] DECIMAL(18,2) NULL;
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='IsActive')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [IsActive] BIT NOT NULL DEFAULT 1;
+            IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id=OBJECT_ID('ClientPurchasedProduct') AND name='CreatedAt')
+              ALTER TABLE [dbo].[ClientPurchasedProduct] ADD [CreatedAt] DATETIME NOT NULL DEFAULT GETDATE();
+          ");
+
+          await conn.ExecuteAsync(@"
+            UPDATE dbo.ClientPurchasedProduct SET BillingModel = 'One Time' WHERE NULLIF(LTRIM(RTRIM(BillingModel)), '') IS NULL;
+            UPDATE dbo.ClientPurchasedProduct SET BillingFrequency = '' WHERE BillingFrequency IS NULL;
+
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='IX_ClientPurchasedProduct_ClientCode' AND object_id=OBJECT_ID('ClientPurchasedProduct'))
+              CREATE INDEX [IX_ClientPurchasedProduct_ClientCode] ON [dbo].[ClientPurchasedProduct]([ClientCode], [ProductName], [PricingModel]);
+
+            IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='UX_ClientPurchasedProduct_ClientDetailsId_ProductRateId' AND object_id=OBJECT_ID('ClientPurchasedProduct'))
+              CREATE UNIQUE INDEX [UX_ClientPurchasedProduct_ClientDetailsId_ProductRateId] ON [dbo].[ClientPurchasedProduct]([ClientDetailsId], [ProductRateId]);
           ");
         }
 
@@ -1207,8 +1087,9 @@ namespace CentralLicenceApp.Services
                 await conn.ExecuteAsync(@"
                   IF OBJECT_ID('dbo.usp_Report_ClientDetails', 'P') IS NOT NULL
                     DROP PROCEDURE dbo.usp_Report_ClientDetails;
+                ");
 
-                  EXEC(N'
+                await conn.ExecuteAsync(@"
                   CREATE PROCEDURE dbo.usp_Report_ClientDetails
                     @FromDate DATE = NULL,
                     @ToDate DATE = NULL,
@@ -1227,22 +1108,22 @@ namespace CentralLicenceApp.Services
                       cd.address AS Address,
                       ISNULL(cd.IsInternalUse, 0) AS IsInternalUse,
                       cd.ReferenceClientCode,
-                      COALESCE(pp.PurchasedProductSummary, NULLIF(LTRIM(RTRIM(cd.ProductPurchased)), ''''''''), '''''''') AS PurchasedProductSummary,
+                      COALESCE(pp.PurchasedProductSummary, NULLIF(LTRIM(RTRIM(cd.ProductPurchased)), ''), '') AS PurchasedProductSummary,
                       cl.Startdate AS LicenseStartDate,
                       COALESCE(cd.IsActive, cl.IsActive) AS IsActive
                     FROM dbo.ClientAppLicense cl
                     LEFT JOIN dbo.ClientDetails cd ON cd.ClientCode = cl.ClientCode
                     OUTER APPLY (
-                      SELECT STRING_AGG(CONCAT(cpp.ProductName, '' - '', cpp.PricingModel, '' / '', cpp.BillingModel, CASE WHEN NULLIF(LTRIM(RTRIM(cpp.BillingFrequency)), '''') IS NULL THEN '''' ELSE '' / '' + cpp.BillingFrequency END, '' (Base: Rs '', CONVERT(VARCHAR(30), CAST(cpp.BasePrice AS DECIMAL(18,2))), '', AMC: Rs '', CONVERT(VARCHAR(30), CAST(cpp.AmcAmount AS DECIMAL(18,2))), '')''), '', '')
+                      SELECT STRING_AGG(CONCAT(cpp.ProductName, ' - ', cpp.PricingModel, ' / ', cpp.BillingModel, CASE WHEN NULLIF(LTRIM(RTRIM(cpp.BillingFrequency)), '') IS NULL THEN '' ELSE ' / ' + cpp.BillingFrequency END, ' (Base: Rs ', CONVERT(VARCHAR(30), CAST(cpp.BasePrice AS DECIMAL(18,2))), ', AMC: Rs ', CONVERT(VARCHAR(30), CAST(cpp.AmcAmount AS DECIMAL(18,2))), ')'), ', ')
                         AS PurchasedProductSummary
                       FROM dbo.ClientPurchasedProduct cpp
                       WHERE cpp.ClientCode = cl.ClientCode
                     ) pp
                     WHERE (@FromDate IS NULL OR CAST(cl.Startdate AS DATE) >= @FromDate)
                       AND (@ToDate IS NULL OR CAST(cl.Startdate AS DATE) <= @ToDate)
-                      AND (@ProductType IS NULL OR LTRIM(RTRIM(@ProductType)) = ''''''''' OR cl.ProductType = @ProductType)
+                      AND (@ProductType IS NULL OR LTRIM(RTRIM(@ProductType)) = '' OR cl.ProductType = @ProductType)
                     ORDER BY cl.Startdate DESC, cl.ClientCode;
-                  END');
+                  END
                 ");
               }
 

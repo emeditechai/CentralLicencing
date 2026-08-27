@@ -110,6 +110,12 @@ builder.Services.AddScoped<ITicketEmailService>(sp =>
         sp.GetRequiredService<ICompanySettingsRepository>(),
         connStr,
         sp.GetRequiredService<ILogger<TicketEmailService>>()));
+builder.Services.AddScoped<ITaskEmailService>(sp =>
+    new TaskEmailService(
+        sp.GetRequiredService<IEmailService>(),
+        sp.GetRequiredService<ICompanySettingsRepository>(),
+        connStr,
+        sp.GetRequiredService<ILogger<TaskEmailService>>()));
 builder.Services.AddScoped<IViewRenderService, ViewRenderService>();
 builder.Services.AddSingleton<IBrowserProvider, BrowserProvider>();
 builder.Services.AddScoped<IDocumentPdfService, DocumentPdfService>();
