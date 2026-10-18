@@ -1,0 +1,280 @@
+@model CentralLicenceApp.Models.ViewModels.WhatsAppConfigViewModel
+@{
+    ViewData["Title"] = "WhatsApp Config";
+    var cfg = Model.Config;
+}
+
+<style>
+    .wa-hero { background: linear-gradient(110deg, #1f6f5c 0%, #3a9a7e 55%, #6fd27f 100%); border-radius: 20px; color: #fff; padding: 2rem 2.25rem; }
+    .wa-hero-icon { width: 64px; height: 64px; border-radius: 16px; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.35); display: flex; align-items: center; justify-content: center; font-size: 1.9rem; flex-shrink: 0; }
+    .wa-chip { border-radius: 10px; padding: .55rem 1rem; font-weight: 700; font-size: .95rem; display: inline-flex; align-items: center; gap: .45rem; }
+    .wa-chip-glass { background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.35); color: #fff; }
+    .wa-chip-ok { background: #2f7d4f; color: #fff; }
+    .wa-chip-off { background: #b45309; color: #fff; }
+    .wa-card { background: #fff; border: 1px solid #e5eaf0; border-radius: 18px; box-shadow: 0 1px 3px rgba(15,23,42,.04); }
+    .wa-card-head { padding: 1.15rem 1.75rem; border-bottom: 1px solid #edf1f5; display: flex; align-items: center; justify-content: space-between; }
+    .wa-card-title { font-weight: 700; font-size: 1.1rem; color: #0f172a; display: flex; align-items: center; gap: .6rem; margin: 0; }
+    .wa-card-body { padding: 1.5rem 1.75rem; }
+    .wa-tag { background: #e3f4ea; color: #2f7d4f; font-weight: 700; font-size: .72rem; letter-spacing: .04em; border-radius: 6px; padding: .3rem .55rem; }
+    .wa-label { font-weight: 600; color: #334155; font-size: .9rem; margin-bottom: .4rem; }
+    .wa-help { color: #64748b; font-size: .8rem; margin-top: .35rem; }
+    .wa-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .wa-input { border-radius: 10px; padding: .6rem .85rem; border-color: #dbe2ea; }
+    .wa-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 0; }
+    .wa-toggle-row + .wa-toggle-row { border-top: 1px solid #edf1f5; }
+    .wa-toggle-row .form-check-input { width: 3.1em; height: 1.6em; cursor: pointer; }
+    .wa-toggle-title { font-weight: 700; color: #0f172a; font-size: 1rem; }
+    .wa-toggle-desc { color: #64748b; font-size: .86rem; }
+    .wa-test { background: #f0faf3; border: 1px solid #cfeedd; border-radius: 18px; padding: 1.5rem 1.75rem; }
+    .wa-test-icon { width: 44px; height: 44px; border-radius: 50%; background: #2f7d4f; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; flex-shrink: 0; }
+    .wa-btn { background: #2f7d4f; border: none; color: #fff; border-radius: 10px; font-weight: 600; padding: .7rem 1rem; }
+    .wa-btn:hover { background: #276a43; color: #fff; }
+    .wa-log th { font-size: .82rem; color: #0f172a; font-weight: 700; border-bottom: 2px solid #e5eaf0; padding: .65rem .5rem; }
+    .wa-log td { padding: .7rem .5rem; vertical-align: middle; border-color: #edf1f5; }
+    .wa-mod { font-size: .68rem; font-weight: 700; letter-spacing: .03em; border-radius: 6px; padding: .25rem .5rem; background: #eef2f6; color: #475569; }
+    .wa-mod-EMAIL { background: #e0f2fe; color: #0369a1; }
+    .wa-mod-TEST { background: #fef3c7; color: #92400e; }
+    .wa-status { font-size: .72rem; font-weight: 700; border-radius: 6px; padding: .2rem .5rem; white-space: nowrap; }
+    .wa-status-ok { background: #e3f4ea; color: #2f7d4f; border: 1px solid #b7e2c6; }
+    .wa-status-fail { background: #fde8e8; color: #b91c1c; border: 1px solid #f8c4c4; }
+</style>
+
+<!-- Hero -->
+<div class="wa-hero mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="d-flex align-items-center gap-3">
+        <div class="wa-hero-icon"><i class="bi bi-whatsapp"></i></div>
+        <div>
+            <h3 class="fw-bold mb-1">WhatsApp Notification Configuration</h3>
+            <div style="opacity:.92;">Automate WhatsApp notifications for every email the application sends, via WaSender API</div>
+        </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <span class="wa-chip wa-chip-glass"><i class="bi bi-key-fill"></i> @(cfg.HasApiKey ? $"Token •••• {cfg.ApiKeyLast4}" : "No Token")</span>
+        @if (cfg.IsEnabled)
+        {
+            <span class="wa-chip wa-chip-ok"><i class="bi bi-check-circle-fill"></i> Active</span>
+        }
+        else
+        {
+            <span class="wa-chip wa-chip-off"><i class="bi bi-pause-circle-fill"></i> Paused</span>
+        }
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-xl-7">
+        <form asp-action="Save" method="post" id="waForm">
+            @Html.AntiForgeryToken()
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+            <!-- Credentials -->
+            <div class="wa-card mb-4">
+                <div class="wa-card-head">
+                    <h5 class="wa-card-title"><i class="bi bi-key" style="color:#2f7d4f;"></i> WaSender API Credentials</h5>
+                    <span class="wa-tag">REST API</span>
+                </div>
+                <div class="wa-card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label asp-for="Config.ConfigName" class="wa-label d-block"></label>
+                            <input asp-for="Config.ConfigName" class="form-control wa-input" />
+                            <span asp-validation-for="Config.ConfigName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Config.DefaultCountryCode" class="wa-label d-block"></label>
+                            <input asp-for="Config.DefaultCountryCode" class="form-control wa-input" placeholder="+91" />
+                            <div class="wa-help">Prefixed to 10-digit mobile numbers</div>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Config.ApiUrl" class="wa-label d-block"></label>
+                            <input asp-for="Config.ApiUrl" class="form-control wa-input wa-mono" />
+                            <span asp-validation-for="Config.ApiUrl" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="NewApiKey" class="wa-label d-block"></label>
+                            <div class="input-group">
+                                <input asp-for="NewApiKey" type="password" class="form-control wa-input wa-mono" autocomplete="new-password" value=""
+                                       placeholder="@(cfg.HasApiKey ? $"Saved token •••• {cfg.ApiKeyLast4} — leave blank to keep it" : "Paste your WaSender Bearer Token here...")" />
+                                <button type="button" class="btn btn-outline-secondary" id="toggleKey" title="Show / hide" style="border-radius:0 10px 10px 0;"><i class="bi bi-eye"></i></button>
+                            </div>
+                            <span asp-validation-for="NewApiKey" class="text-danger small"></span>
+                            <div class="wa-help">Bearer Token authenticated against wasenderapi.com. Stored encrypted and never shown again.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Config.AuthHeaderKey" class="wa-label d-block"></label>
+                            <input asp-for="Config.AuthHeaderKey" class="form-control wa-input" placeholder="Authorization" />
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Config.SenderPhone" class="wa-label d-block"></label>
+                            <input asp-for="Config.SenderPhone" class="form-control wa-input" placeholder="Optional" />
+                            <div class="wa-help">Informational: the WaSender session's number</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="Config.MinGapMs" class="wa-label d-block">Gap Between Sends (ms)</label>
+                            <input asp-for="Config.MinGapMs" class="form-control wa-input" />
+                            <span asp-validation-for="Config.MinGapMs" class="text-danger small"></span>
+                            <div class="wa-help">WaSender allows ~1 message / 5 s</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Triggers -->
+            <div class="wa-card mb-4">
+                <div class="wa-card-head">
+                    <h5 class="wa-card-title"><i class="bi bi-toggles" style="color:#2563eb;"></i> Notification Trigger Settings</h5>
+                </div>
+                <div class="wa-card-body py-2">
+                    <div class="wa-toggle-row">
+                        <div>
+                            <div class="wa-toggle-title">Master WhatsApp Service</div>
+                            <div class="wa-toggle-desc">Master switch to globally enable or pause WhatsApp message dispatching</div>
+                        </div>
+                        <div class="form-check form-switch m-0">
+                            <input asp-for="Config.IsEnabled" class="form-check-input" role="switch" />
+                        </div>
+                    </div>
+                    <div class="wa-toggle-row">
+                        <div>
+                            <div class="wa-toggle-title">Email Notifications on WhatsApp</div>
+                            <div class="wa-toggle-desc">
+                                Every email the application sends is also sent on WhatsApp to the recipient user's
+                                <strong>Phone Number</strong> (User Management). Attachments are included.
+                            </div>
+                        </div>
+                        <div class="form-check form-switch m-0">
+                            <input asp-for="Config.NotifyOnEmail" class="form-check-input" role="switch" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end mb-4">
+                <button type="submit" asp-permission="WhatsAppConfig:Edit" class="btn wa-btn px-4">
+                    <i class="bi bi-save me-1"></i> Save Configuration
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-12 col-xl-5">
+        <!-- Test -->
+        <div class="wa-test mb-4">
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="wa-test-icon"><i class="bi bi-send-fill"></i></div>
+                <div>
+                    <h5 class="fw-bold mb-0" style="color:#0f172a;">Send Test WhatsApp</h5>
+                    <div class="text-muted" style="font-size:.9rem;">Verify live connectivity with WaSender API</div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="wa-label d-block" for="testPhone">Recipient Mobile Number</label>
+                <input id="testPhone" class="form-control wa-input" />
+                <div class="wa-help">Can be entered with or without country code.</div>
+            </div>
+            <div class="mb-3">
+                <label class="wa-label d-block" for="testText">Test Message</label>
+                <textarea id="testText" class="form-control wa-input" rows="3">Hello from Central Licence! This is a test WhatsApp message verifying your configuration.</textarea>
+            </div>
+            <button type="button" id="btnTest" asp-permission="WhatsAppConfig:Edit" class="btn wa-btn w-100">
+                <i class="bi bi-whatsapp me-1"></i> Send Test Message
+            </button>
+            @if (cfg.LastTestedDate.HasValue)
+            {
+                <div class="wa-help mt-3">Last test @cfg.LastTestedDate.Value.ToString("dd MMM yyyy hh:mm tt"): @cfg.LastTestResult</div>
+            }
+        </div>
+
+        <!-- Logs -->
+        <div class="wa-card">
+            <div class="wa-card-head">
+                <h5 class="wa-card-title"><i class="bi bi-clock-history"></i> Recent Message Logs</h5>
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;" title="Refresh"><i class="bi bi-arrow-clockwise"></i></a>
+            </div>
+            @if (!Model.RecentLogs.Any())
+            {
+                <div class="text-center text-muted py-5 small">No messages sent yet.</div>
+            }
+            else
+            {
+                <div class="table-responsive px-3" style="max-height:560px;overflow:auto;">
+                    <table class="table wa-log mb-0">
+                        <thead>
+                            <tr><th>Time</th><th>Module</th><th>Recipient</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in Model.RecentLogs)
+                            {
+                                var preview = log.MessageText ?? "";
+                                if (preview.Length > 28) preview = preview[..28] + "…";
+                                <tr title="@(log.IsSuccess ? log.MsgId : log.ErrorMessage)">
+                                    <td>
+                                        <div class="fw-semibold">@log.SentDate.ToString("hh:mm tt")</div>
+                                        <div class="text-muted small">@log.SentDate.ToString("dd MMM")</div>
+                                    </td>
+                                    <td><span class="wa-mod wa-mod-@log.ModuleCode">@log.ModuleCode</span></td>
+                                    <td>
+                                        <div class="fw-semibold wa-mono" style="font-size:.88rem;">@log.RecipientPhone</div>
+                                        <div class="text-muted small">@(log.IsSuccess ? preview : log.ErrorMessage)</div>
+                                    </td>
+                                    <td>
+                                        @if (log.IsSuccess)
+                                        {
+                                            <span class="wa-status wa-status-ok"><i class="bi bi-check2"></i> @(log.Status ?? "sent")</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="wa-status wa-status-fail"><i class="bi bi-x"></i> failed</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.getElementById('toggleKey').addEventListener('click', function () {
+            const box = document.getElementById('NewApiKey');
+            box.type = box.type === 'password' ? 'text' : 'password';
+            this.querySelector('i').className = box.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+        });
+
+        const btnTest = document.getElementById('btnTest');
+        if (btnTest) btnTest.addEventListener('click', async function () {
+            const toPhone = document.getElementById('testPhone').value.trim();
+            if (!toPhone) { Swal.fire('Recipient required', 'Enter a mobile number.', 'warning'); return; }
+            const token = document.querySelector('#waForm input[name="__RequestVerificationToken"]').value;
+            btnTest.disabled = true;
+            const original = btnTest.innerHTML;
+            btnTest.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending…';
+            try {
+                const res = await fetch('@Url.Action("SendTestMessage")', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'RequestVerificationToken': token },
+                    body: JSON.stringify({
+                        toPhone,
+                        messageText: document.getElementById('testText').value,
+                        apiKey: document.getElementById('NewApiKey').value
+                    })
+                });
+                const data = await res.json();
+                await Swal.fire(data.success ? 'Message accepted' : 'Send failed',
+                    data.success ? `${data.message}<br><small>Status: ${data.status ?? ''} · Id: ${data.msgId ?? ''}</small>` : (data.message ?? 'Unknown error'),
+                    data.success ? 'success' : 'error');
+                if (data.logged) location.reload();
+            } catch (e) {
+                Swal.fire('Send failed', e.message, 'error');
+            } finally {
+                btnTest.disabled = false;
+                btnTest.innerHTML = original;
+            }
+        });
+    </script>
+}

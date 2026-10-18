@@ -89,6 +89,7 @@ namespace CentralLicenceApp.Services
                     new MenuDef("Email Engine",      "Link", "EmailConfig",   "Index", "bi bi-send-check",       new[]{"View","Edit"}, R_Admin),
                     new MenuDef("Email Templates",   "Link", "EmailTemplate", "Index", "bi bi-file-earmark-text", CrudPerms, R_Admin),
                     new MenuDef("Email Logs",        "Link", "EmailLog",      "Index", "bi bi-journal-text",      ViewExport, R_Admin),
+                    new MenuDef("WhatsApp Config",   "Link", "WhatsAppConfig", "Index", "bi bi-whatsapp",         new[]{"View","Edit"}, R_Admin),
                     new MenuDef("App File Upload",   "Link", "AppUpload",     "Index", "bi bi-cloud-upload",      CrudPerms, R_Admin),
                     // ── New: Security group ──
                     new MenuDef("Security", "Collapsible", null, null, "bi bi-shield-lock", ViewOnly, R_Admin,

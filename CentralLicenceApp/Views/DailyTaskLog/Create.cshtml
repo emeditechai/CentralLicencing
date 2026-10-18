@@ -274,7 +274,17 @@
         }
     });
 
-    document.querySelector('form').addEventListener('submit', function () {
+    quill.on('text-change', function() {
+        var hiddenInput = document.getElementById('descriptionHidden');
+        if (quill.root.innerHTML === '<p><br></p>') {
+            hiddenInput.value = '';
+        } else {
+            hiddenInput.value = quill.root.innerHTML;
+        }
+    });
+
+    var taskForm = document.getElementById('descriptionHidden').closest('form');
+    taskForm.addEventListener('submit', function () {
         var hiddenInput = document.getElementById('descriptionHidden');
         if (quill.root.innerHTML === '<p><br></p>') {
             hiddenInput.value = '';

@@ -5,6 +5,7 @@ using CentralLicenceApp.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
@@ -115,7 +116,17 @@ builder.Services.AddScoped<ITaskEmailService>(sp =>
         sp.GetRequiredService<IEmailService>(),
         sp.GetRequiredService<ICompanySettingsRepository>(),
         connStr,
+        sp.GetRequiredService<IConfiguration>(),
         sp.GetRequiredService<ILogger<TaskEmailService>>()));
+// WhatsApp (WaSender) service; the API token is encrypted with Data Protection,
+// so keys are persisted on disk to survive restarts / app-pool recycles.
+builder.Services.AddDataProtection()
+    .SetApplicationName("CentralLicenceApp")
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys")));
+builder.Services.AddHttpClient(WhatsAppService.HttpClientName);
+builder.Services.AddScoped<IWhatsAppRepository>(_ => new WhatsAppRepository(connStr));
+builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
+builder.Services.AddSingleton<IWhatsAppEmailNotifier, WhatsAppEmailNotifier>();
 builder.Services.AddScoped<IViewRenderService, ViewRenderService>();
 builder.Services.AddSingleton<IBrowserProvider, BrowserProvider>();
 builder.Services.AddScoped<IDocumentPdfService, DocumentPdfService>();
@@ -267,6 +278,18 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogWarning(ex, "Task Report SP seeding encountered an error (non-blocking).");
+    }
+
+    // Ensure WhatsApp tables + Administration › WhatsApp Config menu exist
+    try
+    {
+        var whatsAppRepo = scope.ServiceProvider.GetRequiredService<IWhatsAppRepository>();
+        await whatsAppRepo.EnsureTablesAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(ex, "WhatsApp table seeding encountered an error (non-blocking).");
     }
 }
 

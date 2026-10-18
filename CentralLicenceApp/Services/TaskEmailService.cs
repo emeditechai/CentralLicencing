@@ -17,17 +17,20 @@ namespace CentralLicenceApp.Services
         private readonly ICompanySettingsRepository _companyRepo;
         private readonly string _connectionString;
         private readonly ILogger<TaskEmailService> _logger;
+        private readonly string _appUrl;
 
         public TaskEmailService(
             IEmailService emailService,
             ICompanySettingsRepository companyRepo,
             string connectionString,
+            IConfiguration configuration,
             ILogger<TaskEmailService> logger)
         {
             _emailService     = emailService;
             _companyRepo      = companyRepo;
             _connectionString = connectionString;
             _logger           = logger;
+            _appUrl           = configuration["AppUrl"] ?? "http://localhost:5291";
         }
 
         // ── 1. Task Created & Assigned ──────────────────────────────────────────
@@ -48,7 +51,8 @@ namespace CentralLicenceApp.Services
                     badgeLabel:     "NEW TASK",
                     badgeColor:     "#6366f1",
                     task:           task,
-                    footerNote:     "You are receiving this email because you have been assigned to this task."
+                    footerNote:     "You are receiving this email because you have been assigned to this task.",
+                    appUrl:         _appUrl
                 );
 
                 await _emailService.SendAsync(assigneeEmail, assigneeName, subject, body, "Task Assigned");
@@ -79,6 +83,7 @@ namespace CentralLicenceApp.Services
                     badgeColor:     "#0ea5e9",
                     task:           task,
                     footerNote:     "You are receiving this email because you are assigned to this task.",
+                    appUrl:         _appUrl,
                     changedFields:  changedFields
                 );
 
@@ -109,6 +114,7 @@ namespace CentralLicenceApp.Services
                     badgeColor:     "#8b5cf6",
                     task:           task,
                     footerNote:     "You are receiving this email because you were tagged in a comment.",
+                    appUrl:         _appUrl,
                     changedFields:  new List<string> { $"Comment: \"{commentText}\"" }
                 );
 
@@ -130,6 +136,7 @@ namespace CentralLicenceApp.Services
             string badgeColor,
             DailyTaskLog task,
             string footerNote,
+            string appUrl,
             IEnumerable<string>? changedFields = null)
         {
             // Resolve status colour
@@ -269,6 +276,7 @@ namespace CentralLicenceApp.Services
           <tr>
             <td style=""padding:4px 36px 32px 36px;text-align:center;"">
               <p style=""margin:0 0 18px 0;font-size:13px;color:#94a3b8;"">Log in to the portal to view the full task, log time, or update the status.</p>
+              <p style=""margin:0 0 18px 0;font-size:14px;color:#1e293b;font-weight:600;"">Login url: <a href=""{appUrl}"" style=""color:{badgeColor};text-decoration:none;"">{appUrl}</a></p>
             </td>
           </tr>
 

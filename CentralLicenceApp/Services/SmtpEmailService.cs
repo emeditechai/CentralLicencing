@@ -21,6 +21,7 @@ namespace CentralLicenceApp.Services
         private readonly IEmailLogRepository _emailLogRepo;
         private readonly ICompanySettingsRepository _companySettingsRepo;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IWhatsAppEmailNotifier _whatsAppNotifier;
         private readonly ILogger<SmtpEmailService> _logger;
 
         public SmtpEmailService(
@@ -29,8 +30,10 @@ namespace CentralLicenceApp.Services
             IEmailLogRepository emailLogRepo,
             ICompanySettingsRepository companySettingsRepo,
             IHttpContextAccessor httpContextAccessor,
+            IWhatsAppEmailNotifier whatsAppNotifier,
             ILogger<SmtpEmailService> logger)
         {
+            _whatsAppNotifier = whatsAppNotifier;
             _mailConfigRepo = mailConfigRepo;
             _templateRepo   = templateRepo;
             _emailLogRepo = emailLogRepo;
@@ -53,6 +56,9 @@ namespace CentralLicenceApp.Services
         private async Task SendCoreAsync(string emailType, string? templateKey, string? toEmail, string? toName,
             string? subject, string? htmlBody, byte[]? attachmentBytes, string? attachmentFileName)
         {
+            // Same notification to the recipient users' WhatsApp (background; independent of the email outcome).
+            _whatsAppNotifier.QueueFromEmail(toEmail, subject, htmlBody, attachmentBytes, attachmentFileName, emailType);
+
             if (string.IsNullOrWhiteSpace(toEmail))
             {
                 await LogEmailAsync(emailType, templateKey, toEmail, toName, subject, htmlBody, "Skipped", "Recipient email address was empty.");
