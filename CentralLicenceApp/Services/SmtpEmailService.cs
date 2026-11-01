@@ -42,9 +42,10 @@ namespace CentralLicenceApp.Services
             _logger         = logger;
         }
 
-        public async Task SendAsync(string toEmail, string toName, string subject, string htmlBody, string? emailType = null)
+        public async Task SendAsync(string toEmail, string toName, string subject, string htmlBody, string? emailType = null,
+            string? whatsAppText = null)
         {
-            await SendCoreAsync(string.IsNullOrWhiteSpace(emailType) ? "Direct Email" : emailType, null, toEmail, toName, subject, htmlBody, null, null);
+            await SendCoreAsync(string.IsNullOrWhiteSpace(emailType) ? "Direct Email" : emailType, null, toEmail, toName, subject, htmlBody, null, null, whatsAppText);
         }
 
         public async Task SendWithAttachmentAsync(string toEmail, string toName, string subject, string htmlBody,
@@ -54,10 +55,11 @@ namespace CentralLicenceApp.Services
         }
 
         private async Task SendCoreAsync(string emailType, string? templateKey, string? toEmail, string? toName,
-            string? subject, string? htmlBody, byte[]? attachmentBytes, string? attachmentFileName)
+            string? subject, string? htmlBody, byte[]? attachmentBytes, string? attachmentFileName,
+            string? whatsAppText = null)
         {
             // Same notification to the recipient users' WhatsApp (background; independent of the email outcome).
-            _whatsAppNotifier.QueueFromEmail(toEmail, subject, htmlBody, attachmentBytes, attachmentFileName, emailType);
+            _whatsAppNotifier.QueueFromEmail(toEmail, subject, htmlBody, attachmentBytes, attachmentFileName, emailType, whatsAppText);
 
             if (string.IsNullOrWhiteSpace(toEmail))
             {

@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
-using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using CentralLicenceApp.Helpers;
 using CentralLicenceApp.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,7 +16,8 @@ namespace CentralLicenceApp.Services
         /// whose email belongs to an active user with a PhoneNumber. Never throws, never blocks the email.
         /// </summary>
         void QueueFromEmail(string? toEmails, string? subject, string? htmlBody,
-            byte[]? attachmentBytes, string? attachmentFileName, string? emailType);
+            byte[]? attachmentBytes, string? attachmentFileName, string? emailType,
+            string? whatsAppText = null);
     }
 
     public class WhatsAppEmailNotifier : IWhatsAppEmailNotifier
@@ -37,7 +38,8 @@ namespace CentralLicenceApp.Services
         }
 
         public void QueueFromEmail(string? toEmails, string? subject, string? htmlBody,
-            byte[]? attachmentBytes, string? attachmentFileName, string? emailType)
+            byte[]? attachmentBytes, string? attachmentFileName, string? emailType,
+            string? whatsAppText = null)
         {
             if (string.IsNullOrWhiteSpace(toEmails)) return;
             if (emailType != null && SkippedEmailTypes.Contains(emailType, StringComparer.OrdinalIgnoreCase)) return;
@@ -66,7 +68,10 @@ namespace CentralLicenceApp.Services
                         .ToList();
                     if (phones.Count == 0) return;
 
-                    var text = BuildText(subject, htmlBody);
+                    // A caller-built WhatsApp template wins over the converted email body.
+                    var text = string.IsNullOrWhiteSpace(whatsAppText)
+                        ? BuildText(subject, htmlBody)
+                        : HtmlText.Truncate(whatsAppText.Trim(), MaxTextLength);
 
                     string? documentUrl = null;
                     if (attachmentBytes is { Length: > 0 } && !string.IsNullOrWhiteSpace(attachmentFileName))
@@ -96,19 +101,9 @@ namespace CentralLicenceApp.Services
         /// <summary>Turns the email HTML into WhatsApp text: *subject* then the body with line breaks kept.</summary>
         public static string BuildText(string? subject, string? htmlBody)
         {
-            var body = htmlBody ?? string.Empty;
-            body = Regex.Replace(body, @"<(script|style|head)[^>]*>.*?</\1>", "", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-            body = Regex.Replace(body, @"<br\s*/?>", "\n", RegexOptions.IgnoreCase);
-            body = Regex.Replace(body, @"</(p|div|tr|li|h[1-6]|table)>", "\n", RegexOptions.IgnoreCase);
-            body = Regex.Replace(body, @"</t[dh]>", "  ", RegexOptions.IgnoreCase);
-            body = Regex.Replace(body, "<[^>]+>", "");
-            body = WebUtility.HtmlDecode(body).Replace(' ', ' ');
-            body = Regex.Replace(body, @"[ \t]+", " ");
-            body = Regex.Replace(body, @" *\n *", "\n");
-            body = Regex.Replace(body, @"\n{3,}", "\n\n").Trim();
-
+            var body = HtmlText.ToPlainText(htmlBody);
             var text = string.IsNullOrWhiteSpace(subject) ? body : $"*{subject.Trim()}*\n\n{body}";
-            return text.Length > MaxTextLength ? text[..MaxTextLength].TrimEnd() + "…" : text;
+            return HtmlText.Truncate(text, MaxTextLength);
         }
 
         private static string GuessMime(string fileName) =>

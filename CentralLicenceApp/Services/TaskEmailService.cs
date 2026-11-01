@@ -1,4 +1,5 @@
 using System.Net;
+using CentralLicenceApp.Helpers;
 using CentralLicenceApp.Models;
 using CentralLicenceApp.Repositories;
 using Dapper;
@@ -24,13 +25,27 @@ namespace CentralLicenceApp.Services
             ICompanySettingsRepository companyRepo,
             string connectionString,
             IConfiguration configuration,
+            IHttpContextAccessor httpContextAccessor,
             ILogger<TaskEmailService> logger)
         {
             _emailService     = emailService;
             _companyRepo      = companyRepo;
             _connectionString = connectionString;
             _logger           = logger;
-            _appUrl           = configuration["AppUrl"] ?? "http://localhost:5291";
+            // Resolved now, while the request is alive: notifications are sent later from Task.Run.
+            _appUrl           = ResolveAppUrl(httpContextAccessor.HttpContext, configuration);
+        }
+
+        /// <summary>
+        /// The URL users actually reach the app on (scheme + host + path base of the current request);
+        /// falls back to the "AppUrl" setting when there is no request (background jobs).
+        /// </summary>
+        private static string ResolveAppUrl(HttpContext? context, IConfiguration configuration)
+        {
+            var req = context?.Request;
+            if (req != null && req.Host.HasValue)
+                return $"{req.Scheme}://{req.Host.Value}{req.PathBase}".TrimEnd('/');
+            return (configuration["AppUrl"] ?? string.Empty).TrimEnd('/');
         }
 
         // ── 1. Task Created & Assigned ──────────────────────────────────────────
@@ -54,8 +69,12 @@ namespace CentralLicenceApp.Services
                     footerNote:     "You are receiving this email because you have been assigned to this task.",
                     appUrl:         _appUrl
                 );
+                var whatsApp = BuildTaskWhatsAppText(
+                    companyName, "📋 *New Task Assigned*",
+                    $"Hi *{assigneeName}*, a new task has been assigned to you. Please review and take action.",
+                    task, _appUrl);
 
-                await _emailService.SendAsync(assigneeEmail, assigneeName, subject, body, "Task Assigned");
+                await _emailService.SendAsync(assigneeEmail, assigneeName, subject, body, "Task Assigned", whatsApp);
             }
             catch (Exception ex)
             {
@@ -86,8 +105,12 @@ namespace CentralLicenceApp.Services
                     appUrl:         _appUrl,
                     changedFields:  changedFields
                 );
+                var whatsApp = BuildTaskWhatsAppText(
+                    companyName, "✏️ *Task Updated*",
+                    $"Hi *{assigneeName}*, a task assigned to you has been updated.",
+                    task, _appUrl, changedFields, "What changed");
 
-                await _emailService.SendAsync(assigneeEmail, assigneeName, subject, body, "Task Updated");
+                await _emailService.SendAsync(assigneeEmail, assigneeName, subject, body, "Task Updated", whatsApp);
             }
             catch (Exception ex)
             {
@@ -115,10 +138,14 @@ namespace CentralLicenceApp.Services
                     task:           task,
                     footerNote:     "You are receiving this email because you were tagged in a comment.",
                     appUrl:         _appUrl,
-                    changedFields:  new List<string> { $"Comment: \"{commentText}\"" }
+                    changedFields:  new List<string> { $"Comment: \"{HtmlText.ToPlainText(commentText)}\"" }
                 );
+                var whatsApp = BuildTaskWhatsAppText(
+                    companyName, "💬 *You Were Mentioned*",
+                    $"Hi *{mentionedName}*, *{senderName}* mentioned you in a comment on a task.",
+                    task, _appUrl, new[] { HtmlText.ToPlainText(commentText) }, "Comment", includeDescription: false);
 
-                await _emailService.SendAsync(mentionedEmail, mentionedName, subject, body, "Task Mention");
+                await _emailService.SendAsync(mentionedEmail, mentionedName, subject, body, "Task Mention", whatsApp);
             }
             catch (Exception ex)
             {
@@ -162,7 +189,7 @@ namespace CentralLicenceApp.Services
                 ("Status",          task.Status),
                 ("Project / Module",task.ProjectModuleName ?? "—"),
                 ("Linked Ticket",   task.TicketNumber != null ? $"{task.TicketNumber} — {task.TicketSubject}" : "—"),
-                ("Description",     string.IsNullOrWhiteSpace(task.Description) ? "—" : task.Description),
+                ("Description",     string.IsNullOrWhiteSpace(task.Description) ? "—" : HtmlText.ToPlainText(task.Description)),
             };
 
             var detailsRowsHtml = string.Join("", rows.Select((r, i) =>
@@ -214,6 +241,9 @@ namespace CentralLicenceApp.Services
             }
 
             var currentYear = DateTime.Now.Year;
+            var loginLine = string.IsNullOrWhiteSpace(appUrl)
+                ? string.Empty
+                : $@"<p style=""margin:0 0 18px 0;font-size:14px;color:#1e293b;font-weight:600;"">Login url: <a href=""{Enc(appUrl)}"" style=""color:{badgeColor};text-decoration:none;"">{Enc(appUrl)}</a></p>";
 
             return $@"<!DOCTYPE html>
 <html lang=""en"">
@@ -276,7 +306,7 @@ namespace CentralLicenceApp.Services
           <tr>
             <td style=""padding:4px 36px 32px 36px;text-align:center;"">
               <p style=""margin:0 0 18px 0;font-size:13px;color:#94a3b8;"">Log in to the portal to view the full task, log time, or update the status.</p>
-              <p style=""margin:0 0 18px 0;font-size:14px;color:#1e293b;font-weight:600;"">Login url: <a href=""{appUrl}"" style=""color:{badgeColor};text-decoration:none;"">{appUrl}</a></p>
+              {loginLine}
             </td>
           </tr>
 
@@ -295,6 +325,69 @@ namespace CentralLicenceApp.Services
   </table>
 </body>
 </html>";
+        }
+
+        // ── WhatsApp Text Builder ────────────────────────────────────────────────
+
+        private static string BuildTaskWhatsAppText(
+            string companyName,
+            string title,
+            string intro,
+            DailyTaskLog task,
+            string appUrl,
+            IEnumerable<string>? extraLines = null,
+            string? extraHeading = null,
+            bool includeDescription = true)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine(title);
+            sb.AppendLine();
+            sb.AppendLine(intro);
+            sb.AppendLine();
+
+            void Field(string label, string? value)
+            {
+                if (!string.IsNullOrWhiteSpace(value)) sb.AppendLine($"*{label}:* {value.Trim()}");
+            }
+
+            Field("Task No", task.TaskNumber);
+            Field("Title", task.TaskTitle);
+            Field("Date", task.TaskDate.ToString("dd MMM yyyy"));
+            Field("Type", task.TaskTypeName);
+            Field("Category", task.TaskCategoryName);
+            Field("Status", task.Status);
+            Field("Project", task.ProjectModuleName);
+            Field("Ticket", task.TicketNumber != null ? $"{task.TicketNumber} — {task.TicketSubject}" : null);
+            Field("Assigned To", task.AssignedToUserName);
+            Field("Created By", task.UserName);
+
+            var extras = extraLines?.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+            if (extras is { Count: > 0 })
+            {
+                sb.AppendLine();
+                sb.AppendLine($"*{extraHeading ?? "Details"}:*");
+                foreach (var line in extras) sb.AppendLine(extras.Count == 1 ? line : $"• {line}");
+            }
+
+            if (includeDescription)
+            {
+                var description = HtmlText.ToPlainText(task.Description);
+                if (description.Length > 0)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine("*Description:*");
+                    sb.AppendLine(HtmlText.Truncate(description, 1200));
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(appUrl))
+            {
+                sb.AppendLine();
+                sb.AppendLine($"🔗 Login: {appUrl}");
+            }
+            sb.AppendLine();
+            sb.Append($"_{companyName}_");
+            return sb.ToString();
         }
 
         // ── Helpers ─────────────────────────────────────────────────────────────

@@ -117,6 +117,7 @@ builder.Services.AddScoped<ITaskEmailService>(sp =>
         sp.GetRequiredService<ICompanySettingsRepository>(),
         connStr,
         sp.GetRequiredService<IConfiguration>(),
+        sp.GetRequiredService<IHttpContextAccessor>(),
         sp.GetRequiredService<ILogger<TaskEmailService>>()));
 // WhatsApp (WaSender) service; the API token is encrypted with Data Protection,
 // so keys are persisted on disk to survive restarts / app-pool recycles.
