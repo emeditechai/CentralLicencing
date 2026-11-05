@@ -25,8 +25,8 @@ namespace CentralLicenceApp.Services
         public const string ModuleCode = "EMAIL";
         private const int MaxTextLength = 3500;
 
-        // Email types that must not be mirrored (e.g. the SMTP test on the Email Engine page).
-        private static readonly string[] SkippedEmailTypes = { "Email Engine Test" };
+        // Email types that must not be mirrored (the SMTP test on the Email Engine page; demo messages send their own WhatsApp).
+        private static readonly string[] SkippedEmailTypes = { "Email Engine Test", "Enquiry Demo" };
 
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<WhatsAppEmailNotifier> _logger;

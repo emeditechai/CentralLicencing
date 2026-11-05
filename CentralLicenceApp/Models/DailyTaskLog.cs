@@ -15,6 +15,7 @@ namespace CentralLicenceApp.Models
         public int? ProjectModuleId { get; set; }
         public int TimeSpentMinutes { get; set; }
         public string Status { get; set; } = "Pending";
+        public int? PriorityId { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
@@ -31,6 +32,8 @@ namespace CentralLicenceApp.Models
         public string? TicketSubject { get; set; }
         public string? ProjectModuleName { get; set; }
         public string? AssignedToUserName { get; set; }
+        public string? PriorityName { get; set; }
+        public string? PriorityColor { get; set; }
 
         public bool IsCurrentUserTagged { get; set; }
 

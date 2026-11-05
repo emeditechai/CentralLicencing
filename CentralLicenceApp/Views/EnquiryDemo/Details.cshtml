@@ -1,0 +1,67 @@
+@model CentralLicenceApp.Models.EnquiryDemo
+@{
+    ViewData["Title"] = "Demo Details";
+    var contacts = (List<CentralLicenceApp.Models.EnquiryClientContact>)ViewBag.Contacts;
+    var isOpen = Model.Status is "Scheduled" or "Rescheduled";
+    // Only web addresses become links; an on-site address stays plain text.
+    var rawLink = Model.MeetingLink?.Trim() ?? "";
+    if (rawLink.StartsWith("www.", StringComparison.OrdinalIgnoreCase)) rawLink = "https://" + rawLink;
+    var meetingUrl = !rawLink.Contains(' ') && Uri.TryCreate(rawLink, UriKind.Absolute, out var parsedLink) && (parsedLink.Scheme == Uri.UriSchemeHttp || parsedLink.Scheme == Uri.UriSchemeHttps) ? rawLink : null;
+}
+<partial name="_EnquiryStyles" />
+<div class="eq-head">
+    <div class="eq-title"><div class="eq-title-icon"><i class="bi bi-easel"></i></div><div><h4>@Model.ProductName demo</h4><p>@Model.CompanyName · @Model.EnquiryNo · <strong>@Model.Status</strong></p></div></div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-controller="ClientEnquiry" asp-action="Details" asp-route-id="@Model.EnquiryId" class="btn btn-outline-secondary">Open enquiry</a>
+        @if (isOpen)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" asp-permission="EnquiryDemo:Edit" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Edit / Reschedule</a>
+            <form asp-action="CloseDemo" asp-route-id="@Model.Id" method="post" asp-permission="EnquiryDemo:Edit" class="d-flex gap-2">
+                @Html.AntiForgeryToken()
+                <button name="status" value="NoShow" class="btn btn-outline-warning">No-show</button>
+                <button name="status" value="Cancelled" class="btn btn-outline-danger">Cancel demo</button>
+            </form>
+        }
+    </div>
+</div>
+<div class="row g-3">
+    <div class="col-lg-6"><div class="eq-card h-100"><div class="eq-card-head">Details</div><div class="eq-card-body" style="font-size:.88rem;">
+        <div class="eq-label">When</div><div class="mb-2">@Model.ScheduledAt.ToString("dd MMM yyyy hh:mm tt") · @Model.DurationMinutes minutes</div>
+        <div class="eq-label">Presenter</div><div class="mb-2">@Model.PresenterName</div>
+        <div class="eq-label">Mode</div><div class="mb-2">@(Model.Mode == "OnSite" ? "On-site" : "Online")</div>
+        <div class="eq-label">Link or address</div><div class="mb-2" style="overflow-wrap:anywhere;">
+            @if (meetingUrl != null)
+            {
+                <a href="@meetingUrl" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right me-1"></i>@Model.MeetingLink</a>
+            }
+            else
+            {
+                @(string.IsNullOrWhiteSpace(Model.MeetingLink) ? "—" : Model.MeetingLink)
+            }
+        </div>
+        <div class="eq-label">Attendees</div>
+        <ul class="mb-2 ps-3">@foreach (var k in contacts) { <li>@k.Name <span class="eq-sub">@k.Mobile @k.Email</span></li> }</ul>
+        @if (!string.IsNullOrWhiteSpace(Model.Attendees)) { <div>@Model.Attendees</div> }
+    </div></div></div>
+    <div class="col-lg-6"><div class="eq-card h-100"><div class="eq-card-head">Outcome</div><div class="eq-card-body">
+        @if (isOpen)
+        {
+            <form asp-action="Complete" asp-route-id="@Model.Id" method="post" asp-permission="EnquiryDemo:Edit">
+                @Html.AntiForgeryToken()
+                <div class="row g-3">
+                    <div class="col-6"><label class="form-label" for="oRating">Rating</label><select id="oRating" name="rating" class="form-select"><option value="">—</option>@for (var r = 5; r >= 1; r--) { <option value="@r">@r</option> }</select></div>
+                    <div class="col-6"><label class="form-label" for="oInterest">Interest level</label><select id="oInterest" name="interestLevel" class="form-select"><option value="">—</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+                    <div class="col-12"><label class="form-label" for="oFeedback">Feedback</label><textarea id="oFeedback" name="feedback" class="form-control" rows="3" maxlength="1000"></textarea></div>
+                    <div class="col-12"><label class="form-label" for="oNext">Next follow-up <span class="text-danger">*</span></label><input id="oNext" type="datetime-local" name="nextAt" class="form-control" required /></div>
+                </div>
+                <button class="btn btn-success mt-3">Mark demo completed</button>
+            </form>
+        }
+        else
+        {
+            <div class="eq-label">Rating</div><div class="mb-2">@(Model.Rating?.ToString() ?? "—")</div>
+            <div class="eq-label">Interest level</div><div class="mb-2">@(Model.InterestLevel ?? "—")</div>
+            <div class="eq-label">Feedback</div><div style="white-space:pre-line;">@(Model.Feedback ?? "—")</div>
+        }
+    </div></div></div>
+</div>

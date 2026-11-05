@@ -1,0 +1,104 @@
+@model CentralLicenceApp.Models.ViewModels.EnquiryFormViewModel
+@{
+    var isEdit = Model.Enquiry.Id > 0;
+    ViewData["Title"] = isEdit ? "Edit Enquiry" : "New Enquiry";
+    var e = Model.Enquiry;
+    var o = Model.Options;
+}
+<partial name="_EnquiryStyles" />
+<div class="eq-head">
+    <div class="eq-title"><div class="eq-title-icon"><i class="bi bi-telephone-inbound"></i></div><div><h4>@ViewData["Title"]</h4><p>@(isEdit ? e.EnquiryNo : "Record who is asking, about which product, and what happens next")</p></div></div>
+    <a asp-action="@(isEdit ? "Details" : "Index")" asp-route-id="@(isEdit ? e.Id : null)" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+</div>
+<form method="post" class="eq-card eq-card-body">
+    @Html.AntiForgeryToken()
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label" for="eClient">Client <span class="text-danger">*</span></label>
+            <div class="d-flex gap-2">
+                <select id="eClient" name="Enquiry.EnquiryClientId" class="form-select" required>
+                    <option value="">-- Select --</option>
+                    @foreach (var c in o.Clients) { <option value="@c.Id" selected="@(e.EnquiryClientId == c.Id)">@c.CompanyName@(string.IsNullOrWhiteSpace(c.PrimaryMobile) ? "" : " · " + c.PrimaryMobile)</option> }
+                </select>
+                <a asp-controller="EnquiryClient" asp-action="Create" asp-route-returnToEnquiry="true" asp-permission="EnquiryClient:Create" class="btn btn-outline-primary text-nowrap"><i class="bi bi-plus-lg"></i> New client</a>
+            </div>
+        </div>
+        <div class="col-md-6"><label class="form-label" for="eTitle">Title <span class="text-danger">*</span></label><input id="eTitle" name="Enquiry.Title" value="@e.Title" class="form-control" maxlength="200" required placeholder="What the client is asking for" /></div>
+        <div class="col-md-6">
+            <label class="form-label" id="eProductsLabel">Products <span class="text-danger">*</span></label>
+            <div class="dropdown eq-multi" data-placeholder="-- Select --" data-required-message="Select at least one product.">
+                <button type="button" class="form-select text-start eq-multi-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-labelledby="eProductsLabel"><span class="eq-multi-text"></span></button>
+                <div class="dropdown-menu w-100 eq-multi-menu">
+                    @foreach (var p in o.Products)
+                    {
+                        <label class="dropdown-item d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0" name="ProductIds" value="@p.Id" checked="@(Model.ProductIds.Contains(p.Id))" /><span>@p.ProductName</span></label>
+                    }
+                </div>
+            </div>
+            <div class="invalid-feedback eq-multi-error"></div>
+        </div>
+        <div class="col-md-6"><label class="form-label" for="eReq">Requirement</label><textarea id="eReq" name="Enquiry.Requirement" class="form-control" rows="5" maxlength="2000">@e.Requirement</textarea></div>
+        <div class="col-md-3"><label class="form-label" for="eSource">Source</label><select id="eSource" name="Enquiry.SourceId" class="form-select"><option value="">-- Select --</option>@foreach (var s in o.Sources) { <option value="@s.Id" selected="@(e.SourceId == s.Id)">@s.Name</option> }</select></div>
+        <div class="col-md-3"><label class="form-label" for="ePriority">Priority</label><select id="ePriority" name="Enquiry.PriorityId" class="form-select"><option value="">-- Select --</option>@foreach (var p in o.Priorities) { <option value="@p.Id" selected="@(e.PriorityId == p.Id)">@p.PriorityName</option> }</select></div>
+        <div class="col-md-3"><label class="form-label" for="eValue">Expected value (₹)</label><input id="eValue" type="number" min="0" step="0.01" name="Enquiry.ExpectedValue" value="@e.ExpectedValue" class="form-control" /></div>
+        <div class="col-md-3"><label class="form-label" for="eClose">Expected close date</label><input id="eClose" type="date" name="Enquiry.ExpectedCloseDate" value="@e.ExpectedCloseDate?.ToString("yyyy-MM-dd")" class="form-control" /></div>
+        @if (!isEdit)
+        {
+            if (Model.CanChooseOwner)
+            {
+                <div class="col-md-3"><label class="form-label" for="eOwner">Owner</label><select id="eOwner" name="Enquiry.OwnerUserId" class="form-select">@foreach (var u in o.Users) { <option value="@u.Id" selected="@(e.OwnerUserId == u.Id)">@u.FullName</option> }</select></div>
+            }
+            <div class="col-md-3"><label class="form-label" for="eFirstAt">First follow-up <span class="text-danger">*</span></label><input id="eFirstAt" type="datetime-local" name="FirstFollowUpAt" value="@Model.FirstFollowUpAt?.ToString("yyyy-MM-ddTHH:mm")" class="form-control" required /></div>
+            <div class="col-md-2"><label class="form-label" for="eFirstType">Type</label><select id="eFirstType" name="FirstFollowUpType" class="form-select">@foreach (var t in new[] { "Call", "WhatsApp", "Email", "Visit" }) { <option selected="@(Model.FirstFollowUpType == t)">@t</option> }</select></div>
+            <div class="col-md-4"><label class="form-label" for="eFirstPurpose">Purpose</label><input id="eFirstPurpose" name="FirstFollowUpPurpose" value="@Model.FirstFollowUpPurpose" class="form-control" maxlength="500" /></div>
+        }
+        <div class="col-md-6">
+            <label class="form-label" id="eCollabLabel">Collaborators</label>
+            <div class="dropdown eq-multi" data-placeholder="-- Select --">
+                <button type="button" class="form-select text-start eq-multi-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-labelledby="eCollabLabel"><span class="eq-multi-text"></span></button>
+                <div class="dropdown-menu w-100 eq-multi-menu">
+                    @foreach (var u in o.Users)
+                    {
+                        <label class="dropdown-item d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input m-0" name="CollaboratorIds" value="@u.Id" checked="@(Model.CollaboratorIds.Contains(u.Id))" /><span>@u.FullName</span></label>
+                    }
+                </div>
+            </div>
+            <div class="form-text">Collaborators can also view and work on this enquiry.</div>
+        </div>
+    </div>
+    <div class="mt-4 d-flex justify-content-end"><button class="btn btn-primary px-4"><i class="bi bi-save me-1"></i> Save Enquiry</button></div>
+</form>
+<style>
+    .eq-multi-toggle { display:block; width:100%; background-color:#fff; }
+    .eq-multi-text { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    .eq-multi-menu { max-height:240px; overflow-y:auto; }
+    .eq-multi-menu .dropdown-item { cursor:pointer; white-space:normal; }
+</style>
+@section Scripts {
+<script>
+(function () {
+    const pickers = document.querySelectorAll('.eq-multi');
+    function sync(picker) {
+        const names = [...picker.querySelectorAll('input:checked')].map(c => c.nextElementSibling.textContent);
+        picker.querySelector('.eq-multi-text').textContent = names.length ? names.join(', ') : picker.dataset.placeholder;
+    }
+    pickers.forEach(p => {
+        sync(p);
+        p.addEventListener('change', () => {
+            sync(p);
+            const error = p.nextElementSibling;
+            if (error && error.classList.contains('eq-multi-error')) error.classList.remove('d-block');
+        });
+    });
+    document.querySelector('form[method="post"]').addEventListener('submit', e => {
+        pickers.forEach(p => {
+            if (!p.dataset.requiredMessage || p.querySelector('input:checked')) return;
+            e.preventDefault();
+            const error = p.nextElementSibling;
+            error.textContent = p.dataset.requiredMessage;
+            error.classList.add('d-block');
+        });
+    });
+})();
+</script>
+}

@@ -128,6 +128,10 @@ builder.Services.AddHttpClient(WhatsAppService.HttpClientName);
 builder.Services.AddScoped<IWhatsAppRepository>(_ => new WhatsAppRepository(connStr));
 builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 builder.Services.AddSingleton<IWhatsAppEmailNotifier, WhatsAppEmailNotifier>();
+// Client Enquiry module
+builder.Services.AddScoped<IEnquiryRepository>(_ => new EnquiryRepository(connStr));
+builder.Services.AddSingleton<IEnquiryNotificationService, EnquiryNotificationService>();
+builder.Services.AddHostedService<EnquiryReminderService>();
 builder.Services.AddScoped<IViewRenderService, ViewRenderService>();
 builder.Services.AddSingleton<IBrowserProvider, BrowserProvider>();
 builder.Services.AddScoped<IDocumentPdfService, DocumentPdfService>();
@@ -279,6 +283,18 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogWarning(ex, "Task Report SP seeding encountered an error (non-blocking).");
+    }
+
+    // Ensure Client Enquiry tables + CRM › Client Enquiry menu exist
+    try
+    {
+        var enquiryRepo = scope.ServiceProvider.GetRequiredService<IEnquiryRepository>();
+        await enquiryRepo.EnsureTablesAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(ex, "Client Enquiry table seeding encountered an error (non-blocking).");
     }
 
     // Ensure WhatsApp tables + Administration › WhatsApp Config menu exist

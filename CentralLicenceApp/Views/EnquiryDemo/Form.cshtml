@@ -1,0 +1,34 @@
+@model CentralLicenceApp.Models.ViewModels.EnquiryDemoFormViewModel
+@{
+    var d = Model.Demo;
+    var isEdit = d.Id > 0;
+    ViewData["Title"] = isEdit ? "Edit Demo" : "Schedule Demo";
+}
+<partial name="_EnquiryStyles" />
+<div class="eq-head">
+    <div class="eq-title"><div class="eq-title-icon"><i class="bi bi-easel"></i></div><div><h4>@ViewData["Title"]</h4><p>@Model.Enquiry?.CompanyName · @Model.Enquiry?.EnquiryNo</p></div></div>
+    <a asp-controller="ClientEnquiry" asp-action="Details" asp-route-id="@d.EnquiryId" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+</div>
+<form method="post" class="eq-card eq-card-body">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="Demo.EnquiryId" value="@d.EnquiryId" />
+    <div class="row g-3">
+        <div class="col-md-4"><label class="form-label" for="dProduct">Product <span class="text-danger">*</span></label><select id="dProduct" name="Demo.ProductId" class="form-select" required><option value="">-- Select --</option>@foreach (var p in Model.Products) { <option value="@p.Id" selected="@(d.ProductId == p.Id)">@p.ProductName</option> }</select></div>
+        <div class="col-md-4"><label class="form-label" for="dAt">Date and time <span class="text-danger">*</span></label><input id="dAt" type="datetime-local" name="Demo.ScheduledAt" value="@d.ScheduledAt.ToString("yyyy-MM-ddTHH:mm")" class="form-control" required /></div>
+        <div class="col-md-4"><label class="form-label" for="dDur">Duration (minutes)</label><input id="dDur" type="number" min="5" max="600" name="Demo.DurationMinutes" value="@d.DurationMinutes" class="form-control" required /></div>
+        <div class="col-md-4"><label class="form-label" for="dPresenter">Presenter <span class="text-danger">*</span></label><select id="dPresenter" name="Demo.PresenterUserId" class="form-select" required>@foreach (var u in Model.Users) { <option value="@u.Id" selected="@(d.PresenterUserId == u.Id)">@u.FullName</option> }</select></div>
+        <div class="col-md-2"><label class="form-label" for="dMode">Mode</label><select id="dMode" name="Demo.Mode" class="form-select"><option value="Online" selected="@(d.Mode == "Online")">Online</option><option value="OnSite" selected="@(d.Mode == "OnSite")">On-site</option></select></div>
+        <div class="col-md-6"><label class="form-label" for="dLink">Meeting link or address <span class="text-danger">*</span></label><input id="dLink" name="Demo.MeetingLink" value="@d.MeetingLink" class="form-control" maxlength="500" required /></div>
+        <div class="col-md-6">
+            <label class="form-label">Client attendees</label>
+            @if (!Model.Contacts.Any()) { <div class="eq-sub">This client has no contacts.</div> }
+            @foreach (var k in Model.Contacts)
+            {
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="att@(k.Id)" name="Demo.AttendeeContactIds" value="@k.Id" checked="@(isEdit ? d.AttendeeContactIds.Contains(k.Id) : k.IsPrimary)" /><label class="form-check-label" for="att@(k.Id)">@k.Name <span class="eq-sub">@k.Mobile @k.Email</span></label></div>
+            }
+            <div class="form-text">The host and attendees get the meeting link now and a reminder an hour before, by email and WhatsApp where provided. Contacts marked No WhatsApp get email only.</div>
+        </div>
+        <div class="col-md-6"><label class="form-label" for="dOther">Other attendees</label><input id="dOther" name="Demo.Attendees" value="@d.Attendees" class="form-control" maxlength="500" /><div class="form-text">Enter email addresses or phone numbers separated by commas. Each one gets the meeting link.</div></div>
+    </div>
+    <div class="mt-4 d-flex justify-content-end"><button class="btn btn-primary px-4"><i class="bi bi-save me-1"></i> Save Demo</button></div>
+</form>

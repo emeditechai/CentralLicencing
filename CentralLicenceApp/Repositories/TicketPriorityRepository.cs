@@ -69,9 +69,15 @@ namespace CentralLicenceApp.Repositories
             var count = await conn.ExecuteScalarAsync<int>(
                 "SELECT COUNT(1) FROM HelpDeskTicket WHERE PriorityId = @Id", new { Id = id });
 
-            return count == 0
+            if (count > 0)
+                return (false, $"This priority cannot be deleted because {count} ticket(s) reference it.");
+
+            var taskCount = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(1) FROM DailyTaskLog WHERE PriorityId = @Id", new { Id = id });
+
+            return taskCount == 0
                 ? (true, null)
-                : (false, $"This priority cannot be deleted because {count} ticket(s) reference it.");
+                : (false, $"This priority cannot be deleted because {taskCount} task(s) reference it.");
         }
 
         public async Task<bool> DeleteAsync(int id)

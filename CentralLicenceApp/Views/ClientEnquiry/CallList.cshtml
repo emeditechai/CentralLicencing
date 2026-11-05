@@ -1,0 +1,92 @@
+@model CentralLicenceApp.Models.ViewModels.EnquiryCallListViewModel
+@{
+    ViewData["Title"] = "Call List";
+    var tabs = new (string Key, string Label, List<CentralLicenceApp.Models.EnquiryCallListItem> Items)[]
+    {
+        ("overdue", "Overdue", Model.Overdue), ("today", "Today", Model.Today), ("upcoming", "Upcoming", Model.Upcoming), ("new", "New", Model.NewOnes)
+    };
+    var active = tabs.First(t => t.Key == Model.Tab);
+}
+<partial name="_EnquiryStyles" />
+<div class="eq-head">
+    <div class="eq-title"><div class="eq-title-icon"><i class="bi bi-telephone"></i></div><div><h4>Call List</h4><p>Who to contact, most urgent first</p></div></div>
+    @if (Model.TeamUsers.Any())
+    {
+        <form method="get" class="d-flex gap-2 align-items-center">
+            <input type="hidden" name="tab" value="@Model.Tab" />
+            <label for="clUser" class="eq-label">User</label>
+            <select id="clUser" name="user" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">My list</option>
+                @foreach (var u in Model.TeamUsers) { <option value="@u.Id" selected="@(Model.UserFilter == u.Id)">@u.FullName</option> }
+            </select>
+        </form>
+    }
+</div>
+<ul class="nav nav-pills mb-3 gap-1">
+    @foreach (var t in tabs)
+    {
+        <li class="nav-item"><a class="nav-link @(t.Key == Model.Tab ? "active" : "")" asp-action="CallList" asp-route-tab="@t.Key" asp-route-user="@Model.UserFilter">@t.Label <span class="badge @(t.Key == "overdue" && t.Items.Count > 0 ? "bg-danger" : "bg-secondary")">@t.Items.Count</span></a></li>
+    }
+</ul>
+<div class="eq-card">
+    <div class="table-responsive">
+        <table class="table eq-table mb-0">
+            <thead><tr><th>Client</th><th>Product / Stage</th><th>Due</th><th>Last call</th><th class="text-end">Actions</th></tr></thead>
+            <tbody>
+                @if (!active.Items.Any()) { <tr><td colspan="5" class="text-center text-muted py-5">Nothing here. You're up to date.</td></tr> }
+                @foreach (var i in active.Items)
+                {
+                    <tr>
+                        <td>
+                            <a asp-action="Details" asp-route-id="@i.EnquiryId" class="fw-semibold text-decoration-none">@i.CompanyName</a>
+                            <div class="eq-sub">@i.ContactName · @i.EnquiryNo</div>
+                            @if (!string.IsNullOrWhiteSpace(i.PriorityName)) { <span class="eq-pill mt-1" style="color:@i.PriorityColor;">@i.PriorityName</span> }
+                        </td>
+                        <td><div class="eq-sub mb-1">@i.ProductNames</div><span class="eq-pill" style="color:@i.StageColor;">@i.StageName</span></td>
+                        <td class="@(i.DueAt < DateTime.Now ? "eq-overdue" : "")">
+                            @i.DueAt.ToString("dd MMM hh:mm tt")
+                            <div class="eq-sub">@i.FollowUpType@(string.IsNullOrWhiteSpace(i.Purpose) ? "" : ": " + i.Purpose)</div>
+                            @if (i.RescheduleCount > 0) { <div class="eq-sub">Rescheduled @(i.RescheduleCount)x</div> }
+                        </td>
+                        <td style="max-width:220px;">
+                            @if (i.LastCallAt.HasValue) { <div class="eq-sub">@i.LastCallAt.Value.ToString("dd MMM hh:mm tt") · @i.Attempts attempt(s)</div><div style="font-size:.8rem;">@i.LastCallSummary</div> }
+                            else { <span class="eq-sub">No calls yet</span> }
+                        </td>
+                        <td class="text-end text-nowrap">
+                            @if (!string.IsNullOrWhiteSpace(i.Mobile))
+                            {
+                                <a href="tel:@i.Mobile" class="btn btn-sm btn-outline-primary" title="Call @i.Mobile"><i class="bi bi-telephone"></i></a>
+                                <a href="https://wa.me/@(new string((string.IsNullOrWhiteSpace(i.WhatsApp) ? i.Mobile : i.WhatsApp).Where(char.IsDigit).ToArray()))" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success" title="Open WhatsApp chat"><i class="bi bi-whatsapp"></i></a>
+                            }
+                            <button type="button" class="btn btn-sm btn-primary" asp-permission="ClientEnquiry:Edit" data-bs-toggle="modal" data-bs-target="#logCallModal"
+                                    data-enquiry="@i.EnquiryId" data-followup="@i.FollowUpId" data-contact="@i.ContactId" data-phone="@i.Mobile" data-company="@i.CompanyName">Log call</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" asp-permission="ClientEnquiry:Edit" data-bs-toggle="modal" data-bs-target="#rescheduleModal" data-followup="@i.FollowUpId" title="Reschedule"><i class="bi bi-calendar-event"></i></button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<partial name="_LogCallModal" model="Model.Outcomes" />
+
+<div class="modal fade" id="rescheduleModal" tabindex="-1">
+    <div class="modal-dialog"><form asp-action="RescheduleFollowUp" method="post" class="modal-content">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="followUpId" id="rsFollowUp" /><input type="hidden" name="returnTo" value="calllist" />
+        <div class="modal-header"><h5 class="modal-title">Reschedule follow-up</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+        <div class="modal-body">
+            <label class="form-label" for="rsDue">New date and time</label><input id="rsDue" type="datetime-local" name="newDue" class="form-control mb-3" required />
+            <label class="form-label" for="rsReason">Reason</label><input id="rsReason" name="reason" class="form-control" maxlength="300" required />
+        </div>
+        <div class="modal-footer"><button class="btn btn-primary">Reschedule</button></div>
+    </form></div>
+</div>
+@section Scripts {
+<script>
+    document.getElementById('rescheduleModal').addEventListener('show.bs.modal', e => {
+        document.getElementById('rsFollowUp').value = e.relatedTarget.dataset.followup;
+    });
+</script>
+}

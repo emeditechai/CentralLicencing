@@ -20,13 +20,14 @@ namespace CentralLicenceApp.Repositories
         private const string BaseSelectSql = @"
             SELECT t.Id, t.UserId, t.AssignedToUserId, t.TaskDate, t.TaskTypeId, t.TaskCategoryId,
                    t.TaskTitle, t.TaskNumber, t.Description, t.TicketId, t.ProjectModuleId,
-                   t.TimeSpentMinutes, t.Status, t.CreatedAt, t.UpdatedAt,
+                   t.TimeSpentMinutes, t.Status, t.PriorityId, t.CreatedAt, t.UpdatedAt,
                    u.FullName AS UserName,
                    au.FullName AS AssignedToUserName,
                    tt.Name AS TaskTypeName,
                    tc.Name AS TaskCategoryName,
                    tk.TicketNumber, tk.Subject AS TicketSubject,
                    pm.Name AS ProjectModuleName,
+                   pr.PriorityName, pr.ColorCode AS PriorityColor,
                    ISNULL(tlog.TotalTime, 0) AS TotalTimeSpentMinutes,
                    tlog.LastLogDate,
                    ISNULL(tlog.LogCount, 0) AS TimeLogCount,
@@ -38,6 +39,7 @@ namespace CentralLicenceApp.Repositories
             INNER JOIN TaskCategoryMaster tc ON tc.Id = t.TaskCategoryId
             LEFT JOIN HelpDeskTicket tk ON tk.Id = t.TicketId
             LEFT JOIN ProjectModuleMaster pm ON pm.Id = t.ProjectModuleId
+            LEFT JOIN TicketPriorityMaster pr ON pr.Id = t.PriorityId
             OUTER APPLY (
                 SELECT SUM(TimeSpentMinutes) AS TotalTime,
                        MAX(LogDate) AS LastLogDate,
@@ -51,7 +53,7 @@ namespace CentralLicenceApp.Repositories
             ) commentTag";
 
         public async Task<IEnumerable<DailyTaskLog>> GetTasksAsync(int userId, string currentUserFullName, DateTime? from, DateTime? to,
-            int? taskTypeId, int? categoryId, string? status, string? search)
+            int? taskTypeId, int? categoryId, string? status, string? search, int? priorityId = null)
         {
             using var conn = CreateConnection();
             await ((SqlConnection)conn).OpenAsync();
@@ -61,14 +63,14 @@ namespace CentralLicenceApp.Repositories
             p.Add("UserId", userId);
             p.Add("CurrentUserFullName", currentUserFullName);
 
-            AppendFilters(ref sql, p, from, to, taskTypeId, categoryId, status, search);
+            AppendFilters(ref sql, p, from, to, taskTypeId, categoryId, status, search, priorityId);
             sql += " ORDER BY ISNULL(tlog.LastLogDate, t.TaskDate) DESC, t.CreatedAt DESC";
 
             return await conn.QueryAsync<DailyTaskLog>(sql, p);
         }
 
         public async Task<IEnumerable<DailyTaskLog>> GetAssignedTasksAsync(int userId, string currentUserFullName, DateTime? from, DateTime? to,
-            int? taskTypeId, int? categoryId, string? status, string? search)
+            int? taskTypeId, int? categoryId, string? status, string? search, int? priorityId = null)
         {
             using var conn = CreateConnection();
             await ((SqlConnection)conn).OpenAsync();
@@ -77,13 +79,14 @@ namespace CentralLicenceApp.Repositories
             var sql = @"
             SELECT t.Id, t.UserId, t.AssignedToUserId, t.TaskDate, t.TaskTypeId, t.TaskCategoryId,
                    t.TaskTitle, t.TaskNumber, t.Description, t.TicketId, t.ProjectModuleId,
-                   t.TimeSpentMinutes, t.Status, t.CreatedAt, t.UpdatedAt,
+                   t.TimeSpentMinutes, t.Status, t.PriorityId, t.CreatedAt, t.UpdatedAt,
                    u.FullName AS UserName,
                    au.FullName AS AssignedToUserName,
                    tt.Name AS TaskTypeName,
                    tc.Name AS TaskCategoryName,
                    tk.TicketNumber, tk.Subject AS TicketSubject,
                    pm.Name AS ProjectModuleName,
+                   pr.PriorityName, pr.ColorCode AS PriorityColor,
                    ISNULL(tlog.TotalTime, 0) AS TotalTimeSpentMinutes,
                    tlog.LastLogDate,
                    ISNULL(tlog.LogCount, 0) AS TimeLogCount,
@@ -95,6 +98,7 @@ namespace CentralLicenceApp.Repositories
             INNER JOIN TaskCategoryMaster tc ON tc.Id = t.TaskCategoryId
             LEFT JOIN HelpDeskTicket tk ON tk.Id = t.TicketId
             LEFT JOIN ProjectModuleMaster pm ON pm.Id = t.ProjectModuleId
+            LEFT JOIN TicketPriorityMaster pr ON pr.Id = t.PriorityId
             OUTER APPLY (
                 SELECT SUM(TimeSpentMinutes) AS TotalTime,
                        MAX(LogDate) AS LastLogDate,
@@ -111,14 +115,14 @@ namespace CentralLicenceApp.Repositories
             p.Add("UserId", userId);
             p.Add("CurrentUserFullName", currentUserFullName);
 
-            AppendFilters(ref sql, p, from, to, taskTypeId, categoryId, status, search);
+            AppendFilters(ref sql, p, from, to, taskTypeId, categoryId, status, search, priorityId);
             sql += " ORDER BY ISNULL(tlog.LastLogDate, t.TaskDate) DESC, t.CreatedAt DESC";
 
             return await conn.QueryAsync<DailyTaskLog>(sql, p);
         }
 
         public async Task<IEnumerable<DailyTaskLog>> GetTeamTasksAsync(IEnumerable<int> userIds, string currentUserFullName, DateTime? from, DateTime? to,
-            int? taskTypeId, int? categoryId, string? status, int? userFilter, string? search)
+            int? taskTypeId, int? categoryId, string? status, int? userFilter, string? search, int? priorityId = null)
         {
             using var conn = CreateConnection();
             await ((SqlConnection)conn).OpenAsync();
@@ -135,7 +139,7 @@ namespace CentralLicenceApp.Repositories
                 p.Add("UserFilter", userFilter.Value);
             }
 
-            AppendFilters(ref sql, p, from, to, taskTypeId, categoryId, status, search);
+            AppendFilters(ref sql, p, from, to, taskTypeId, categoryId, status, search, priorityId);
             sql += " ORDER BY ISNULL(tlog.LastLogDate, t.TaskDate) DESC, t.CreatedAt DESC";
 
             return await conn.QueryAsync<DailyTaskLog>(sql, p);
@@ -157,15 +161,15 @@ namespace CentralLicenceApp.Repositories
 
             const string sql = @"
                 INSERT INTO DailyTaskLog (UserId, AssignedToUserId, TaskDate, TaskTypeId, TaskCategoryId, TaskTitle, TaskNumber,
-                    Description, TicketId, ProjectModuleId, TimeSpentMinutes, Status, CreatedAt)
+                    Description, TicketId, ProjectModuleId, TimeSpentMinutes, Status, PriorityId, CreatedAt)
                 VALUES (@UserId, @AssignedToUserId, @TaskDate, @TaskTypeId, @TaskCategoryId, @TaskTitle, @TaskNumber,
-                    @Description, @TicketId, @ProjectModuleId, @TimeSpentMinutes, @Status, GETDATE());
+                    @Description, @TicketId, @ProjectModuleId, @TimeSpentMinutes, @Status, @PriorityId, GETDATE());
                 SELECT CAST(SCOPE_IDENTITY() AS INT);";
             return await conn.ExecuteScalarAsync<int>(sql, new
             {
                 task.UserId, task.AssignedToUserId, task.TaskDate, task.TaskTypeId, task.TaskCategoryId,
                 task.TaskTitle, task.TaskNumber, task.Description, task.TicketId, task.ProjectModuleId,
-                task.TimeSpentMinutes, task.Status
+                task.TimeSpentMinutes, task.Status, task.PriorityId
             });
         }
 
@@ -178,13 +182,13 @@ namespace CentralLicenceApp.Repositories
                     AssignedToUserId = @AssignedToUserId,
                     TaskDate = @TaskDate, TaskTypeId = @TaskTypeId, TaskCategoryId = @TaskCategoryId,
                     TaskTitle = @TaskTitle, Description = @Description, TicketId = @TicketId,
-                    ProjectModuleId = @ProjectModuleId, Status = @Status, UpdatedAt = GETDATE()
+                    ProjectModuleId = @ProjectModuleId, Status = @Status, PriorityId = @PriorityId, UpdatedAt = GETDATE()
                 WHERE Id = @Id";
             return await conn.ExecuteAsync(sql, new
             {
                 task.Id, task.AssignedToUserId, task.TaskDate, task.TaskTypeId, task.TaskCategoryId,
                 task.TaskTitle, task.Description, task.TicketId, task.ProjectModuleId,
-                task.Status
+                task.Status, task.PriorityId
             }) > 0;
         }
 
@@ -434,7 +438,7 @@ namespace CentralLicenceApp.Repositories
             using var conn = CreateConnection();
             await ((SqlConnection)conn).OpenAsync();
 
-            var scripts = new[] { "062_CreateDailyTaskLogTables.sql", "081_CreateTaskAttachmentTable.sql", "082_CreateTaskCommentTable.sql", "083_AddTaskNumberToDailyTaskLog.sql" };
+            var scripts = new[] { "062_CreateDailyTaskLogTables.sql", "081_CreateTaskAttachmentTable.sql", "082_CreateTaskCommentTable.sql", "083_AddTaskNumberToDailyTaskLog.sql", "085_AddPriorityToDailyTaskLog.sql" };
             foreach (var scriptFile in scripts)
             {
                 var scriptPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "SqlScripts", scriptFile);
@@ -544,13 +548,14 @@ namespace CentralLicenceApp.Repositories
         }
 
         private static void AppendFilters(ref string sql, DynamicParameters p,
-            DateTime? from, DateTime? to, int? taskTypeId, int? categoryId, string? status, string? search)
+            DateTime? from, DateTime? to, int? taskTypeId, int? categoryId, string? status, string? search, int? priorityId)
         {
             if (from.HasValue) { sql += " AND t.TaskDate >= @From"; p.Add("From", from.Value); }
             if (to.HasValue) { sql += " AND t.TaskDate <= @To"; p.Add("To", to.Value); }
             if (taskTypeId.HasValue) { sql += " AND t.TaskTypeId = @TaskTypeId"; p.Add("TaskTypeId", taskTypeId.Value); }
             if (categoryId.HasValue) { sql += " AND t.TaskCategoryId = @CategoryId"; p.Add("CategoryId", categoryId.Value); }
             if (!string.IsNullOrWhiteSpace(status)) { sql += " AND t.Status = @Status"; p.Add("Status", status); }
+            if (priorityId.HasValue) { sql += " AND t.PriorityId = @PriorityId"; p.Add("PriorityId", priorityId.Value); }
             if (!string.IsNullOrWhiteSpace(search))
             {
                 sql += " AND (t.TaskTitle LIKE @Search OR t.Description LIKE @Search)";

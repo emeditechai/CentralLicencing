@@ -1,0 +1,294 @@
+@model CentralLicenceApp.Models.ViewModels.EnquiryDetailsViewModel
+@{
+    var e = Model.Enquiry;
+    ViewData["Title"] = e.EnquiryNo;
+    ViewData["EnquiryId"] = e.Id;
+    ViewData["ReturnTo"] = "details";
+    var open = Model.FollowUps.Where(f => f.Status == "Open").OrderBy(f => f.DueAt).ToList();
+    string Icon(string t) => t switch { "Call" => "bi-telephone", "FollowUp" => "bi-alarm", "Demo" => "bi-easel", "Note" => "bi-sticky", "Stage" => "bi-signpost-split", "Quotation" => "bi-file-earmark-text", "Reassign" => "bi-person-gear", "Attachment" => "bi-paperclip", _ => "bi-pencil" };
+    var primary = Model.Client?.Contacts.FirstOrDefault();
+    var preselect = int.TryParse(Context.Request.Query["stage"], out var ps) ? ps : 0;
+}
+<partial name="_EnquiryStyles" />
+<div class="eq-head">
+    <div class="eq-title">
+        <div class="eq-title-icon"><i class="bi bi-telephone-inbound"></i></div>
+        <div>
+            <h4>@e.CompanyName</h4>
+            <p>@e.EnquiryNo · @e.Title</p>
+            <div class="mt-1 d-flex flex-wrap gap-1">
+                <span class="eq-pill" style="color:@e.StageColor;">@e.StageName</span>
+                @if (!string.IsNullOrWhiteSpace(e.PriorityName)) { <span class="eq-pill" style="color:@e.PriorityColor;">@e.PriorityName</span> }
+                @if (e.IsOnHold) { <span class="eq-pill" style="color:#b45309;">On hold until @e.ResumeDate?.ToString("dd MMM yyyy")</span> }
+            </div>
+        </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+        <a asp-action="Edit" asp-route-id="@e.Id" asp-permission="ClientEnquiry:Edit" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Edit</a>
+        <button type="button" class="btn btn-primary" asp-permission="ClientEnquiry:Edit" data-bs-toggle="modal" data-bs-target="#stageModal"><i class="bi bi-signpost-split me-1"></i>Change Stage</button>
+        @if (!e.StageIsClosed)
+        {
+            if (e.IsOnHold)
+            {
+                <form asp-action="Resume" asp-route-id="@e.Id" method="post" asp-permission="ClientEnquiry:Edit">@Html.AntiForgeryToken()<button class="btn btn-outline-warning">Resume</button></form>
+            }
+            else
+            {
+                <button type="button" class="btn btn-outline-warning" asp-permission="ClientEnquiry:Edit" data-bs-toggle="modal" data-bs-target="#holdModal">Hold</button>
+            }
+        }
+        @if (Model.CanManageTeam) { <button type="button" class="btn btn-outline-secondary" asp-permission="ClientEnquiry:Edit" data-bs-toggle="modal" data-bs-target="#reassignModal">Reassign</button> }
+        <form asp-action="Delete" asp-route-id="@e.Id" method="post" asp-permission="ClientEnquiry:Delete" data-swal-confirm="true" data-swal-title="Delete Enquiry?" data-swal-text="This enquiry will be removed from all lists. Its history is kept." data-swal-confirm-button="Yes, delete">
+            @Html.AntiForgeryToken()<button class="btn btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="eq-card mb-3">
+            <div class="eq-card-head">Client <a asp-controller="EnquiryClient" asp-action="Details" asp-route-id="@e.EnquiryClientId" class="btn btn-sm btn-outline-secondary">Open</a></div>
+            <div class="eq-card-body" style="font-size:.86rem;">
+                @if (Model.Client != null)
+                {
+                    <div class="fw-semibold">@Model.Client.CompanyName</div>
+                    <div class="eq-sub mb-2">@Model.Client.ClientCode @(string.IsNullOrWhiteSpace(Model.Client.City) ? "" : "· " + Model.Client.City)</div>
+                    @foreach (var k in Model.Client.Contacts)
+                    {
+                        <div class="py-1 border-top d-flex justify-content-between align-items-center gap-2">
+                            <div>@k.Name @(k.IsPrimary ? "★" : "")<div class="eq-sub">@k.Role @k.Mobile @k.Email</div></div>
+                            @if (!string.IsNullOrWhiteSpace(k.Mobile)) { <a href="tel:@k.Mobile" class="btn btn-sm btn-outline-primary" title="Call @k.Mobile"><i class="bi bi-telephone"></i></a> }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+        <div class="eq-card mb-3">
+            <div class="eq-card-head">Enquiry</div>
+            <div class="eq-card-body" style="font-size:.86rem;">
+                <div class="eq-label">Products</div><div class="mb-2">@(e.ProductNames ?? "—")</div>
+                <div class="eq-label">Owner</div><div class="mb-2">@e.OwnerName</div>
+                <div class="eq-label">Source</div><div class="mb-2">@(e.SourceName ?? "—")</div>
+                <div class="eq-label">Expected value</div><div class="mb-2">@(e.ExpectedValue.HasValue ? "₹" + e.ExpectedValue.Value.ToString("N2") : "—")</div>
+                <div class="eq-label">Expected close</div><div class="mb-2">@(e.ExpectedCloseDate?.ToString("dd MMM yyyy") ?? "—")</div>
+                @if (!string.IsNullOrWhiteSpace(e.LostReasonName)) { <div class="eq-label">Lost reason</div><div class="mb-2">@e.LostReasonName@(string.IsNullOrWhiteSpace(e.LostRemarks) ? "" : ": " + e.LostRemarks)</div> }
+                @if (!string.IsNullOrWhiteSpace(e.Requirement)) { <div class="eq-label">Requirement</div><div style="white-space:pre-line;">@e.Requirement</div> }
+            </div>
+        </div>
+        <div class="eq-card mb-3">
+            <div class="eq-card-head">Quotation <a asp-controller="Quotation" asp-action="Create" class="btn btn-sm btn-outline-secondary">New quotation</a></div>
+            <div class="eq-card-body">
+                @if (!string.IsNullOrWhiteSpace(e.QuotationNo)) { <div class="mb-2"><a asp-controller="Quotation" asp-action="Details" asp-route-id="@e.QuotationId" class="fw-semibold text-decoration-none">@e.QuotationNo</a></div> }
+                <form asp-action="LinkQuotation" asp-route-id="@e.Id" method="post" class="d-flex gap-2" asp-permission="ClientEnquiry:Edit">
+                    @Html.AntiForgeryToken()
+                    <select name="quotationId" class="form-select form-select-sm" aria-label="Quotation" required><option value="">Link a quotation</option>@foreach (var q in Model.Quotations) { <option value="@q.Id">@q.QuotationNo · @q.PartyName · ₹@q.TotalAmount.ToString("N0")</option> }</select>
+                    <button class="btn btn-sm btn-outline-primary">Link</button>
+                </form>
+            </div>
+        </div>
+        <div class="eq-card">
+            <div class="eq-card-head">Attachments</div>
+            <div class="eq-card-body">
+                @foreach (var a in Model.Attachments) { <div class="mb-1" style="font-size:.85rem;"><i class="bi bi-paperclip"></i> <a asp-action="Attachment" asp-route-attachmentId="@a.Id">@a.FileName</a> <span class="eq-sub">@a.UploadedByName</span></div> }
+                <form asp-action="UploadAttachment" asp-route-id="@e.Id" method="post" enctype="multipart/form-data" class="d-flex gap-2 mt-2" asp-permission="ClientEnquiry:Edit">
+                    @Html.AntiForgeryToken()
+                    <input type="file" name="file" class="form-control form-control-sm" aria-label="File" required /><button class="btn btn-sm btn-outline-primary">Upload</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="eq-card mb-3">
+            <div class="eq-card-head">
+                Next action
+                @if (!e.StageIsClosed)
+                {
+                    <div class="d-flex gap-2" asp-permission="ClientEnquiry:Edit">
+                        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#logCallModal" data-enquiry="@e.Id" data-followup="@open.FirstOrDefault()?.Id" data-contact="@primary?.Id" data-phone="@primary?.Mobile"><i class="bi bi-telephone me-1"></i>Log call</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#followUpModal"><i class="bi bi-alarm me-1"></i>Plan follow-up</button>
+                        <a asp-controller="EnquiryDemo" asp-action="Create" asp-route-enquiryId="@e.Id" class="btn btn-sm btn-outline-primary"><i class="bi bi-easel me-1"></i>Schedule demo</a>
+                    </div>
+                }
+            </div>
+            <div class="eq-card-body">
+                @if (!open.Any()) { <div class="eq-sub">@(e.StageIsClosed ? "This enquiry is closed." : "No follow-up is planned.")</div> }
+                @foreach (var f in open)
+                {
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 py-2 border-bottom">
+                        <div>
+                            <span class="@(f.DueAt < DateTime.Now ? "eq-overdue" : "fw-semibold")">@f.DueAt.ToString("dd MMM yyyy hh:mm tt")</span> · @f.FollowUpType
+                            <div class="eq-sub">@f.AssignedToName @(string.IsNullOrWhiteSpace(f.Purpose) ? "" : "· " + f.Purpose) @(f.RescheduleCount > 0 ? $"· Rescheduled {f.RescheduleCount}x" : "")</div>
+                        </div>
+                        <div class="d-flex gap-1" asp-permission="ClientEnquiry:Edit">
+                            <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#completeModal" data-followup="@f.Id">Complete</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#rescheduleModal" data-followup="@f.Id">Reschedule</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="eq-card">
+            <ul class="nav nav-tabs px-3 pt-2" role="tablist">
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabTimeline" type="button">Timeline</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCalls" type="button">Calls (@Model.Calls.Count)</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabFollow" type="button">Follow-ups (@Model.FollowUps.Count)</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDemos" type="button">Demos (@Model.Demos.Count)</button></li>
+            </ul>
+            <div class="tab-content eq-card-body">
+                <div class="tab-pane fade show active" id="tabTimeline">
+                    <form asp-action="AddNote" asp-route-id="@e.Id" method="post" class="d-flex gap-2 mb-2" asp-permission="ClientEnquiry:Edit">
+                        @Html.AntiForgeryToken()
+                        <input name="note" class="form-control form-control-sm" placeholder="Add a note" aria-label="Note" maxlength="1500" required /><button class="btn btn-sm btn-outline-primary">Add</button>
+                    </form>
+                    <ul class="eq-timeline">
+                        @foreach (var a in Model.Activities)
+                        {
+                            <li><div class="eq-tl-icon"><i class="bi @Icon(a.ActivityType)"></i></div><div><div style="font-size:.86rem;white-space:pre-line;">@a.Summary</div><div class="eq-sub">@(a.UserName ?? "System") · @a.CreatedAt.ToString("dd MMM yyyy hh:mm tt")</div></div></li>
+                        }
+                    </ul>
+                </div>
+                <div class="tab-pane fade" id="tabCalls">
+                    <div class="table-responsive"><table class="table eq-table mb-0">
+                        <thead><tr><th>When</th><th>Direction</th><th>Number</th><th>Outcome</th><th>Mins</th><th>By</th><th>Notes</th></tr></thead>
+                        <tbody>
+                            @if (!Model.Calls.Any()) { <tr><td colspan="7" class="text-center text-muted py-4">No calls logged yet.</td></tr> }
+                            @foreach (var c in Model.Calls) { <tr><td class="text-nowrap">@c.StartedAt.ToString("dd MMM hh:mm tt")</td><td>@c.Direction</td><td>@c.PhoneNumber</td><td>@c.OutcomeName</td><td>@(c.DurationSeconds / 60)</td><td>@c.CalledByName</td><td>@c.Notes</td></tr> }
+                        </tbody>
+                    </table></div>
+                </div>
+                <div class="tab-pane fade" id="tabFollow">
+                    <div class="table-responsive"><table class="table eq-table mb-0">
+                        <thead><tr><th>Due</th><th>Type</th><th>Assigned to</th><th>Status</th><th>Result</th></tr></thead>
+                        <tbody>@foreach (var f in Model.FollowUps) { <tr><td class="text-nowrap">@f.DueAt.ToString("dd MMM hh:mm tt")</td><td>@f.FollowUpType</td><td>@f.AssignedToName</td><td>@f.Status</td><td>@f.Result</td></tr> }</tbody>
+                    </table></div>
+                </div>
+                <div class="tab-pane fade" id="tabDemos">
+                    <div class="table-responsive"><table class="table eq-table mb-0">
+                        <thead><tr><th>When</th><th>Product</th><th>Mode</th><th>Presenter</th><th>Status</th></tr></thead>
+                        <tbody>
+                            @if (!Model.Demos.Any()) { <tr><td colspan="5" class="text-center text-muted py-4">No demos yet.</td></tr> }
+                            @foreach (var d in Model.Demos) { <tr><td class="text-nowrap"><a asp-controller="EnquiryDemo" asp-action="Details" asp-route-id="@d.Id">@d.ScheduledAt.ToString("dd MMM hh:mm tt")</a></td><td>@d.ProductName</td><td>@d.Mode</td><td>@d.PresenterName</td><td>@d.Status</td></tr> }
+                        </tbody>
+                    </table></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<partial name="_LogCallModal" model="Model.Outcomes" view-data="ViewData" />
+
+<div class="modal fade" id="stageModal" tabindex="-1"><div class="modal-dialog"><form asp-action="ChangeStage" asp-route-id="@e.Id" method="post" class="modal-content">
+    @Html.AntiForgeryToken()
+    <div class="modal-header"><h5 class="modal-title">Change stage</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <div class="modal-body">
+        <label class="form-label" for="stStage">Stage</label>
+        <select id="stStage" name="stageId" class="form-select mb-3" required>
+            @foreach (var s in Model.Stages) { <option value="@s.Id" data-code="@s.StageCode" data-closed="@(s.IsClosed ? "1" : "0")" data-days="@s.DefaultFollowUpDays" selected="@(preselect > 0 ? preselect == s.Id : e.StageId == s.Id)">@s.Name</option> }
+        </select>
+        <div id="stNextWrap" class="mb-3"><label class="form-label" for="stNext">Next follow-up @(open.Any() ? "(optional)" : "")</label><input id="stNext" type="datetime-local" name="nextFollowUpAt" class="form-control" /></div>
+        <div id="stLostWrap" class="d-none">
+            <label class="form-label" for="stLost">Lost reason <span class="text-danger">*</span></label>
+            <select id="stLost" name="lostReasonId" class="form-select mb-3"><option value="">-- Select --</option>@foreach (var r in Model.LostReasons) { <option value="@r.Id">@r.Name</option> }</select>
+            <label class="form-label" for="stRemarks">Remarks</label><input id="stRemarks" name="lostRemarks" class="form-control" maxlength="500" />
+        </div>
+        <div id="stWonWrap" class="d-none">
+            <label class="form-label" for="stClient">Link to existing Client Details (optional)</label>
+            <select id="stClient" name="linkedClientCode" class="form-select"><option value="">Not linked</option>@foreach (var c in Model.ClientCodes) { <option>@c</option> }</select>
+        </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary">Save</button></div>
+</form></div></div>
+
+<div class="modal fade" id="followUpModal" tabindex="-1"><div class="modal-dialog"><form asp-action="AddFollowUp" asp-route-id="@e.Id" method="post" class="modal-content">
+    @Html.AntiForgeryToken()
+    <div class="modal-header"><h5 class="modal-title">Plan follow-up</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <div class="modal-body">
+        <label class="form-label" for="fuType">Type</label><select id="fuType" name="type" class="form-select mb-3"><option>Call</option><option>WhatsApp</option><option>Email</option><option>Visit</option></select>
+        <label class="form-label" for="fuDue">Date and time</label><input id="fuDue" type="datetime-local" name="dueAt" class="form-control mb-3" required />
+        <label class="form-label" for="fuPurpose">Purpose</label><input id="fuPurpose" name="purpose" class="form-control" maxlength="500" />
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary">Save</button></div>
+</form></div></div>
+
+<div class="modal fade" id="completeModal" tabindex="-1"><div class="modal-dialog"><form asp-action="CompleteFollowUp" method="post" class="modal-content">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="followUpId" id="cpFollowUp" />
+    <div class="modal-header"><h5 class="modal-title">Complete follow-up</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <div class="modal-body">
+        <label class="form-label" for="cpResult">Result <span class="text-danger">*</span></label><textarea id="cpResult" name="result" class="form-control mb-3" rows="3" maxlength="1000" required></textarea>
+        <div class="row g-2">
+            <div class="col-7"><label class="form-label" for="cpNext">Next follow-up</label><input id="cpNext" type="datetime-local" name="nextAt" class="form-control" @(open.Count <= 1 ? "required" : "") /></div>
+            <div class="col-5"><label class="form-label" for="cpType">Type</label><select id="cpType" name="nextType" class="form-select"><option>Call</option><option>WhatsApp</option><option>Email</option><option>Visit</option></select></div>
+        </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-success">Complete</button></div>
+</form></div></div>
+
+<div class="modal fade" id="rescheduleModal" tabindex="-1"><div class="modal-dialog"><form asp-action="RescheduleFollowUp" method="post" class="modal-content">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="followUpId" id="rsFollowUp" />
+    <div class="modal-header"><h5 class="modal-title">Reschedule follow-up</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <div class="modal-body">
+        <label class="form-label" for="rsDue">New date and time</label><input id="rsDue" type="datetime-local" name="newDue" class="form-control mb-3" required />
+        <label class="form-label" for="rsReason">Reason</label><input id="rsReason" name="reason" class="form-control" maxlength="300" required />
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary">Reschedule</button></div>
+</form></div></div>
+
+<div class="modal fade" id="holdModal" tabindex="-1"><div class="modal-dialog"><form asp-action="Hold" asp-route-id="@e.Id" method="post" class="modal-content">
+    @Html.AntiForgeryToken()
+    <div class="modal-header"><h5 class="modal-title">Put on hold</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <div class="modal-body">
+        <label class="form-label" for="hdDate">Resume on</label><input id="hdDate" type="date" name="resumeDate" class="form-control mb-3" required />
+        <label class="form-label" for="hdReason">Reason</label><input id="hdReason" name="reason" class="form-control" maxlength="300" />
+    </div>
+    <div class="modal-footer"><button class="btn btn-warning">Put on hold</button></div>
+</form></div></div>
+
+<div class="modal fade" id="reassignModal" tabindex="-1"><div class="modal-dialog"><form asp-action="Reassign" asp-route-id="@e.Id" method="post" class="modal-content">
+    @Html.AntiForgeryToken()
+    <div class="modal-header"><h5 class="modal-title">Reassign enquiry</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+    <div class="modal-body">
+        <label class="form-label" for="raUser">New owner</label><select id="raUser" name="newOwnerId" class="form-select mb-3" required><option value="">-- Select --</option>@foreach (var u in Model.Users.Where(u => u.Id != e.OwnerUserId)) { <option value="@u.Id">@u.FullName</option> }</select>
+        <label class="form-label" for="raReason">Reason</label><input id="raReason" name="reason" class="form-control" maxlength="300" required />
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary">Reassign</button></div>
+</form></div></div>
+
+@section Scripts {
+<script>
+(function () {
+    const pad = n => String(n).padStart(2, '0');
+    const local = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const setFollow = (modalId, inputId) => document.getElementById(modalId).addEventListener('show.bs.modal', e => {
+        document.getElementById(inputId).value = e.relatedTarget.dataset.followup;
+    });
+    setFollow('completeModal', 'cpFollowUp');
+    setFollow('rescheduleModal', 'rsFollowUp');
+
+    const stage = document.getElementById('stStage');
+    const next = document.getElementById('stNext');
+    const hadOpen = @(open.Any() ? "true" : "false");
+    function syncStage() {
+        const o = stage.selectedOptions[0];
+        const closed = o.dataset.closed === '1';
+        document.getElementById('stNextWrap').classList.toggle('d-none', closed);
+        document.getElementById('stLostWrap').classList.toggle('d-none', o.dataset.code !== 'LOST');
+        document.getElementById('stWonWrap').classList.toggle('d-none', o.dataset.code !== 'WON');
+        document.getElementById('stLost').required = o.dataset.code === 'LOST';
+        next.required = !closed && !hadOpen;
+        if (!closed && !hadOpen && !next.value) {
+            const d = new Date(); d.setDate(d.getDate() + (+o.dataset.days || 1)); d.setHours(11, 0, 0, 0);
+            next.value = local(d);
+        }
+    }
+    stage.addEventListener('change', syncStage);
+    syncStage();
+    @if (preselect > 0) { <text>new bootstrap.Modal(document.getElementById('stageModal')).show();</text> }
+})();
+</script>
+}

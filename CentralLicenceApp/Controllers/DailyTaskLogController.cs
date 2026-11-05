@@ -16,6 +16,7 @@ namespace CentralLicenceApp.Controllers
         private readonly ILogger<DailyTaskLogController> _logger;
         private readonly IWebHostEnvironment _env;
         private readonly ITaskEmailService _taskEmailService;
+        private readonly ITicketPriorityRepository _priorityRepo;
 
         private static readonly string[] AllowedExtensions = { ".pdf", ".png", ".jpg", ".jpeg" };
         private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10 MB per file
@@ -25,8 +26,10 @@ namespace CentralLicenceApp.Controllers
             IUserRepository userRepo,
             ILogger<DailyTaskLogController> logger,
             IWebHostEnvironment env,
-            ITaskEmailService taskEmailService)
+            ITaskEmailService taskEmailService,
+            ITicketPriorityRepository priorityRepo)
         {
+            _priorityRepo     = priorityRepo;
             _taskRepo         = taskRepo;
             _userRepo         = userRepo;
             _logger           = logger;
@@ -39,7 +42,7 @@ namespace CentralLicenceApp.Controllers
 
         // ── My Tasks ──
         public async Task<IActionResult> Index(DateTime? from, DateTime? to,
-            int? taskType, int? category, string? status, string? search)
+            int? taskType, int? category, string? status, string? search, int? priority)
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return Challenge();
@@ -47,8 +50,8 @@ namespace CentralLicenceApp.Controllers
 
             var isAgent = !IsAdminOrTicketAdmin;
             var tasks = isAgent
-                ? (await _taskRepo.GetAssignedTasksAsync(userId, currentUser.FullName ?? "", from, to, taskType, category, status, search)).ToList()
-                : (await _taskRepo.GetTasksAsync(userId, currentUser.FullName ?? "", from, to, taskType, category, status, search)).ToList();
+                ? (await _taskRepo.GetAssignedTasksAsync(userId, currentUser.FullName ?? "", from, to, taskType, category, status, search, priority)).ToList()
+                : (await _taskRepo.GetTasksAsync(userId, currentUser.FullName ?? "", from, to, taskType, category, status, search, priority)).ToList();
             var summary = isAgent
                 ? await _taskRepo.GetAssignedSummaryAsync(userId, from, to)
                 : await _taskRepo.GetSummaryAsync(userId, from, to);
@@ -63,6 +66,8 @@ namespace CentralLicenceApp.Controllers
                 TaskTypeFilter = taskType,
                 CategoryFilter = category,
                 StatusFilter = status,
+                PriorityFilter = priority,
+                Priorities = (await _priorityRepo.GetAllAsync()).OrderBy(p => p.SortOrder).ToList(),
                 SearchTerm = search,
                 TaskTypes = taskTypes,
                 TaskCategories = categories,
@@ -88,7 +93,7 @@ namespace CentralLicenceApp.Controllers
 
         // ── Team View ──
         public async Task<IActionResult> TeamView(DateTime? from, DateTime? to,
-            int? taskType, int? category, string? status, int? user, string? search)
+            int? taskType, int? category, string? status, int? user, string? search, int? priority)
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return Challenge();
@@ -116,7 +121,7 @@ namespace CentralLicenceApp.Controllers
                 }
             }
 
-            var tasks = (await _taskRepo.GetTeamTasksAsync(teamIds, currentUser.FullName ?? "", from, to, taskType, category, status, user, search)).ToList();
+            var tasks = (await _taskRepo.GetTeamTasksAsync(teamIds, currentUser.FullName ?? "", from, to, taskType, category, status, user, search, priority)).ToList();
             var summary = await _taskRepo.GetTeamSummaryAsync(teamIds, from, to);
             var taskTypes = (await _taskRepo.GetTaskTypesAsync()).ToList();
             var categories = (await _taskRepo.GetTaskCategoriesAsync()).ToList();
@@ -129,6 +134,8 @@ namespace CentralLicenceApp.Controllers
                 TaskTypeFilter = taskType,
                 CategoryFilter = category,
                 StatusFilter = status,
+                PriorityFilter = priority,
+                Priorities = (await _priorityRepo.GetAllAsync()).OrderBy(p => p.SortOrder).ToList(),
                 UserFilter = user,
                 SearchTerm = search,
                 TaskTypes = taskTypes,
@@ -174,6 +181,13 @@ namespace CentralLicenceApp.Controllers
             if (string.IsNullOrWhiteSpace(model.Task.TaskTitle) || model.Task.TaskTypeId == 0 || model.Task.TaskCategoryId == 0)
             {
                 TempData["Error"] = "Please fill all required fields (Title, Task Type, Category).";
+                var vm = await BuildFormViewModelAsync(model.Task);
+                return View(vm);
+            }
+
+            if (!await IsSelectablePriorityAsync(model.Task.PriorityId, null))
+            {
+                TempData["Error"] = "Please select a valid Priority.";
                 var vm = await BuildFormViewModelAsync(model.Task);
                 return View(vm);
             }
@@ -346,6 +360,15 @@ namespace CentralLicenceApp.Controllers
                 return View("Create", vm);
             }
 
+            if (!await IsSelectablePriorityAsync(model.Task.PriorityId, existing.PriorityId))
+            {
+                TempData["Error"] = "Please select a valid Priority.";
+                model.Task.Id = id;
+                var vm = await BuildFormViewModelAsync(model.Task, isEdit: true);
+                vm.ExistingAttachments = (await _taskRepo.GetAttachmentsAsync(id)).ToList();
+                return View("Create", vm);
+            }
+
             model.Task.Id = id;
             model.Task.UserId = existing.UserId;
 
@@ -378,6 +401,12 @@ namespace CentralLicenceApp.Controllers
 
             if (!string.Equals(existing.Status, model.Task.Status, StringComparison.Ordinal))
                 changes.Add($"Status: \"{existing.Status}\" → \"{model.Task.Status}\"");
+
+            if (existing.PriorityId != model.Task.PriorityId)
+            {
+                var newPriority = (await _priorityRepo.GetByIdAsync(model.Task.PriorityId!.Value))?.PriorityName;
+                changes.Add($"Priority: \"{existing.PriorityName ?? "—"}\" → \"{newPriority}\"");
+            }
 
             if (existing.ProjectModuleId != model.Task.ProjectModuleId)
                 changes.Add("Project / Module changed");
@@ -654,8 +683,28 @@ namespace CentralLicenceApp.Controllers
                 TaskCategories = (await _taskRepo.GetTaskCategoriesAsync()).ToList(),
                 Projects = (await _taskRepo.GetProjectsAsync()).ToList(),
                 AssignableUsers = (await _taskRepo.GetAssignableUsersAsync()).ToList(),
+                Priorities = await GetPriorityOptionsAsync(task.PriorityId),
                 IsEdit = isEdit
             };
+        }
+
+        // Active priorities, plus the task's current one if it has since been deactivated.
+        private async Task<List<TicketPriorityMaster>> GetPriorityOptionsAsync(int? currentPriorityId)
+        {
+            var options = (await _priorityRepo.GetAllActiveAsync()).ToList();
+            if (currentPriorityId.HasValue && options.All(p => p.Id != currentPriorityId.Value))
+            {
+                var current = await _priorityRepo.GetByIdAsync(currentPriorityId.Value);
+                if (current != null) options.Add(current);
+            }
+            return options.OrderBy(p => p.SortOrder).ToList();
+        }
+
+        private async Task<bool> IsSelectablePriorityAsync(int? priorityId, int? currentPriorityId)
+        {
+            if (!priorityId.HasValue) return false;
+            if (priorityId == currentPriorityId) return true;
+            return (await _priorityRepo.GetByIdAsync(priorityId.Value))?.IsActive == true;
         }
 
         /// <summary>

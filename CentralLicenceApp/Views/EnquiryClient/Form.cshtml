@@ -1,0 +1,91 @@
+@model CentralLicenceApp.Models.ViewModels.EnquiryClientFormViewModel
+@{
+    var c = Model.Client;
+    var isEdit = c.Id > 0;
+    ViewData["Title"] = isEdit ? "Edit Client" : "New Client";
+}
+<partial name="_EnquiryStyles" />
+<div class="eq-head">
+    <div class="eq-title"><div class="eq-title-icon"><i class="bi bi-building"></i></div><div><h4>@ViewData["Title"]</h4><p>Client base details and contacts</p></div></div>
+    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+</div>
+<form method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="ReturnToEnquiry" value="@(Model.ReturnToEnquiry ? "true" : "false")" />
+    @if (Model.Duplicates.Any())
+    {
+        <div class="alert alert-warning">
+            <strong>Possible duplicates:</strong>
+            <ul class="mb-2">@foreach (var d in Model.Duplicates) { <li>@d.CompanyName (same @d.MatchedOn)</li> }</ul>
+            <div class="form-check"><input class="form-check-input" type="checkbox" id="confirmDup" name="ConfirmDuplicate" value="true" /><label class="form-check-label" for="confirmDup">This is a different client. Save anyway.</label></div>
+        </div>
+    }
+    <div class="eq-card mb-3"><div class="eq-card-head">Company</div><div class="eq-card-body"><div class="row g-3">
+        <div class="col-md-6"><label class="form-label" for="cName">Company name <span class="text-danger">*</span></label><input id="cName" name="Client.CompanyName" value="@c.CompanyName" class="form-control" maxlength="200" required /></div>
+        <div class="col-md-3"><label class="form-label" for="cType">Business type</label><select id="cType" name="Client.BusinessTypeId" class="form-select"><option value="">-- Select --</option>@foreach (var t in Model.BusinessTypes) { <option value="@t.Id" selected="@(c.BusinessTypeId == t.Id)">@t.Name</option> }</select></div>
+        <div class="col-md-3"><label class="form-label" for="cGst">GSTIN</label><input id="cGst" name="Client.GSTIN" value="@c.GSTIN" class="form-control" maxlength="20" /></div>
+        <div class="col-md-6"><label class="form-label" for="cAddr">Address</label><input id="cAddr" name="Client.Address" value="@c.Address" class="form-control" maxlength="500" /></div>
+        <div class="col-md-3"><label class="form-label" for="cCity">City</label><input id="cCity" name="Client.City" value="@c.City" class="form-control" maxlength="100" /></div>
+        <div class="col-md-3"><label class="form-label" for="cState">State</label><input id="cState" name="Client.State" value="@c.State" class="form-control" maxlength="100" /></div>
+        <div class="col-md-3"><label class="form-label" for="cWeb">Website</label><input id="cWeb" name="Client.Website" value="@c.Website" class="form-control" maxlength="200" /></div>
+        <div class="col-md-3"><label class="form-label" for="cSoft">Existing software</label><input id="cSoft" name="Client.ExistingSoftware" value="@c.ExistingSoftware" class="form-control" maxlength="200" /></div>
+        <div class="col-md-3"><label class="form-label" for="cSize">Size (beds, branches)</label><input id="cSize" name="Client.SizeInfo" value="@c.SizeInfo" class="form-control" maxlength="100" /></div>
+        <div class="col-md-3"><label class="form-label" for="cRef">Referred by</label><input id="cRef" name="Client.ReferredBy" value="@c.ReferredBy" class="form-control" maxlength="200" /></div>
+        <div class="col-md-9"><label class="form-label" for="cNotes">Notes</label><input id="cNotes" name="Client.Notes" value="@c.Notes" class="form-control" maxlength="1000" /></div>
+        <div class="col-md-3 d-flex align-items-end"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="cActive" name="Client.IsActive" value="true" checked="@c.IsActive" /><input type="hidden" name="Client.IsActive" value="false" /><label class="form-check-label" for="cActive">Active</label></div></div>
+    </div></div></div>
+    <div class="eq-card mb-3">
+        <div class="eq-card-head">Contacts <button type="button" id="addContact" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus-lg"></i> Add contact</button></div>
+        <div class="eq-card-body" id="contacts">
+            @for (var i = 0; i < c.Contacts.Count; i++)
+            {
+                var k = c.Contacts[i];
+                <div class="row g-2 mb-3 contact-row align-items-end">
+                    <input type="hidden" name="Client.Contacts[@i].Id" value="@k.Id" />
+                    <div class="col-md-2"><label class="form-label small">Name *</label><input name="Client.Contacts[@i].Name" value="@k.Name" class="form-control form-control-sm" maxlength="150" /></div>
+                    <div class="col-md-2"><label class="form-label small">Role</label><input name="Client.Contacts[@i].Role" value="@k.Role" class="form-control form-control-sm" maxlength="100" /></div>
+                    <div class="col-md-2"><label class="form-label small">Mobile</label><input name="Client.Contacts[@i].Mobile" value="@k.Mobile" class="form-control form-control-sm" maxlength="20" /></div>
+                    <div class="col-md-2"><label class="form-label small">WhatsApp</label><input name="Client.Contacts[@i].WhatsApp" value="@k.WhatsApp" class="form-control form-control-sm" maxlength="20" /></div>
+                    <div class="col-md-2"><label class="form-label small">Email</label><input type="email" name="Client.Contacts[@i].Email" value="@k.Email" class="form-control form-control-sm" maxlength="200" /></div>
+                    <div class="col-md-2 d-flex gap-2 small">
+                        <label><input type="checkbox" name="Client.Contacts[@i].IsPrimary" value="true" checked="@k.IsPrimary" class="contact-primary" /> Primary</label>
+                        <label><input type="checkbox" name="Client.Contacts[@i].WhatsAppOptOut" value="true" checked="@k.WhatsAppOptOut" /> No WhatsApp</label>
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-contact" title="Remove"><i class="bi bi-x"></i></button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+    <div class="d-flex justify-content-end"><button class="btn btn-primary px-4"><i class="bi bi-save me-1"></i> Save Client</button></div>
+</form>
+@section Scripts {
+<script>
+(function () {
+    const box = document.getElementById('contacts');
+    let next = box.querySelectorAll('.contact-row').length;
+    function renumber() {
+        box.querySelectorAll('.contact-row').forEach((row, i) => {
+            row.querySelectorAll('[name]').forEach(el => { el.name = el.name.replace(/Contacts\[\d+\]/, `Contacts[${i}]`); });
+        });
+    }
+    document.getElementById('addContact').addEventListener('click', () => {
+        const row = box.querySelector('.contact-row').cloneNode(true);
+        row.querySelectorAll('input').forEach(el => { if (el.type === 'checkbox') el.checked = false; else el.value = el.type === 'hidden' ? '0' : ''; });
+        box.appendChild(row);
+        renumber();
+        next++;
+    });
+    box.addEventListener('click', e => {
+        const btn = e.target.closest('.remove-contact');
+        if (!btn) return;
+        if (box.querySelectorAll('.contact-row').length === 1) return;
+        btn.closest('.contact-row').remove();
+        renumber();
+    });
+    box.addEventListener('change', e => {
+        if (!e.target.classList.contains('contact-primary') || !e.target.checked) return;
+        box.querySelectorAll('.contact-primary').forEach(c => { if (c !== e.target) c.checked = false; });
+    });
+})();
+</script>
+}

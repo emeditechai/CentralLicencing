@@ -1,0 +1,126 @@
+@model CentralLicenceApp.Models.ViewModels.EnquiryIndexViewModel
+@{
+    ViewData["Title"] = "Enquiries";
+    var f = Model.Filter;
+    var o = Model.Options;
+}
+<partial name="_EnquiryStyles" />
+<div class="eq-head">
+    <div class="eq-title"><div class="eq-title-icon"><i class="bi bi-kanban"></i></div><div><h4>Enquiries</h4><p>@Model.Enquiries.Count enquiries match</p></div></div>
+    <div class="d-flex gap-2 flex-wrap">
+        <div class="btn-group">
+            <a asp-action="Index" asp-route-view="table" class="btn btn-outline-secondary @(Model.ViewMode == "table" ? "active" : "")"><i class="bi bi-table me-1"></i>Table</a>
+            <a asp-action="Index" asp-route-view="board" class="btn btn-outline-secondary @(Model.ViewMode == "board" ? "active" : "")"><i class="bi bi-kanban me-1"></i>Board</a>
+        </div>
+        <a asp-action="ExportExcel" asp-permission="ClientEnquiry:Export" asp-route-Search="@f.Search" asp-route-StageId="@f.StageId" asp-route-SourceId="@f.SourceId" asp-route-PriorityId="@f.PriorityId" asp-route-ProductId="@f.ProductId" asp-route-OwnerId="@f.OwnerId" asp-route-State="@f.State" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel me-1"></i>Export</a>
+        <a asp-action="Create" asp-permission="ClientEnquiry:Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> New Enquiry</a>
+    </div>
+</div>
+<form method="get" class="eq-card eq-card-body mb-3 row g-2 mx-0 align-items-end">
+    <input type="hidden" name="view" value="@Model.ViewMode" />
+    <div class="col-md-3"><label class="eq-label" for="fSearch">Search</label><input id="fSearch" name="Search" value="@f.Search" class="form-control form-control-sm" placeholder="Number, company, contact, mobile" /></div>
+    <div class="col-md"><label class="eq-label" for="fState">Show</label><select id="fState" name="State" class="form-select form-select-sm">
+        <option value="">All</option><option value="open" selected="@(f.State == "open")">Open</option><option value="overdue" selected="@(f.State == "overdue")">Overdue</option><option value="hold" selected="@(f.State == "hold")">On hold</option><option value="closed" selected="@(f.State == "closed")">Won / Lost</option></select></div>
+    <div class="col-md"><label class="eq-label" for="fStage">Stage</label><select id="fStage" name="StageId" class="form-select form-select-sm"><option value="">All</option>@foreach (var s in o.Stages) { <option value="@s.Id" selected="@(f.StageId == s.Id)">@s.Name</option> }</select></div>
+    <div class="col-md"><label class="eq-label" for="fProduct">Product</label><select id="fProduct" name="ProductId" class="form-select form-select-sm"><option value="">All</option>@foreach (var p in o.Products) { <option value="@p.Id" selected="@(f.ProductId == p.Id)">@p.ProductName</option> }</select></div>
+    <div class="col-md"><label class="eq-label" for="fSource">Source</label><select id="fSource" name="SourceId" class="form-select form-select-sm"><option value="">All</option>@foreach (var s in o.Sources) { <option value="@s.Id" selected="@(f.SourceId == s.Id)">@s.Name</option> }</select></div>
+    <div class="col-md"><label class="eq-label" for="fPriority">Priority</label><select id="fPriority" name="PriorityId" class="form-select form-select-sm"><option value="">All</option>@foreach (var p in o.Priorities) { <option value="@p.Id" selected="@(f.PriorityId == p.Id)">@p.PriorityName</option> }</select></div>
+    @if (Model.CanManageTeam)
+    {
+        <div class="col-md"><label class="eq-label" for="fOwner">Owner</label><select id="fOwner" name="OwnerId" class="form-select form-select-sm"><option value="">All</option>@foreach (var u in o.Users) { <option value="@u.Id" selected="@(f.OwnerId == u.Id)">@u.FullName</option> }</select></div>
+    }
+    <div class="col-md-auto d-flex gap-1"><button class="btn btn-sm btn-primary"><i class="bi bi-funnel-fill"></i> Filter</button><a asp-action="Index" asp-route-view="@Model.ViewMode" class="btn btn-sm btn-outline-secondary">Clear</a></div>
+</form>
+
+@if (Model.ViewMode == "board")
+{
+    @Html.AntiForgeryToken()
+    <div class="eq-board">
+        @foreach (var s in o.Stages)
+        {
+            var cards = Model.Enquiries.Where(e => e.StageId == s.Id).ToList();
+            <div class="eq-col" data-stage="@s.Id">
+                <div class="eq-col-head" style="color:@s.ColorCode;"><span>@s.Name</span><span>@cards.Count</span></div>
+                @foreach (var e in cards)
+                {
+                    <a class="eq-board-card" draggable="true" data-id="@e.Id" asp-action="Details" asp-route-id="@e.Id">
+                        <div class="fw-semibold" style="font-size:.84rem;">@e.CompanyName</div>
+                        <div class="eq-sub">@e.Title</div>
+                        <div class="eq-sub @(e.NextFollowUpAt < DateTime.Now && !e.StageIsClosed ? "eq-overdue" : "")">@(e.IsOnHold ? "On hold" : e.NextFollowUpAt?.ToString("dd MMM hh:mm tt"))</div>
+                        <div class="eq-sub">@e.OwnerName</div>
+                    </a>
+                }
+            </div>
+        }
+    </div>
+}
+else
+{
+    <form asp-action="BulkReassign" method="post">
+        @Html.AntiForgeryToken()
+        <div class="eq-card">
+            @if (Model.CanManageTeam)
+            {
+                <div class="eq-card-head" asp-permission="ClientEnquiry:Edit">
+                    <span style="font-size:.85rem;">Reassign selected</span>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <select name="newOwnerId" class="form-select form-select-sm" style="width:auto;" aria-label="New owner"><option value="">Select user</option>@foreach (var u in o.Users) { <option value="@u.Id">@u.FullName</option> }</select>
+                        <input name="reason" class="form-control form-control-sm" style="width:220px;" placeholder="Reason" aria-label="Reason" />
+                        <button class="btn btn-sm btn-outline-primary">Reassign</button>
+                    </div>
+                </div>
+            }
+            <div class="table-responsive">
+                <table class="table eq-table mb-0">
+                    <thead><tr>@if (Model.CanManageTeam) { <th></th> }<th>Enquiry</th><th>Client</th><th>Products</th><th>Stage</th><th>Priority</th><th>Owner</th><th>Next follow-up</th><th class="text-end">Value</th></tr></thead>
+                    <tbody>
+                        @if (!Model.Enquiries.Any()) { <tr><td colspan="9" class="text-center text-muted py-5">No enquiries found.</td></tr> }
+                        @foreach (var e in Model.Enquiries)
+                        {
+                            <tr>
+                                @if (Model.CanManageTeam) { <td><input type="checkbox" name="enquiryIds" value="@e.Id" class="form-check-input" aria-label="Select @e.EnquiryNo" /></td> }
+                                <td><a asp-action="Details" asp-route-id="@e.Id" class="fw-semibold text-decoration-none">@e.EnquiryNo</a><div class="eq-sub">@e.Title</div></td>
+                                <td>@e.CompanyName<div class="eq-sub">@e.PrimaryContactName @e.PrimaryMobile</div></td>
+                                <td class="eq-sub" style="max-width:180px;">@e.ProductNames</td>
+                                <td><span class="eq-pill" style="color:@e.StageColor;">@e.StageName</span>@if (e.IsOnHold) { <div class="eq-sub">On hold until @e.ResumeDate?.ToString("dd MMM")</div> }</td>
+                                <td>@if (!string.IsNullOrWhiteSpace(e.PriorityName)) { <span class="eq-pill" style="color:@e.PriorityColor;">@e.PriorityName</span> }</td>
+                                <td>@e.OwnerName</td>
+                                <td class="@(e.NextFollowUpAt < DateTime.Now && !e.IsOnHold ? "eq-overdue" : "")">@(e.NextFollowUpAt?.ToString("dd MMM hh:mm tt") ?? "—")</td>
+                                <td class="text-end">@(e.ExpectedValue.HasValue ? "₹" + e.ExpectedValue.Value.ToString("N0") : "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </form>
+}
+@section Scripts {
+<script>
+(function () {
+    const token = document.querySelector('input[name="__RequestVerificationToken"]');
+    let dragged = null;
+    document.querySelectorAll('.eq-board-card').forEach(c => {
+        c.addEventListener('dragstart', e => { dragged = c; e.dataTransfer.effectAllowed = 'move'; });
+    });
+    document.querySelectorAll('.eq-col').forEach(col => {
+        col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('drag-over'); });
+        col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+        col.addEventListener('drop', async e => {
+            e.preventDefault();
+            col.classList.remove('drag-over');
+            if (!dragged || dragged.parentElement === col) return;
+            const res = await fetch('@Url.Action("MoveStage")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'RequestVerificationToken': token.value },
+                body: JSON.stringify({ enquiryId: +dragged.dataset.id, stageId: +col.dataset.stage })
+            });
+            const data = await res.json();
+            if (data.redirect) { location.href = data.redirect; return; }
+            if (!data.success) { Swal.fire('Could not move', data.message || 'Please try again.', 'error'); return; }
+            location.reload();
+        });
+    });
+})();
+</script>
+}

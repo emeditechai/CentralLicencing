@@ -33,6 +33,7 @@
     .tl-type-badge { font-size:.7rem; font-weight:700; padding:4px 10px; border-radius:20px; letter-spacing:.03em; }
     .tl-type-dev { background:linear-gradient(135deg,#ede9fe,#ddd6fe); color:#5b21b6; }
     .tl-type-sup { background:linear-gradient(135deg,#dbeafe,#bfdbfe); color:#1e40af; }
+    .tl-priority { font-size:.7rem; font-weight:700; padding:3px 8px; border-radius:8px; white-space:nowrap; }
     .tl-cat-badge { font-size:.7rem; font-weight:600; padding:3px 8px; border-radius:8px; background:#f1f5f9; color:#475569; }
 
     .tl-status { font-size:.7rem; font-weight:700; padding:4px 10px; border-radius:20px; letter-spacing:.03em; }
@@ -151,6 +152,13 @@
                 @foreach (var s in new[] { "Pending", "Started", "In Progress", "On Hold", "Resolved", "Completed", "Cancelled" }) { <option value="@s" selected="@(Model.StatusFilter == s)">@s</option> }
             </select>
         </div>
+        <div class="col-md-2 col-sm-4">
+            <label class="form-label mb-1" style="font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;">Priority</label>
+            <select name="priority" class="form-select form-select-sm">
+                <option value="">All Priorities</option>
+                @foreach (var p in Model.Priorities) { <option value="@p.Id" selected="@(Model.PriorityFilter == p.Id)">@p.PriorityName</option> }
+            </select>
+        </div>
         @if (Model.IsManagerView && Model.TeamMembers.Any())
         {
             <div class="col-md-2 col-sm-4">
@@ -201,6 +209,7 @@ else
                         <th>Task</th>
                         <th>Type</th>
                         <th>Category</th>
+                        <th>Priority</th>
                         <th>Assigned To</th>
                         <th>Reference</th>
                         <th>Total Effort</th>
@@ -236,6 +245,16 @@ else
                             </td>
                             <td><span class="tl-type-badge @typeCls">@t.TaskTypeName</span></td>
                             <td><span class="tl-cat-badge">@t.TaskCategoryName</span></td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(t.PriorityName))
+                                {
+                                    <span class="tl-priority" style="color:@t.PriorityColor;border:1px solid @t.PriorityColor;">@t.PriorityName</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted" style="font-size:.78rem;">—</span>
+                                }
+                            </td>
                             <td>
                                 @if (!string.IsNullOrWhiteSpace(t.AssignedToUserName))
                                 {
@@ -277,13 +296,13 @@ else
                                     <a asp-action="Details" asp-route-id="@t.Id" class="tl-action-btn" title="View Task"><i class="bi bi-eye"></i></a>
                                     @if (canChangeStatusOrLog)
                                     {
-                                        @if (t.Status != "Completed" && t.Status != "Cancelled" && t.Status != "Resolved")
+                                        @if (t.Status != "Completed" && t.Status != "Cancelled")
                                         {
                                             <button type="button" class="tl-action-btn tl-action-btn-time" title="Log Time" onclick="openLogTime(@t.Id, '@t.TaskTitle.Replace("'", "\\'")')"><i class="bi bi-clock-history"></i></button>
                                         }
                                         else
                                         {
-                                            <button type="button" class="tl-action-btn" title="@(t.Status == "Cancelled" ? "Task Cancelled" : "Task Completed/Resolved") – Time logging disabled" disabled style="opacity:.4;cursor:not-allowed;"><i class="bi bi-clock-history"></i></button>
+                                            <button type="button" class="tl-action-btn" title="@(t.Status == "Cancelled" ? "Task Cancelled" : "Task Completed") – Time logging disabled" disabled style="opacity:.4;cursor:not-allowed;"><i class="bi bi-clock-history"></i></button>
                                         }
                                         @if (t.Status != "Cancelled")
                                         {

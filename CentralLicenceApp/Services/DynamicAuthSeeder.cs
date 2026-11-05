@@ -49,6 +49,8 @@ namespace CentralLicenceApp.Services
         private static readonly string[] R_TicketAdminAgent = { "Administrator", "Ticket Admin", "Ticket Agent" };
         private static readonly string[] R_TicketAdmin = { "Administrator", "Ticket Admin" };
         private static readonly string[] R_AllAuth = { "Administrator", "Staff", "Finance", "Ticket Admin", "Ticket Agent", "ClientTicket" };
+        private static readonly string[] R_EnquiryAccess = { "Administrator", "Ticket Admin" };
+        private static readonly string[] EnquiryPerms = { "View", "Create", "Edit", "Delete", "Export" };
         private static readonly string[] CrudPerms = { "View", "Create", "Edit", "Delete" };
         private static readonly string[] ViewExport = { "View", "Export" };
         private static readonly string[] ViewOnly = { "View" };
@@ -174,6 +176,17 @@ namespace CentralLicenceApp.Services
                     new MenuDef("Ticket Management", "Link", "HelpDeskTicket", "Index",     "bi bi-kanban",            new[]{"View","Create","Edit","Delete","Approve"}, R_TicketAdminAgent),
                     new MenuDef("My Task Log",       "Link", "DailyTaskLog",   "Index",     "bi bi-journal-check",     new[]{"View","Create","Edit"}, R_TicketAdminAgent),
                     new MenuDef("Team Task Log",     "Link", "DailyTaskLog",   "TeamView",  "bi bi-people",            ViewExport, R_TicketAdmin),
+                    new MenuDef("Client Enquiry", "Collapsible", null, null, "bi bi-telephone-inbound", ViewOnly, R_EnquiryAccess,
+                        Children: new[]
+                        {
+                            new MenuDef("Enquiry Dashboard", "Link", "ClientEnquiry", "Dashboard", "bi bi-speedometer2",   EnquiryPerms, R_EnquiryAccess),
+                            new MenuDef("Call List",         "Link", "ClientEnquiry", "CallList",  "bi bi-telephone",      EnquiryPerms, R_EnquiryAccess),
+                            new MenuDef("Enquiries",         "Link", "ClientEnquiry", "Index",     "bi bi-kanban",         EnquiryPerms, R_EnquiryAccess),
+                            new MenuDef("Enquiry Clients",   "Link", "EnquiryClient", "Index",     "bi bi-building",       EnquiryPerms, R_EnquiryAccess),
+                            new MenuDef("Demo Calendar",     "Link", "EnquiryDemo",   "Index",     "bi bi-calendar-event", EnquiryPerms, R_EnquiryAccess),
+                            new MenuDef("Enquiry Reports",   "Link", "ClientEnquiry", "Reports",   "bi bi-bar-chart-line", EnquiryPerms, R_EnquiryAccess),
+                            new MenuDef("Enquiry Masters",   "Link", "EnquiryMaster", "Index",     "bi bi-collection",     EnquiryPerms, R_TicketAdmin),
+                        }),
                     new MenuDef("Master", "Collapsible", null, null, "bi bi-collection", ViewOnly, R_TicketAdmin,
                         Children: new[]
                         {

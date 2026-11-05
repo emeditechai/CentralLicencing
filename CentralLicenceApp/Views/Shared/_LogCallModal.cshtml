@@ -1,0 +1,61 @@
+@model List<CentralLicenceApp.Models.EnquiryCallOutcome>
+@{ var returnTo = ViewData["ReturnTo"] as string ?? "calllist"; }
+<div class="modal fade" id="logCallModal" tabindex="-1">
+    <div class="modal-dialog modal-lg"><form asp-controller="ClientEnquiry" asp-action="LogCall" method="post" class="modal-content">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" id="lcEnquiry" value="@ViewData["EnquiryId"]" />
+        <input type="hidden" name="followUpId" id="lcFollowUp" />
+        <input type="hidden" name="contactId" id="lcContact" />
+        <input type="hidden" name="returnTo" value="@returnTo" />
+        <div class="modal-header"><h5 class="modal-title">Log call <span id="lcCompany" class="text-muted fs-6"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+        <div class="modal-body">
+            <div class="row g-3">
+                <div class="col-md-4"><label class="form-label" for="lcPhone">Number</label><input id="lcPhone" name="phoneNumber" class="form-control" maxlength="20" /></div>
+                <div class="col-md-4"><label class="form-label" for="lcDirection">Direction</label><select id="lcDirection" name="direction" class="form-select"><option>Outgoing</option><option>Incoming</option></select></div>
+                <div class="col-md-4"><label class="form-label" for="lcDuration">Duration (minutes)</label><input id="lcDuration" type="number" min="0" name="durationMinutes" class="form-control" value="0" /></div>
+                <div class="col-md-6">
+                    <label class="form-label" for="lcOutcome">Outcome <span class="text-danger">*</span></label>
+                    <select id="lcOutcome" name="outcomeId" class="form-select" required>
+                        <option value="">-- Select --</option>
+                        @foreach (var o in Model) { <option value="@o.Id" data-retry="@o.RetryHours">@o.Name</option> }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="lcNext">Next follow-up</label>
+                    <input id="lcNext" type="datetime-local" name="nextAt" class="form-control" />
+                    <div class="mt-1 d-flex gap-1">
+                        <button type="button" class="btn btn-sm btn-outline-secondary lc-quick" data-hours="2">In 2 hours</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary lc-quick" data-hours="24">Tomorrow</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary lc-quick" data-hours="168">Next week</button>
+                    </div>
+                </div>
+                <div class="col-12"><label class="form-label" for="lcNotes">Notes</label><textarea id="lcNotes" name="notes" class="form-control" rows="3" maxlength="1000"></textarea></div>
+            </div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-primary">Save call</button></div>
+    </form></div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('logCallModal');
+    const next = document.getElementById('lcNext');
+    const pad = n => String(n).padStart(2, '0');
+    const setHours = h => {
+        const d = new Date(Date.now() + h * 3600000);
+        next.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    modal.addEventListener('show.bs.modal', e => {
+        const b = e.relatedTarget ? e.relatedTarget.dataset : {};
+        if (b.enquiry) document.getElementById('lcEnquiry').value = b.enquiry;
+        document.getElementById('lcFollowUp').value = b.followup || '';
+        document.getElementById('lcContact').value = b.contact || '';
+        document.getElementById('lcPhone').value = b.phone || '';
+        document.getElementById('lcCompany').textContent = b.company || '';
+    });
+    document.querySelectorAll('.lc-quick').forEach(btn => btn.addEventListener('click', () => setHours(+btn.dataset.hours)));
+    document.getElementById('lcOutcome').addEventListener('change', e => {
+        const retry = e.target.selectedOptions[0]?.dataset.retry;
+        if (retry && !next.value) setHours(+retry);
+    });
+});
+</script>

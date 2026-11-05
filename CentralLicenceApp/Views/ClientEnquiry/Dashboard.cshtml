@@ -1,0 +1,83 @@
+@model CentralLicenceApp.Models.ViewModels.EnquiryDashboardViewModel
+@{
+    ViewData["Title"] = "Enquiry Dashboard";
+    var s = Model.Summary;
+    var max = Math.Max(1, Model.Pipeline.Any() ? Model.Pipeline.Max(p => p.Total) : 1);
+}
+<partial name="_EnquiryStyles" />
+<div class="eq-head">
+    <div class="eq-title"><div class="eq-title-icon"><i class="bi bi-speedometer2"></i></div><div><h4>Enquiry Dashboard</h4><p>Your pipeline, follow-ups and demos</p></div></div>
+    <div class="d-flex gap-2">
+        <a asp-action="CallList" class="btn btn-outline-primary"><i class="bi bi-telephone me-1"></i> Call List</a>
+        <a asp-action="Create" asp-permission="ClientEnquiry:Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> New Enquiry</a>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-2"><a class="eq-tile" asp-action="Index" asp-route-State="open"><div class="eq-tile-num">@s.OpenEnquiries</div><div class="eq-tile-label">Open</div></a></div>
+    <div class="col-6 col-lg-2"><a class="eq-tile" asp-action="CallList" asp-route-tab="today"><div class="eq-tile-num">@s.DueToday</div><div class="eq-tile-label">Due today</div></a></div>
+    <div class="col-6 col-lg-2"><a class="eq-tile" asp-action="Index" asp-route-State="overdue"><div class="eq-tile-num @(s.Overdue > 0 ? "eq-overdue" : "")">@s.Overdue</div><div class="eq-tile-label">Overdue</div></a></div>
+    <div class="col-6 col-lg-2"><a class="eq-tile" asp-controller="EnquiryDemo" asp-action="Index"><div class="eq-tile-num">@s.UpcomingDemos</div><div class="eq-tile-label">Upcoming demos</div></a></div>
+    <div class="col-6 col-lg-2"><div class="eq-tile"><div class="eq-tile-num">@s.ConversionPercent%</div><div class="eq-tile-label">Won @s.Won / Lost @s.Lost</div></div></div>
+    <div class="col-6 col-lg-2"><div class="eq-tile"><div class="eq-tile-num" style="font-size:1.25rem;line-height:2.4rem;">₹@s.OpenValue.ToString("N0")</div><div class="eq-tile-label">Open value</div></div></div>
+</div>
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="eq-card mb-3">
+            <div class="eq-card-head">Pipeline by stage</div>
+            <div class="eq-card-body">
+                @foreach (var p in Model.Pipeline)
+                {
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between" style="font-size:.83rem;"><span>@p.Name</span><strong>@p.Total</strong></div>
+                        <div class="eq-bar"><span style="width:@(100 * p.Total / max)%;background:@p.Color;"></span></div>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="eq-card">
+            <div class="eq-card-head">Lost reasons</div>
+            <div class="eq-card-body">
+                @if (!Model.LostReasons.Any()) { <div class="eq-sub">No lost enquiries yet.</div> }
+                @foreach (var r in Model.LostReasons) { <div class="d-flex justify-content-between" style="font-size:.85rem;padding:3px 0;"><span>@r.Name</span><strong>@r.Total</strong></div> }
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="eq-card mb-3">
+            <div class="eq-card-head">My follow-ups due <a asp-action="CallList" class="btn btn-sm btn-outline-secondary">Open Call List</a></div>
+            <div class="table-responsive">
+                <table class="table eq-table mb-0">
+                    <tbody>
+                        @if (!Model.MyToday.Any()) { <tr><td class="text-muted text-center py-4">Nothing due today.</td></tr> }
+                        @foreach (var i in Model.MyToday)
+                        {
+                            <tr>
+                                <td><a asp-action="Details" asp-route-id="@i.EnquiryId" class="fw-semibold text-decoration-none">@i.CompanyName</a><div class="eq-sub">@i.ContactName @i.Mobile</div></td>
+                                <td><span class="eq-pill" style="color:@i.StageColor;">@i.StageName</span></td>
+                                <td class="text-end @(i.DueAt < DateTime.Now ? "eq-overdue" : "")">@i.DueAt.ToString("dd MMM hh:mm tt")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="eq-card">
+            <div class="eq-card-head">Upcoming demos <a asp-controller="EnquiryDemo" asp-action="Index" class="btn btn-sm btn-outline-secondary">Open Calendar</a></div>
+            <div class="table-responsive">
+                <table class="table eq-table mb-0">
+                    <tbody>
+                        @if (!Model.UpcomingDemos.Any()) { <tr><td class="text-muted text-center py-4">No demos in the next 14 days.</td></tr> }
+                        @foreach (var d in Model.UpcomingDemos)
+                        {
+                            <tr>
+                                <td><a asp-controller="EnquiryDemo" asp-action="Details" asp-route-id="@d.Id" class="fw-semibold text-decoration-none">@d.CompanyName</a><div class="eq-sub">@d.ProductName</div></td>
+                                <td>@d.PresenterName</td>
+                                <td class="text-end">@d.ScheduledAt.ToString("dd MMM hh:mm tt")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

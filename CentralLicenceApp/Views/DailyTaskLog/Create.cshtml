@@ -135,6 +135,16 @@
                         }
                     </select>
                 </div>
+                <div class="col-md-6">
+                    <label class="form-label">Priority <span class="text-danger">*</span></label>
+                    <select name="Task.PriorityId" class="form-select" required>
+                        <option value="">-- Select --</option>
+                        @foreach (var p in Model.Priorities)
+                        {
+                            <option value="@p.Id" selected="@(task.PriorityId == p.Id)">@p.PriorityName</option>
+                        }
+                    </select>
+                </div>
                 <div class="col-12" style="margin-bottom: 1.5rem;">
                     <label class="form-label">Description</label>
                     <div id="quillEditor" style="min-height: 150px;">@Html.Raw(task.Description)</div>

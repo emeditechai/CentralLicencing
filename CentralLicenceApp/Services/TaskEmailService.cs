@@ -187,6 +187,7 @@ namespace CentralLicenceApp.Services
                 ("Assigned To",     string.IsNullOrWhiteSpace(task.AssignedToUserName) ? "—" : task.AssignedToUserName),
                 ("Created By",      task.UserName),
                 ("Status",          task.Status),
+                ("Priority",        task.PriorityName ?? "—"),
                 ("Project / Module",task.ProjectModuleName ?? "—"),
                 ("Linked Ticket",   task.TicketNumber != null ? $"{task.TicketNumber} — {task.TicketSubject}" : "—"),
                 ("Description",     string.IsNullOrWhiteSpace(task.Description) ? "—" : HtmlText.ToPlainText(task.Description)),
@@ -201,6 +202,10 @@ namespace CentralLicenceApp.Services
                 if (r.Label == "Status")
                 {
                     valueHtml = $"<span style=\"display:inline-block;padding:3px 12px;border-radius:20px;background:{statusColor}20;color:{statusColor};font-weight:700;font-size:12px;\">{Enc(r.Value)}</span>";
+                }
+                else if (r.Label == "Priority")
+                {
+                    valueHtml = $"<span style=\"color:{Enc(task.PriorityColor ?? "#1e293b")};font-weight:700;\">{Enc(r.Value)}</span>";
                 }
                 else if (r.Label == "Description")
                 {
@@ -356,6 +361,7 @@ namespace CentralLicenceApp.Services
             Field("Type", task.TaskTypeName);
             Field("Category", task.TaskCategoryName);
             Field("Status", task.Status);
+            Field("Priority", task.PriorityName);
             Field("Project", task.ProjectModuleName);
             Field("Ticket", task.TicketNumber != null ? $"{task.TicketNumber} — {task.TicketSubject}" : null);
             Field("Assigned To", task.AssignedToUserName);

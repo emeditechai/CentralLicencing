@@ -1,0 +1,59 @@
+@model CentralLicenceApp.Models.ViewModels.EnquiryMasterViewModel
+@{
+    ViewData["Title"] = "Enquiry Masters";
+    var tab = (string)ViewBag.Tab;
+    var tabs = new[] { ("stages", "Stages"), ("outcomes", "Call Outcomes"), ("sources", "Sources"), ("types", "Business Types"), ("lost", "Lost Reasons") };
+}
+<partial name="_EnquiryStyles" />
+<div class="eq-head"><div class="eq-title"><div class="eq-title-icon"><i class="bi bi-collection"></i></div><div><h4>Enquiry Masters</h4><p>Lists used across the Client Enquiry module. Priority comes from Ticket Priorities.</p></div></div></div>
+<ul class="nav nav-pills mb-3 gap-1">
+    @foreach (var (key, label) in tabs) { <li class="nav-item"><a class="nav-link @(tab == key ? "active" : "")" asp-action="Index" asp-route-tab="@key">@label</a></li> }
+</ul>
+<div class="eq-card"><div class="table-responsive p-3">
+@if (tab == "stages")
+{
+    <div class="eq-sub mb-2">Stages with a fixed code drive automation, so they stay active.</div>
+    @foreach (var s in Model.Stages.Append(new CentralLicenceApp.Models.EnquiryStage { SortOrder = Model.Stages.Count + 1 }))
+    {
+        <form asp-action="SaveStage" method="post" class="row g-2 align-items-end mb-2">
+            @Html.AntiForgeryToken()<input type="hidden" name="Id" value="@s.Id" />
+            <div class="col-md-3"><label class="eq-label">Name</label><input name="Name" value="@s.Name" class="form-control form-control-sm" maxlength="100" placeholder="@(s.Id == 0 ? "New stage" : "")" /></div>
+            <div class="col-md-1"><label class="eq-label">Order</label><input type="number" name="SortOrder" value="@s.SortOrder" class="form-control form-control-sm" /></div>
+            <div class="col-md-2"><label class="eq-label">Follow-up gap (days)</label><input type="number" min="0" name="DefaultFollowUpDays" value="@s.DefaultFollowUpDays" class="form-control form-control-sm" /></div>
+            <div class="col-md-1"><label class="eq-label">Colour</label><input type="color" name="ColorCode" value="@s.ColorCode" class="form-control form-control-sm form-control-color" /></div>
+            <div class="col-md-2"><label class="eq-label">Code</label><div class="eq-sub">@(s.StageCode ?? "—")</div></div>
+            <div class="col-md-1"><div class="form-check"><input class="form-check-input" type="checkbox" name="IsActive" value="true" checked="@s.IsActive" id="st@(s.Id)" disabled="@(s.StageCode != null)" /><input type="hidden" name="IsActive" value="false" /><label class="form-check-label small" for="st@(s.Id)">Active</label></div></div>
+            <div class="col-md-2"><button class="btn btn-sm @(s.Id == 0 ? "btn-primary" : "btn-outline-primary")">@(s.Id == 0 ? "Add" : "Save")</button></div>
+        </form>
+    }
+}
+else if (tab == "outcomes")
+{
+    @foreach (var o in Model.Outcomes.Append(new CentralLicenceApp.Models.EnquiryCallOutcome { SortOrder = Model.Outcomes.Count + 1 }))
+    {
+        <form asp-action="SaveOutcome" method="post" class="row g-2 align-items-end mb-2">
+            @Html.AntiForgeryToken()<input type="hidden" name="Id" value="@o.Id" />
+            <div class="col-md-3"><label class="eq-label">Name</label><input name="Name" value="@o.Name" class="form-control form-control-sm" maxlength="100" placeholder="@(o.Id == 0 ? "New outcome" : "")" /></div>
+            <div class="col-md-1"><label class="eq-label">Order</label><input type="number" name="SortOrder" value="@o.SortOrder" class="form-control form-control-sm" /></div>
+            <div class="col-md-2"><label class="eq-label">Retry after (hours)</label><input type="number" min="0" name="RetryHours" value="@o.RetryHours" class="form-control form-control-sm" /></div>
+            <div class="col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="IsConnected" value="true" checked="@o.IsConnected" id="oc@(o.Id)" /><label class="form-check-label small" for="oc@(o.Id)">Counts as connected</label></div></div>
+            <div class="col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="IsActive" value="true" checked="@o.IsActive" id="oa@(o.Id)" /><input type="hidden" name="IsActive" value="false" /><label class="form-check-label small" for="oa@(o.Id)">Active</label></div></div>
+            <div class="col-md-2"><button class="btn btn-sm @(o.Id == 0 ? "btn-primary" : "btn-outline-primary")">@(o.Id == 0 ? "Add" : "Save")</button></div>
+        </form>
+    }
+}
+else
+{
+    var (action, items) = tab == "types" ? ("SaveBusinessType", Model.BusinessTypes) : tab == "lost" ? ("SaveLostReason", Model.LostReasons) : ("SaveSource", Model.Sources);
+    @foreach (var i in items.Append(new CentralLicenceApp.Models.EnquiryLookup { SortOrder = items.Count + 1 }))
+    {
+        <form asp-action="@action" method="post" class="row g-2 align-items-end mb-2">
+            @Html.AntiForgeryToken()<input type="hidden" name="Id" value="@i.Id" />
+            <div class="col-md-5"><label class="eq-label">Name</label><input name="Name" value="@i.Name" class="form-control form-control-sm" maxlength="100" placeholder="@(i.Id == 0 ? "Add new" : "")" /></div>
+            <div class="col-md-2"><label class="eq-label">Order</label><input type="number" name="SortOrder" value="@i.SortOrder" class="form-control form-control-sm" /></div>
+            <div class="col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" name="IsActive" value="true" checked="@i.IsActive" id="lk@(i.Id)" /><input type="hidden" name="IsActive" value="false" /><label class="form-check-label small" for="lk@(i.Id)">Active</label></div></div>
+            <div class="col-md-2"><button class="btn btn-sm @(i.Id == 0 ? "btn-primary" : "btn-outline-primary")">@(i.Id == 0 ? "Add" : "Save")</button></div>
+        </form>
+    }
+}
+</div></div>

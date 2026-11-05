@@ -11,6 +11,8 @@ namespace CentralLicenceApp.Models.ViewModels
         public int? TaskTypeFilter { get; set; }
         public int? CategoryFilter { get; set; }
         public string? StatusFilter { get; set; }
+        public int? PriorityFilter { get; set; }
+        public List<TicketPriorityMaster> Priorities { get; set; } = new();
         public int? UserFilter { get; set; }
         public string? SearchTerm { get; set; }
 
@@ -41,6 +43,7 @@ namespace CentralLicenceApp.Models.ViewModels
         public List<TaskCategoryMaster> TaskCategories { get; set; } = new();
         public List<ProjectModuleMaster> Projects { get; set; } = new();
         public List<UserMaster> AssignableUsers { get; set; } = new();
+        public List<TicketPriorityMaster> Priorities { get; set; } = new();
         public bool IsEdit { get; set; }
 
         // Attachment upload (Create & Edit)

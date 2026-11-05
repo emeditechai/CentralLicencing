@@ -1,0 +1,29 @@
+@model List<CentralLicenceApp.Models.EnquiryClient>
+@{ ViewData["Title"] = "Enquiry Clients"; }
+<partial name="_EnquiryStyles" />
+<div class="eq-head">
+    <div class="eq-title"><div class="eq-title-icon"><i class="bi bi-building"></i></div><div><h4>Enquiry Clients</h4><p>Client base for enquiries, separate from Party Master</p></div></div>
+    <a asp-action="Create" asp-permission="EnquiryClient:Create" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> New Client</a>
+</div>
+<form method="get" class="d-flex gap-2 mb-3" style="max-width:480px;">
+    <input name="search" value="@ViewBag.Search" class="form-control" placeholder="Company, code, city, contact, mobile" aria-label="Search" />
+    <button class="btn btn-primary">Search</button>
+</form>
+<div class="eq-card"><div class="table-responsive"><table class="table eq-table mb-0">
+    <thead><tr><th>Code</th><th>Company</th><th>Type</th><th>City</th><th>Primary contact</th><th class="text-end">Open / Total</th><th>Status</th></tr></thead>
+    <tbody>
+        @if (!Model.Any()) { <tr><td colspan="7" class="text-center text-muted py-5">No clients found.</td></tr> }
+        @foreach (var c in Model)
+        {
+            <tr>
+                <td>@c.ClientCode</td>
+                <td><a asp-action="Details" asp-route-id="@c.Id" class="fw-semibold text-decoration-none">@c.CompanyName</a></td>
+                <td>@c.BusinessTypeName</td>
+                <td>@c.City</td>
+                <td>@c.PrimaryContactName<div class="eq-sub">@c.PrimaryMobile @c.PrimaryEmail</div></td>
+                <td class="text-end">@c.OpenEnquiryCount / @c.EnquiryCount</td>
+                <td><span class="badge @(c.IsActive ? "badge-ok" : "badge-neu") rounded-pill">@(c.IsActive ? "Active" : "Inactive")</span></td>
+            </tr>
+        }
+    </tbody>
+</table></div></div>

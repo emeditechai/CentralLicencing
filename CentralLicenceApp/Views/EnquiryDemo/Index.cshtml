@@ -1,0 +1,40 @@
+@model CentralLicenceApp.Models.ViewModels.EnquiryDemoCalendarViewModel
+@{
+    ViewData["Title"] = "Demo Calendar";
+    var first = Model.Month;
+    var start = first.AddDays(-(int)first.DayOfWeek);
+    var prev = first.AddMonths(-1);
+    var next = first.AddMonths(1);
+    var byDay = Model.Demos.GroupBy(d => d.ScheduledAt.Date).ToDictionary(g => g.Key, g => g.ToList());
+}
+<partial name="_EnquiryStyles" />
+<div class="eq-head">
+    <div class="eq-title"><div class="eq-title-icon"><i class="bi bi-calendar-event"></i></div><div><h4>Demo Calendar</h4><p>Schedule demos from an enquiry's page</p></div></div>
+    <div class="d-flex align-items-center gap-2">
+        <a asp-action="Index" asp-route-year="@prev.Year" asp-route-month="@prev.Month" class="btn btn-outline-secondary" title="Previous month"><i class="bi bi-chevron-left"></i></a>
+        <strong style="min-width:140px;text-align:center;">@first.ToString("MMMM yyyy")</strong>
+        <a asp-action="Index" asp-route-year="@next.Year" asp-route-month="@next.Month" class="btn btn-outline-secondary" title="Next month"><i class="bi bi-chevron-right"></i></a>
+        <a asp-action="Index" class="btn btn-outline-primary">Today</a>
+    </div>
+</div>
+<div class="eq-card" style="overflow-x:auto;">
+    <div class="eq-cal">
+        @foreach (var d in new[] { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }) { <div class="eq-cal-h">@d</div> }
+        @for (var i = 0; i < 42; i++)
+        {
+            var day = start.AddDays(i);
+            if (i >= 35 && day.Month != first.Month) { break; }
+            <div class="eq-cal-d @(day.Month != first.Month ? "other" : "") @(day == DateTime.Today ? "today" : "")">
+                <strong>@day.Day</strong>
+                @if (byDay.TryGetValue(day, out var demos))
+                {
+                    foreach (var demo in demos)
+                    {
+                        var cls = demo.Status == "Completed" ? "done" : demo.Status is "Cancelled" or "NoShow" ? "off" : "";
+                        <a class="eq-cal-ev @cls" asp-action="Details" asp-route-id="@demo.Id" title="@demo.ProductName · @demo.PresenterName · @demo.Status">@demo.ScheduledAt.ToString("hh:mm tt") @demo.CompanyName</a>
+                    }
+                }
+            </div>
+        }
+    </div>
+</div>
