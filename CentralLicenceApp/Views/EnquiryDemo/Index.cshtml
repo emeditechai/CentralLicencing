@@ -18,14 +18,15 @@
     </div>
 </div>
 <div class="eq-card" style="overflow-x:auto;">
+    @if (!Model.Demos.Any(x => x.ScheduledAt.Month == first.Month && x.ScheduledAt.Year == first.Year)) { <div class="eq-cal-none">No demos this month.</div> }
     <div class="eq-cal">
         @foreach (var d in new[] { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" }) { <div class="eq-cal-h">@d</div> }
         @for (var i = 0; i < 42; i++)
         {
             var day = start.AddDays(i);
             if (i >= 35 && day.Month != first.Month) { break; }
-            <div class="eq-cal-d @(day.Month != first.Month ? "other" : "") @(day == DateTime.Today ? "today" : "")">
-                <strong>@day.Day</strong>
+            <div class="eq-cal-d @(day.Month != first.Month ? "other" : "") @(day == DateTime.Today ? "today" : "") @(byDay.ContainsKey(day) ? "" : "empty")">
+                <strong>@day.Day</strong><span class="eq-cal-wd">@day.ToString("ddd, MMM")</span>
                 @if (byDay.TryGetValue(day, out var demos))
                 {
                     foreach (var demo in demos)

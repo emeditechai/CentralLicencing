@@ -35,6 +35,7 @@
 @if (Model.ViewMode == "board")
 {
     @Html.AntiForgeryToken()
+    <div class="eq-sub mb-2 d-lg-none">Swipe across to see more stages. Open an enquiry to change its stage.</div>
     <div class="eq-board">
         @foreach (var s in o.Stages)
         {
@@ -43,7 +44,7 @@
                 <div class="eq-col-head" style="color:@s.ColorCode;"><span>@s.Name</span><span>@cards.Count</span></div>
                 @foreach (var e in cards)
                 {
-                    <a class="eq-board-card" draggable="true" data-id="@e.Id" asp-action="Details" asp-route-id="@e.Id">
+                    <a class="eq-board-card" draggable="true" title="Drag to change stage, or open to change it there" data-id="@e.Id" asp-action="Details" asp-route-id="@e.Id">
                         <div class="fw-semibold" style="font-size:.84rem;">@e.CompanyName</div>
                         <div class="eq-sub">@e.Title</div>
                         <div class="eq-sub @(e.NextFollowUpAt < DateTime.Now && !e.StageIsClosed ? "eq-overdue" : "")">@(e.IsOnHold ? "On hold" : e.NextFollowUpAt?.ToString("dd MMM hh:mm tt"))</div>

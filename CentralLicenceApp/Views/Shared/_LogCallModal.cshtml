@@ -1,7 +1,7 @@
 @model List<CentralLicenceApp.Models.EnquiryCallOutcome>
 @{ var returnTo = ViewData["ReturnTo"] as string ?? "calllist"; }
 <div class="modal fade" id="logCallModal" tabindex="-1">
-    <div class="modal-dialog modal-lg"><form asp-controller="ClientEnquiry" asp-action="LogCall" method="post" class="modal-content">
+    <div class="modal-dialog modal-lg modal-fullscreen-sm-down"><form asp-controller="ClientEnquiry" asp-action="LogCall" method="post" class="modal-content">
         @Html.AntiForgeryToken()
         <input type="hidden" name="id" id="lcEnquiry" value="@ViewData["EnquiryId"]" />
         <input type="hidden" name="followUpId" id="lcFollowUp" />

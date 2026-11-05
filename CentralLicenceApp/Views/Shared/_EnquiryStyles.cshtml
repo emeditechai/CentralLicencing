@@ -35,4 +35,79 @@
     .eq-cal-ev.off { background:#f1f5f9; color:#64748b; text-decoration:line-through; }
     .eq-bar { height:8px; border-radius:4px; background:#eef2f7; overflow:hidden; }
     .eq-bar > span { display:block; height:100%; border-radius:4px; }
+    .eq-cal-wd, .eq-cal-none { display:none; }
+
+    /* Tablets and phones */
+    @@media (max-width: 991.98px) {
+        .eq-head > .d-flex, .eq-head > form { width:100%; }
+        .nav-pills, .nav-tabs { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        .nav-pills .nav-link, .nav-tabs .nav-link { white-space:nowrap; }
+        .eq-col { flex-basis:78vw; max-width:300px; scroll-snap-align:start; }
+        .eq-board { scroll-snap-type:x proximity; }
+    }
+
+    /* Phones: tables become cards, the calendar becomes an agenda */
+    @@media (max-width: 767.98px) {
+        .eq-title h4 { font-size:1.15rem; }
+        .eq-title-icon { width:40px; height:40px; font-size:1.05rem; }
+        .eq-head { margin-bottom:1rem; }
+        .eq-head > .d-flex { flex-wrap:wrap; }
+        .eq-head > .d-flex > .btn, .eq-head > .d-flex > form, .eq-head > .d-flex > .btn-group { flex:1 1 auto; }
+        .eq-head > .d-flex > form .btn { width:100%; }
+        .eq-card-head > .d-flex { width:100%; flex-wrap:wrap; }
+        .eq-card-head > .d-flex > * { flex:1 1 auto; width:auto !important; }
+        .eq-card-body { padding:.85rem; }
+        .eq-tile { padding:.7rem .85rem; }
+        .eq-tile-num { font-size:1.3rem; }
+        /* 16px stops iPhones zooming the page when a field is tapped */
+        .form-control, .form-select, .form-control-sm, .form-select-sm { font-size:16px; }
+        .btn:not(.btn-close), .form-select, .form-control { min-height:40px; }
+        .btn-sm { display:inline-flex; align-items:center; justify-content:center; }
+
+        .eq-table thead { display:none; }
+        .eq-table, .eq-table tbody { display:block; width:100%; }
+        .eq-table tr { display:block; padding:.7rem .85rem; border-bottom:1px solid #e2e8f0; }
+        .eq-table tr:last-child { border-bottom:0; }
+        .eq-table td { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:.25rem 0; border:0; text-align:right !important; max-width:none !important; white-space:normal !important; overflow-wrap:anywhere; }
+        .eq-table td[data-label]::before { content:attr(data-label); flex:0 0 38%; text-align:left; font-size:.7rem; font-weight:700; color:#64748b; text-transform:uppercase; padding-top:2px; }
+        .eq-table td > div, .eq-table td > a { min-width:0; }
+        .eq-table td.eq-cell-block { display:block; text-align:left !important; }
+        .eq-table td[colspan] { display:block; text-align:center !important; }
+        .eq-table td .eq-cell-value { flex:1 1 auto; min-width:0; }
+        .eq-table td.eq-actions { display:block; padding-top:.5rem; }
+        .eq-table td.eq-actions .eq-cell-value { display:flex; flex-wrap:wrap; gap:6px; }
+        .eq-table td.eq-actions::before { display:none; }
+        .eq-table td.eq-actions .btn { flex:1 1 auto; }
+
+        .eq-cal { display:block; min-width:0; border:0; }
+        .eq-cal-h, .eq-cal-d.other, .eq-cal-d.empty { display:none; }
+        .eq-cal-d { min-height:0; border-right:0; padding:.6rem .85rem; font-size:.85rem; }
+        .eq-cal-wd { display:inline; color:#64748b; margin-left:4px; }
+        .eq-cal-ev { padding:7px 9px; margin-top:6px; }
+        .eq-cal-none { display:block; padding:2rem 1rem; text-align:center; color:#64748b; }
+    }
 </style>
+<script>
+    // Copies each column heading onto its cells so phones can show them as labelled cards.
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.eq-table').forEach(function (table) {
+            var heads = Array.from(table.querySelectorAll('thead th')).map(function (th) { return th.textContent.trim(); });
+            if (!heads.length) {
+                table.querySelectorAll('tbody td:first-child').forEach(function (td) { td.classList.add('eq-cell-block'); });
+                return;
+            }
+            table.querySelectorAll('tbody tr').forEach(function (tr) {
+                Array.from(tr.children).forEach(function (td, i) {
+                    if (td.hasAttribute('colspan')) return;
+                    var value = document.createElement('div');
+                    value.className = 'eq-cell-value';
+                    while (td.firstChild) value.appendChild(td.firstChild);
+                    td.appendChild(value);
+                    if (heads[i]) td.setAttribute('data-label', heads[i]);
+                    else td.classList.add('eq-cell-block');
+                    if (heads[i] === 'Actions') td.classList.add('eq-actions');
+                });
+            });
+        });
+    });
+</script>

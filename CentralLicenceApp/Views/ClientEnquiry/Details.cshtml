@@ -181,7 +181,7 @@
 
 <partial name="_LogCallModal" model="Model.Outcomes" view-data="ViewData" />
 
-<div class="modal fade" id="stageModal" tabindex="-1"><div class="modal-dialog"><form asp-action="ChangeStage" asp-route-id="@e.Id" method="post" class="modal-content">
+<div class="modal fade" id="stageModal" tabindex="-1"><div class="modal-dialog modal-fullscreen-sm-down"><form asp-action="ChangeStage" asp-route-id="@e.Id" method="post" class="modal-content">
     @Html.AntiForgeryToken()
     <div class="modal-header"><h5 class="modal-title">Change stage</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
     <div class="modal-body">
@@ -203,7 +203,7 @@
     <div class="modal-footer"><button class="btn btn-primary">Save</button></div>
 </form></div></div>
 
-<div class="modal fade" id="followUpModal" tabindex="-1"><div class="modal-dialog"><form asp-action="AddFollowUp" asp-route-id="@e.Id" method="post" class="modal-content">
+<div class="modal fade" id="followUpModal" tabindex="-1"><div class="modal-dialog modal-fullscreen-sm-down"><form asp-action="AddFollowUp" asp-route-id="@e.Id" method="post" class="modal-content">
     @Html.AntiForgeryToken()
     <div class="modal-header"><h5 class="modal-title">Plan follow-up</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
     <div class="modal-body">
@@ -214,7 +214,7 @@
     <div class="modal-footer"><button class="btn btn-primary">Save</button></div>
 </form></div></div>
 
-<div class="modal fade" id="completeModal" tabindex="-1"><div class="modal-dialog"><form asp-action="CompleteFollowUp" method="post" class="modal-content">
+<div class="modal fade" id="completeModal" tabindex="-1"><div class="modal-dialog modal-fullscreen-sm-down"><form asp-action="CompleteFollowUp" method="post" class="modal-content">
     @Html.AntiForgeryToken()
     <input type="hidden" name="followUpId" id="cpFollowUp" />
     <div class="modal-header"><h5 class="modal-title">Complete follow-up</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
@@ -228,7 +228,7 @@
     <div class="modal-footer"><button class="btn btn-success">Complete</button></div>
 </form></div></div>
 
-<div class="modal fade" id="rescheduleModal" tabindex="-1"><div class="modal-dialog"><form asp-action="RescheduleFollowUp" method="post" class="modal-content">
+<div class="modal fade" id="rescheduleModal" tabindex="-1"><div class="modal-dialog modal-fullscreen-sm-down"><form asp-action="RescheduleFollowUp" method="post" class="modal-content">
     @Html.AntiForgeryToken()
     <input type="hidden" name="followUpId" id="rsFollowUp" />
     <div class="modal-header"><h5 class="modal-title">Reschedule follow-up</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
@@ -239,7 +239,7 @@
     <div class="modal-footer"><button class="btn btn-primary">Reschedule</button></div>
 </form></div></div>
 
-<div class="modal fade" id="holdModal" tabindex="-1"><div class="modal-dialog"><form asp-action="Hold" asp-route-id="@e.Id" method="post" class="modal-content">
+<div class="modal fade" id="holdModal" tabindex="-1"><div class="modal-dialog modal-fullscreen-sm-down"><form asp-action="Hold" asp-route-id="@e.Id" method="post" class="modal-content">
     @Html.AntiForgeryToken()
     <div class="modal-header"><h5 class="modal-title">Put on hold</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
     <div class="modal-body">
@@ -249,7 +249,7 @@
     <div class="modal-footer"><button class="btn btn-warning">Put on hold</button></div>
 </form></div></div>
 
-<div class="modal fade" id="reassignModal" tabindex="-1"><div class="modal-dialog"><form asp-action="Reassign" asp-route-id="@e.Id" method="post" class="modal-content">
+<div class="modal fade" id="reassignModal" tabindex="-1"><div class="modal-dialog modal-fullscreen-sm-down"><form asp-action="Reassign" asp-route-id="@e.Id" method="post" class="modal-content">
     @Html.AntiForgeryToken()
     <div class="modal-header"><h5 class="modal-title">Reassign enquiry</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
     <div class="modal-body">

@@ -72,7 +72,7 @@
 <partial name="_LogCallModal" model="Model.Outcomes" />
 
 <div class="modal fade" id="rescheduleModal" tabindex="-1">
-    <div class="modal-dialog"><form asp-action="RescheduleFollowUp" method="post" class="modal-content">
+    <div class="modal-dialog modal-fullscreen-sm-down"><form asp-action="RescheduleFollowUp" method="post" class="modal-content">
         @Html.AntiForgeryToken()
         <input type="hidden" name="followUpId" id="rsFollowUp" /><input type="hidden" name="returnTo" value="calllist" />
         <div class="modal-header"><h5 class="modal-title">Reschedule follow-up</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
