@@ -61,5 +61,7 @@ namespace CentralLicenceApp.Repositories
         // Comments
         Task<IEnumerable<TaskComment>> GetCommentsAsync(int taskId);
         Task<int> AddCommentAsync(TaskComment comment);
+        Task AddCommentAttachmentAsync(TaskCommentAttachment attachment);
+        Task<TaskCommentAttachment?> GetCommentAttachmentAsync(int id);
     }
 }

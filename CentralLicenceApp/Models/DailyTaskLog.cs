@@ -102,5 +102,19 @@ namespace CentralLicenceApp.Models
 
         public string UserName { get; set; } = string.Empty;
         public string? ProfileImagePath { get; set; }
+
+        public List<TaskCommentAttachment> Attachments { get; set; } = new();
+    }
+
+    public class TaskCommentAttachment
+    {
+        public int Id { get; set; }
+        public int CommentId { get; set; }
+        public int TaskId { get; set; }
+        public string OriginalName { get; set; } = string.Empty;
+        public string StoredName { get; set; } = string.Empty;
+        public long FileSize { get; set; }
+        public int UploadedById { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

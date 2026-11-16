@@ -21,6 +21,11 @@ namespace CentralLicenceApp.Controllers
         private static readonly string[] AllowedExtensions = { ".pdf", ".png", ".jpg", ".jpeg" };
         private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10 MB per file
 
+        // Comment attachments: images, PDF and Office documents.
+        private static readonly string[] CommentFileExtensions =
+            { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".csv", ".ppt", ".pptx", ".txt" };
+        private const int MaxCommentFiles = 5;
+
         public DailyTaskLogController(
             IDailyTaskLogRepository taskRepo,
             IUserRepository userRepo,
@@ -265,7 +270,7 @@ namespace CentralLicenceApp.Controllers
         // ── Comments ──
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddComment(int TaskId, string CommentText)
+        public async Task<IActionResult> AddComment(int TaskId, string? CommentText, List<IFormFile>? Files)
         {
             var currentUser = await GetCurrentUserAsync();
             if (currentUser == null) return Challenge();
@@ -280,7 +285,23 @@ namespace CentralLicenceApp.Controllers
                     return Forbid();
             }
 
-            if (!string.IsNullOrWhiteSpace(CommentText))
+            CommentText = CommentText?.Trim() ?? string.Empty;
+            var files = (Files ?? new List<IFormFile>()).Where(f => f != null && f.Length > 0).ToList();
+
+            string? fileError = null;
+            if (files.Count > MaxCommentFiles)
+                fileError = $"Attach up to {MaxCommentFiles} files per comment.";
+            else if (files.FirstOrDefault(f => !CommentFileExtensions.Contains(Path.GetExtension(f.FileName).ToLowerInvariant())) is { } badType)
+                fileError = $"{badType.FileName} can't be attached. Allowed: images, PDF, Word, Excel, PowerPoint, CSV and text files.";
+            else if (files.FirstOrDefault(f => f.Length > MaxFileSizeBytes) is { } tooBig)
+                fileError = $"{tooBig.FileName} is larger than 10 MB.";
+            if (fileError != null)
+            {
+                TempData["Error"] = fileError;
+                return RedirectToAction("Details", new { id = TaskId });
+            }
+
+            if (!string.IsNullOrWhiteSpace(CommentText) || files.Count > 0)
             {
                 var comment = new TaskComment
                 {
@@ -288,7 +309,26 @@ namespace CentralLicenceApp.Controllers
                     UserId = userId,
                     CommentText = CommentText
                 };
-                await _taskRepo.AddCommentAsync(comment);
+                var commentId = await _taskRepo.AddCommentAsync(comment);
+
+                // Stored outside wwwroot, so files are only reachable through CommentFile's access check.
+                var folder = Path.Combine(_env.ContentRootPath, "TaskCommentAttachments", TaskId.ToString());
+                Directory.CreateDirectory(folder);
+                foreach (var file in files)
+                {
+                    var storedName = $"{Guid.NewGuid():N}{Path.GetExtension(file.FileName).ToLowerInvariant()}";
+                    await using (var fs = new FileStream(Path.Combine(folder, storedName), FileMode.Create))
+                        await file.CopyToAsync(fs);
+                    await _taskRepo.AddCommentAttachmentAsync(new TaskCommentAttachment
+                    {
+                        CommentId = commentId,
+                        TaskId = TaskId,
+                        OriginalName = Path.GetFileName(file.FileName),
+                        StoredName = storedName,
+                        FileSize = file.Length,
+                        UploadedById = userId
+                    });
+                }
 
                 // Handle Mentions
                 var assignableUsers = await _taskRepo.GetAssignableUsersAsync();
@@ -313,9 +353,40 @@ namespace CentralLicenceApp.Controllers
                     }
                 }
 
-                TempData["Success"] = "Comment added successfully.";
+                TempData["Success"] = files.Count > 0 ? $"Comment added with {files.Count} attachment(s)." : "Comment added successfully.";
+            }
+            else
+            {
+                TempData["Error"] = "Write a comment or attach a file.";
             }
             return RedirectToAction("Details", new { id = TaskId });
+        }
+
+        // ── Comment attachment (same visibility as the task page) ──
+        [HttpGet]
+        public async Task<IActionResult> CommentFile(int id, bool inline = false)
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser == null) return Challenge();
+            var file = await _taskRepo.GetCommentAttachmentAsync(id);
+            if (file == null) return NotFound();
+            var task = await _taskRepo.GetByIdAsync(file.TaskId, currentUser.FullName ?? "");
+            if (task == null) return NotFound();
+            if (!IsAdminOrTicketAdmin && !currentUser.IsCoreMember && task.UserId != currentUser.Id && task.AssignedToUserId != currentUser.Id)
+                return Forbid();
+
+            var path = Path.Combine(_env.ContentRootPath, "TaskCommentAttachments", file.TaskId.ToString(), Path.GetFileName(file.StoredName));
+            if (!System.IO.File.Exists(path)) return NotFound();
+
+            var ext = Path.GetExtension(file.StoredName).ToLowerInvariant();
+            var previewType = ext switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg", ".png" => "image/png", ".gif" => "image/gif", ".webp" => "image/webp", ".pdf" => "application/pdf", _ => null
+            };
+            // Images and PDFs open in the browser; everything else downloads.
+            return inline && previewType != null
+                ? PhysicalFile(path, previewType)
+                : PhysicalFile(path, "application/octet-stream", file.OriginalName);
         }
 
         // ── Edit Task ──

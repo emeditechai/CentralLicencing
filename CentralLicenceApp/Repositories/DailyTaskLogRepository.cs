@@ -438,7 +438,7 @@ namespace CentralLicenceApp.Repositories
             using var conn = CreateConnection();
             await ((SqlConnection)conn).OpenAsync();
 
-            var scripts = new[] { "062_CreateDailyTaskLogTables.sql", "081_CreateTaskAttachmentTable.sql", "082_CreateTaskCommentTable.sql", "083_AddTaskNumberToDailyTaskLog.sql", "085_AddPriorityToDailyTaskLog.sql" };
+            var scripts = new[] { "062_CreateDailyTaskLogTables.sql", "081_CreateTaskAttachmentTable.sql", "082_CreateTaskCommentTable.sql", "083_AddTaskNumberToDailyTaskLog.sql", "085_AddPriorityToDailyTaskLog.sql", "087_CreateTaskCommentAttachmentTable.sql" };
             foreach (var scriptFile in scripts)
             {
                 var scriptPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "SqlScripts", scriptFile);
@@ -508,14 +508,37 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             await ((SqlConnection)conn).OpenAsync();
-            return await conn.QueryAsync<TaskComment>(
+            var comments = (await conn.QueryAsync<TaskComment>(
                 @"SELECT c.Id, c.TaskId, c.UserId, c.CommentText, c.CreatedAt,
                          u.FullName AS UserName, u.ProfileImagePath
                   FROM TaskComment c
                   INNER JOIN UserMaster u ON u.Id = c.UserId
                   WHERE c.TaskId = @TaskId
-                  ORDER BY c.CreatedAt ASC",
-                new { TaskId = taskId });
+                  ORDER BY c.CreatedAt DESC, c.Id DESC",
+                new { TaskId = taskId })).ToList();
+
+            var files = (await conn.QueryAsync<TaskCommentAttachment>(
+                "SELECT * FROM TaskCommentAttachment WHERE TaskId = @TaskId ORDER BY Id",
+                new { TaskId = taskId })).ToLookup(a => a.CommentId);
+            foreach (var c in comments) c.Attachments = files[c.Id].ToList();
+            return comments;
+        }
+
+        public async Task AddCommentAttachmentAsync(TaskCommentAttachment a)
+        {
+            using var conn = CreateConnection();
+            await ((SqlConnection)conn).OpenAsync();
+            await conn.ExecuteAsync(
+                @"INSERT INTO TaskCommentAttachment (CommentId, TaskId, OriginalName, StoredName, FileSize, UploadedById)
+                  VALUES (@CommentId, @TaskId, @OriginalName, @StoredName, @FileSize, @UploadedById)", a);
+        }
+
+        public async Task<TaskCommentAttachment?> GetCommentAttachmentAsync(int id)
+        {
+            using var conn = CreateConnection();
+            await ((SqlConnection)conn).OpenAsync();
+            return await conn.QuerySingleOrDefaultAsync<TaskCommentAttachment>(
+                "SELECT * FROM TaskCommentAttachment WHERE Id = @id", new { id });
         }
 
         public async Task<int> AddCommentAsync(TaskComment comment)

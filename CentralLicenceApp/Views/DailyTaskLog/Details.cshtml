@@ -354,17 +354,42 @@
 <div class="td-card">
     <div class="card-body">
         <div class="td-section-lbl"><i class="bi bi-chat-dots me-1"></i> Comments &amp; Activity</div>
-        
+
+        <div class="mb-4">
+            <form asp-action="AddComment" method="post" enctype="multipart/form-data" id="commentForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="TaskId" value="@Model.Id" />
+                <div class="mb-2">
+                    <textarea id="commentInput" name="CommentText" class="form-control" rows="2" placeholder="Write a comment..." aria-label="Comment" style="border-radius:12px; font-size:0.85rem; border:1px solid #e2e8f0;"></textarea>
+                </div>
+                <div id="commentFileList" class="d-flex flex-wrap gap-2 mb-2"></div>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div>
+                        <label for="commentFiles" class="btn btn-sm mb-0" style="border:1px solid #e2e8f0; border-radius:8px; color:#475569; font-weight:600;">
+                            <i class="bi bi-paperclip me-1"></i> Attach files
+                        </label>
+                        <input type="file" id="commentFiles" name="Files" multiple class="d-none"
+                               accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt" />
+                        <span style="font-size:0.72rem; color:#94a3b8;" class="ms-1">Images, PDF, Word, Excel, PowerPoint · up to 5 files, 10 MB each</span>
+                    </div>
+                    <button type="submit" class="btn btn-sm" style="background:#6366f1; color:#fff; border-radius:8px; font-weight:600; padding:0.4rem 1rem;">
+                        <i class="bi bi-send-fill me-1"></i> Post Comment
+                    </button>
+                </div>
+                <div id="commentError" class="text-danger mt-1" style="font-size:0.78rem;"></div>
+            </form>
+        </div>
+
         @if (comments.Any())
         {
-            <div class="d-flex flex-column gap-3 mb-4">
+            <div class="d-flex flex-column gap-3" style="border-top:1px solid #f1f5f9; padding-top:1rem;">
                 @foreach (var comment in comments)
                 {
                     <div class="d-flex gap-2">
                         <div class="flex-shrink-0">
                             @if (!string.IsNullOrWhiteSpace(comment.ProfileImagePath))
                             {
-                                <img src="@Url.Content(comment.ProfileImagePath)" class="rounded-circle" style="width:36px;height:36px;object-fit:cover;" />
+                                <img src="@Url.Content(comment.ProfileImagePath)" class="rounded-circle" style="width:36px;height:36px;object-fit:cover;" alt="" />
                             }
                             else
                             {
@@ -373,14 +398,58 @@
                                 </div>
                             }
                         </div>
-                        <div style="background:#f8fafc; border:1px solid #f1f5f9; border-radius:12px; padding:12px 16px; width:100%;">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div style="background:#f8fafc; border:1px solid #f1f5f9; border-radius:12px; padding:12px 16px; width:100%; min-width:0;">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-1 mb-1">
                                 <span style="font-size:0.85rem; font-weight:700; color:#1e293b;">@comment.UserName</span>
                                 <span style="font-size:0.75rem; color:#94a3b8;"><i class="bi bi-clock me-1"></i>@comment.CreatedAt.ToString("dd MMM yyyy, hh:mm tt")</span>
                             </div>
-                            <div style="font-size:0.85rem; color:#475569;">
-                                @Html.Raw(comment.CommentText)
-                            </div>
+                            @if (!string.IsNullOrWhiteSpace(comment.CommentText))
+                            {
+                                <div style="font-size:0.85rem; color:#475569; overflow-wrap:anywhere;">
+                                    @Html.Raw(comment.CommentText)
+                                </div>
+                            }
+                            @if (comment.Attachments.Any())
+                            {
+                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                    @foreach (var a in comment.Attachments)
+                                    {
+                                        var ext = System.IO.Path.GetExtension(a.OriginalName).ToLowerInvariant();
+                                        var isImage = ext is ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp";
+                                        var canOpen = isImage || ext == ".pdf";
+                                        var icon = ext switch
+                                        {
+                                            ".pdf" => "bi-file-earmark-pdf text-danger",
+                                            ".doc" or ".docx" => "bi-file-earmark-word text-primary",
+                                            ".xls" or ".xlsx" or ".csv" => "bi-file-earmark-excel text-success",
+                                            ".ppt" or ".pptx" => "bi-file-earmark-ppt text-warning",
+                                            _ when isImage => "bi-file-earmark-image text-info",
+                                            _ => "bi-file-earmark-text text-secondary"
+                                        };
+                                        var size = a.FileSize >= 1048576 ? $"{a.FileSize / 1048576.0:0.0} MB" : $"{Math.Max(1, a.FileSize / 1024)} KB";
+                                        <div class="d-flex align-items-center gap-2" style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:6px 10px; max-width:100%;">
+                                            @if (isImage)
+                                            {
+                                                <a href="@Url.Action("CommentFile", new { id = a.Id, inline = true })" target="_blank" rel="noopener">
+                                                    <img src="@Url.Action("CommentFile", new { id = a.Id, inline = true })" alt="@a.OriginalName" style="width:40px;height:40px;object-fit:cover;border-radius:6px;" loading="lazy" />
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi @icon" style="font-size:1.4rem;"></i>
+                                            }
+                                            <div style="min-width:0;">
+                                                <div style="font-size:0.78rem; font-weight:600; color:#1e293b; overflow-wrap:anywhere;">@a.OriginalName</div>
+                                                <div style="font-size:0.7rem; color:#94a3b8;">
+                                                    @size ·
+                                                    @if (canOpen) { <a href="@Url.Action("CommentFile", new { id = a.Id, inline = true })" target="_blank" rel="noopener">Open</a> <text>·</text> }
+                                                    <a href="@Url.Action("CommentFile", new { id = a.Id })">Download</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
                         </div>
                     </div>
                 }
@@ -388,28 +457,70 @@
         }
         else
         {
-            <div class="text-center py-3 mb-4" style="color:#94a3b8;font-size:.85rem;">
+            <div class="text-center py-3" style="color:#94a3b8;font-size:.85rem;">
                 <i class="bi bi-chat" style="font-size:1.5rem;display:block;margin-bottom:.5rem;color:#cbd5e1;"></i>
                 No comments yet. Start the conversation!
             </div>
         }
-
-        <div class="mt-3 pt-3" style="border-top:1px solid #f1f5f9;">
-            <form asp-action="AddComment" method="post">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="TaskId" value="@Model.Id" />
-                <div class="mb-2">
-                    <textarea id="commentInput" name="CommentText" class="form-control" rows="2" placeholder="Write a comment..." style="border-radius:12px; font-size:0.85rem; border:1px solid #e2e8f0;" required></textarea>
-                </div>
-                <div class="text-end">
-                    <button type="submit" class="btn btn-sm" style="background:#6366f1; color:#fff; border-radius:8px; font-weight:600; padding:0.4rem 1rem;">
-                        <i class="bi bi-send-fill me-1"></i> Post Comment
-                    </button>
-                </div>
-            </form>
-        </div>
     </div>
 </div>
+<script>
+    (function () {
+        var input = document.getElementById('commentFiles');
+        var list = document.getElementById('commentFileList');
+        var error = document.getElementById('commentError');
+        var allowed = input.accept.split(',');
+        var picked = new DataTransfer();
+
+        function render() {
+            list.innerHTML = '';
+            Array.from(picked.files).forEach(function (f, i) {
+                var chip = document.createElement('span');
+                chip.style.cssText = 'font-size:.75rem;background:#eef2ff;color:#4338ca;border-radius:8px;padding:3px 8px;display:inline-flex;align-items:center;gap:6px;max-width:100%;';
+                var name = document.createElement('span');
+                name.textContent = f.name;
+                name.style.overflowWrap = 'anywhere';
+                var remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'btn-close';
+                remove.style.fontSize = '.55rem';
+                remove.setAttribute('aria-label', 'Remove ' + f.name);
+                remove.addEventListener('click', function () {
+                    var next = new DataTransfer();
+                    Array.from(picked.files).forEach(function (x, j) { if (j !== i) next.items.add(x); });
+                    picked = next;
+                    input.files = picked.files;
+                    render();
+                });
+                chip.appendChild(name);
+                chip.appendChild(remove);
+                list.appendChild(chip);
+            });
+        }
+
+        // Each pick adds to the files already chosen, so several can be picked one at a time.
+        input.addEventListener('change', function () {
+            error.textContent = '';
+            Array.from(input.files).forEach(function (f) {
+                var ext = '.' + f.name.split('.').pop().toLowerCase();
+                if (allowed.indexOf(ext) < 0) { error.textContent = f.name + " can't be attached."; return; }
+                if (f.size > 10 * 1024 * 1024) { error.textContent = f.name + ' is larger than 10 MB.'; return; }
+                if (picked.files.length >= 5) { error.textContent = 'Attach up to 5 files per comment.'; return; }
+                picked.items.add(f);
+            });
+            input.files = picked.files;
+            render();
+        });
+
+        document.getElementById('commentForm').addEventListener('submit', function (e) {
+            var text = document.getElementById('commentInput').value.trim();
+            if (!text && picked.files.length === 0) {
+                e.preventDefault();
+                error.textContent = 'Write a comment or attach a file.';
+            }
+        });
+    })();
+</script>
 
 <!-- ─── Bottom Actions ─── -->
 <div class="d-flex gap-2 mb-4">
