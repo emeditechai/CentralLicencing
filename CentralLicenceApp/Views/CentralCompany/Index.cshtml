@@ -1,0 +1,83 @@
+@model List<CentralLicenceApp.Models.CentralCompany>
+@{
+    ViewData["Title"] = "Central Company";
+    var totalUsers = Model.Sum(c => c.UserCount);
+    var withUsers = Model.Count(c => c.UserCount > 0);
+    var withoutUsers = Model.Count - withUsers;
+    var configured = Model.Count(c => c.HasConnectionString);
+    var servers = Model.Where(c => !string.IsNullOrWhiteSpace(c.ApiUrl)).Select(c => c.ApiUrl!.Trim().TrimEnd('/').ToLowerInvariant()).Distinct().Count();
+    var newest = Model.OrderByDescending(c => c.CreatedDate).FirstOrDefault();
+    var largest = Model.OrderByDescending(c => c.UserCount).FirstOrDefault(c => c.UserCount > 0);
+    var search = ViewBag.Search as string;
+}
+<partial name="_CentralStyles" />
+<style>
+    .cc-tile { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:.9rem 1rem; height:100%; display:flex; gap:12px; align-items:flex-start; }
+    .cc-tile-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
+    .cc-tile-num { font-size:1.45rem; font-weight:800; color:#1e293b; line-height:1.15; font-variant-numeric:tabular-nums; }
+    .cc-tile-sub { font-size:.75rem; color:#64748b; margin-top:2px; overflow-wrap:anywhere; }
+    .cc-list-avatar { width:34px; height:34px; border-radius:9px; background:#eef2ff; color:#4f46e5; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.85rem; flex-shrink:0; }
+    .cc-users-pill { display:inline-flex; align-items:center; gap:4px; font-weight:700; font-size:.8rem; border-radius:20px; padding:2px 10px; }
+</style>
+
+<div class="cc-head">
+    <div class="cc-title"><div class="cc-title-icon"><i class="bi bi-buildings"></i></div><div><h4>Central Company</h4><p>Client companies and their users</p></div></div>
+    <form method="get" class="d-flex gap-2" style="min-width:280px;">
+        <input name="search" value="@search" class="form-control" placeholder="Search name, code or API URL" aria-label="Search companies" />
+        <button class="btn btn-primary" title="Search"><i class="bi bi-search"></i></button>
+        @if (!string.IsNullOrWhiteSpace(search)) { <a asp-action="Index" class="btn btn-outline-secondary">Clear</a> }
+    </form>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="cc-tile"><div class="cc-tile-icon" style="background:#eef2ff;color:#4f46e5;"><i class="bi bi-buildings"></i></div>
+            <div><div class="cc-tile-num">@Model.Count</div><div class="cc-label">Companies</div><div class="cc-tile-sub">@withUsers with users · @withoutUsers without</div></div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="cc-tile"><div class="cc-tile-icon" style="background:#ecfeff;color:#0e7490;"><i class="bi bi-people"></i></div>
+            <div><div class="cc-tile-num">@totalUsers</div><div class="cc-label">Users</div><div class="cc-tile-sub">@(largest == null ? "No users yet" : $"Most: {largest.CompanyName} ({largest.UserCount})")</div></div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="cc-tile"><div class="cc-tile-icon" style="background:#f0fdf4;color:#15803d;"><i class="bi bi-database-check"></i></div>
+            <div><div class="cc-tile-num">@configured<span style="font-size:.95rem;color:#94a3b8;"> / @Model.Count</span></div><div class="cc-label">Database configured</div><div class="cc-tile-sub">@(Model.Count - configured == 0 ? "All companies connected" : $"{Model.Count - configured} not configured")</div></div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="cc-tile"><div class="cc-tile-icon" style="background:#fff7ed;color:#c2410c;"><i class="bi bi-hdd-network"></i></div>
+            <div><div class="cc-tile-num">@servers</div><div class="cc-label">API servers</div><div class="cc-tile-sub">@(newest == null ? "—" : $"Newest: {newest.CompanyName}, {newest.CreatedDate:dd MMM yyyy}")</div></div></div>
+    </div>
+</div>
+
+<div class="cc-panel">
+    <div class="cc-panel-head"><span>Companies (@Model.Count)@(string.IsNullOrWhiteSpace(search) ? "" : $" matching \"{search}\"")</span></div>
+    <div class="table-responsive">
+        <table class="table cc-table mb-0">
+            <thead><tr><th>Company</th><th>App Company ID</th><th>API URL</th><th>Database</th><th>Users</th><th>Created</th><th>Modified</th><th class="text-end">View</th></tr></thead>
+            <tbody>
+                @if (!Model.Any()) { <tr><td colspan="8" class="text-center text-muted py-5">No companies found.</td></tr> }
+                @foreach (var c in Model)
+                {
+                    <tr>
+                        <td data-label="Company">
+                            <div class="d-flex align-items-center gap-2" style="min-width:0;">
+                                <div class="cc-list-avatar d-none d-md-flex">@(string.IsNullOrWhiteSpace(c.CompanyName) ? "?" : c.CompanyName.Trim()[..1].ToUpper())</div>
+                                <div style="min-width:0;"><div class="fw-semibold" style="color:#0f172a;">@c.CompanyName</div><span class="cc-code">@c.CompanyCode</span></div>
+                            </div>
+                        </td>
+                        <td data-label="App Company ID">@c.ApplicationCompanyID</td>
+                        <td data-label="API URL" style="overflow-wrap:anywhere;">@(string.IsNullOrWhiteSpace(c.ApiUrl) ? "—" : c.ApiUrl)</td>
+                        <td data-label="Database">@if (c.HasConnectionString) { <span class="badge badge-ok rounded-pill">Configured</span> } else { <span class="badge badge-neu rounded-pill">Not configured</span> }</td>
+                        <td data-label="Users">
+                            <span class="cc-users-pill" style="@(c.UserCount > 0 ? "background:#eef2ff;color:#4338ca;" : "background:#f1f5f9;color:#94a3b8;")"><i class="bi bi-people"></i>@c.UserCount</span>
+                        </td>
+                        <td data-label="Created" class="text-nowrap">@c.CreatedDate.ToString("dd MMM yyyy")</td>
+                        <td data-label="Modified" class="text-nowrap">@(c.ModifiedDate?.ToString("dd MMM yyyy") ?? "—")</td>
+                        <td data-label="View" class="text-end">
+                            <a asp-action="Details" asp-route-id="@c.ID" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary" title="View @c.CompanyName in a new tab"><i class="bi bi-eye"></i></a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

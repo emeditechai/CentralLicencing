@@ -71,6 +71,7 @@ namespace CentralLicenceApp.Services
                 {
                     new MenuDef("Client Licences",   "Link", "ClientLicense",   "Index", "bi bi-card-checklist", CrudPerms, R_AllNonClient),
                     new MenuDef("Validation History","Link", "LicenseHistory",  "Index", "bi bi-clock-history",  ViewExport, R_AllNonClient),
+                    new MenuDef("Central Company",   "Link", "CentralCompany",  "Index", "bi bi-buildings",      ViewOnly,   R_Admin),
                     new MenuDef("Audit Log",         "Link", "LicenseAuditLog", "Index", "bi bi-clipboard2-pulse", ViewExport, R_AllNonClient),
                 }),
 

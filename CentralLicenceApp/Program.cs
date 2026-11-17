@@ -128,6 +128,9 @@ builder.Services.AddHttpClient(WhatsAppService.HttpClientName);
 builder.Services.AddScoped<IWhatsAppRepository>(_ => new WhatsAppRepository(connStr));
 builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 builder.Services.AddSingleton<IWhatsAppEmailNotifier, WhatsAppEmailNotifier>();
+// Licences › Central Company (read-only view of Central_Company / Central_Users)
+builder.Services.AddScoped<ICentralCompanyRepository>(_ => new CentralCompanyRepository(connStr));
+
 // Client Enquiry module
 builder.Services.AddScoped<IEnquiryRepository>(_ => new EnquiryRepository(connStr));
 builder.Services.AddSingleton<IEnquiryNotificationService, EnquiryNotificationService>();
@@ -283,6 +286,17 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogWarning(ex, "Task Report SP seeding encountered an error (non-blocking).");
+    }
+
+    // Ensure Licences › Central Company menu exists
+    try
+    {
+        await scope.ServiceProvider.GetRequiredService<ICentralCompanyRepository>().EnsureMenuAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(ex, "Central Company menu seeding encountered an error (non-blocking).");
     }
 
     // Ensure Client Enquiry tables + CRM › Client Enquiry menu exist

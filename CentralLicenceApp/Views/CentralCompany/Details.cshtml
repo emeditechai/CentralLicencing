@@ -1,0 +1,116 @@
+@model CentralLicenceApp.Models.CentralCompany
+@{
+    ViewData["Title"] = Model.CompanyName;
+    var users = (List<CentralLicenceApp.Models.CentralUser>)ViewBag.Users;
+}
+<partial name="_CentralStyles" />
+<div class="cc-head">
+    <div class="cc-title"><div class="cc-title-icon"><i class="bi bi-building"></i></div><div><h4>@Model.CompanyName</h4><p>@Model.CompanyCode · @Model.UserCount user@(Model.UserCount == 1 ? "" : "s")</p></div></div>
+    <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> All companies</a>
+</div>
+
+<div class="cc-panel mb-3">
+    <div class="cc-panel-head">Company details</div>
+    <div class="cc-panel-body cc-fields">
+        <div><div class="cc-label">Company ID</div><div class="cc-value">@Model.ID</div></div>
+        <div><div class="cc-label">Company Code</div><div class="cc-value">@Model.CompanyCode</div></div>
+        <div><div class="cc-label">Application Company ID</div><div class="cc-value">@Model.ApplicationCompanyID</div></div>
+        <div><div class="cc-label">API URL</div><div class="cc-value">@(string.IsNullOrWhiteSpace(Model.ApiUrl) ? "—" : Model.ApiUrl)</div></div>
+        <div><div class="cc-label">Instance Key</div><div class="cc-value" title="Partly hidden">@Model.MaskedInstanceKey</div></div>
+        <div><div class="cc-label">Database connection</div><div class="cc-value">@if (Model.HasConnectionString) { <span class="badge badge-ok rounded-pill">Configured</span> } else { <span class="badge badge-neu rounded-pill">Not configured</span> }</div></div>
+        <div><div class="cc-label">Created</div><div class="cc-value">@Model.CreatedDate.ToString("dd MMM yyyy hh:mm tt")</div></div>
+        <div><div class="cc-label">Modified</div><div class="cc-value">@(Model.ModifiedDate?.ToString("dd MMM yyyy hh:mm tt") ?? "—")</div></div>
+        <div style="grid-column:1 / -1;">
+            <div class="cc-label">Decrypted connection string</div>
+            <div class="d-flex align-items-start gap-2 mt-1">
+                <code id="connValue" class="flex-grow-1" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.5rem .7rem;color:#475569;overflow-wrap:anywhere;white-space:pre-wrap;min-width:0;">••••••••••••••••••••••••</code>
+                <button type="button" id="connToggle" class="btn btn-sm btn-outline-secondary" title="Show connection string" aria-label="Show connection string"><i class="bi bi-eye"></i></button>
+                <button type="button" id="connCopy" class="btn btn-sm btn-outline-secondary d-none" title="Copy" aria-label="Copy connection string"><i class="bi bi-clipboard"></i></button>
+            </div>
+            <div class="cc-tile-sub" style="font-size:.74rem;color:#94a3b8;margin-top:4px;">Contains database credentials. Hidden by default and never stored in the page.</div>
+        </div>
+    </div>
+</div>
+@Html.AntiForgeryToken()
+
+<div class="cc-panel">
+    <div class="cc-panel-head">
+        <span>Users (@users.Count)</span>
+        <form method="get" class="d-flex gap-2">
+            <input type="hidden" name="id" value="@Model.ID" />
+            <input name="search" value="@ViewBag.Search" class="form-control form-control-sm" placeholder="Search username" aria-label="Search users" />
+            <button class="btn btn-sm btn-primary"><i class="bi bi-search"></i></button>
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table cc-table mb-0">
+            <thead><tr><th>#</th><th>Username</th><th>App User ID</th><th>Created</th><th>Modified</th><th class="text-end">View</th></tr></thead>
+            <tbody>
+                @if (!users.Any()) { <tr><td colspan="6" class="text-center text-muted py-5">No users for this company.</td></tr> }
+                @{ var n = 0; }
+                @foreach (var u in users)
+                {
+                    n++;
+                    <tr>
+                        <td data-label="#">@n</td>
+                        <td data-label="Username" class="fw-semibold">@u.Username</td>
+                        <td data-label="App User ID">@(u.ApplicationUserID?.ToString() ?? "—")</td>
+                        <td data-label="Created">@u.CreatedDate.ToString("dd MMM yyyy")</td>
+                        <td data-label="Modified">@(u.ModifiedDate?.ToString("dd MMM yyyy") ?? "—")</td>
+                        <td data-label="View" class="text-end"><a asp-action="UserDetails" asp-route-id="@u.ID" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary" title="View @u.Username in a new tab"><i class="bi bi-eye"></i></a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    const box = document.getElementById('connValue');
+    const toggle = document.getElementById('connToggle');
+    const copy = document.getElementById('connCopy');
+    const masked = box.textContent;
+    let shown = false;
+
+    function hide() {
+        shown = false;
+        box.textContent = masked;
+        toggle.innerHTML = '<i class="bi bi-eye"></i>';
+        toggle.title = 'Show connection string';
+        copy.classList.add('d-none');
+    }
+
+    toggle.addEventListener('click', async () => {
+        if (shown) { hide(); return; }
+        toggle.disabled = true;
+        try {
+            const res = await fetch('@Url.Action("ConnectionString", new { id = Model.ID })', {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value }
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) { Swal.fire('Could not load', data.message || 'You do not have access to this value.', 'error'); return; }
+            shown = true;
+            box.textContent = data.value || 'Not set';
+            toggle.innerHTML = '<i class="bi bi-eye-slash"></i>';
+            toggle.title = 'Hide connection string';
+            if (data.value) copy.classList.remove('d-none');
+        } catch (e) {
+            Swal.fire('Could not load', e.message, 'error');
+        } finally {
+            toggle.disabled = false;
+        }
+    });
+
+    copy.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(box.textContent); copy.innerHTML = '<i class="bi bi-check2"></i>'; setTimeout(() => copy.innerHTML = '<i class="bi bi-clipboard"></i>', 1500); }
+        catch { Swal.fire('Copy failed', 'Select the text and copy it manually.', 'warning'); }
+    });
+
+    // Hide again when the user leaves the tab.
+    document.addEventListener('visibilitychange', () => { if (document.hidden && shown) hide(); });
+})();
+</script>
+}

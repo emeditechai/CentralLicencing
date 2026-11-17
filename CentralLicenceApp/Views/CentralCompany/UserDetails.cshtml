@@ -1,0 +1,24 @@
+@model CentralLicenceApp.Models.CentralUser
+@{ ViewData["Title"] = Model.Username; }
+<partial name="_CentralStyles" />
+<div class="cc-head">
+    <div class="cc-title"><div class="cc-title-icon"><i class="bi bi-person"></i></div><div><h4>@Model.Username</h4><p>@(Model.CompanyName ?? "Company not found")</p></div></div>
+    @if (Model.CompanyName != null)
+    {
+        <a asp-action="Details" asp-route-id="@Model.CompanyID" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> @Model.CompanyName</a>
+    }
+</div>
+<div class="cc-panel">
+    <div class="cc-panel-head">User details</div>
+    <div class="cc-panel-body cc-fields">
+        <div><div class="cc-label">User ID</div><div class="cc-value">@Model.ID</div></div>
+        <div><div class="cc-label">Username</div><div class="cc-value">@Model.Username</div></div>
+        <div><div class="cc-label">Application User ID</div><div class="cc-value">@(Model.ApplicationUserID?.ToString() ?? "—")</div></div>
+        <div><div class="cc-label">Company</div><div class="cc-value">@(Model.CompanyName ?? "—")</div></div>
+        <div><div class="cc-label">Company Code</div><div class="cc-value">@(Model.CompanyCode ?? "—")</div></div>
+        <div><div class="cc-label">Company ID</div><div class="cc-value">@Model.CompanyID</div></div>
+        <div><div class="cc-label">Instance Key</div><div class="cc-value" title="Partly hidden">@Model.MaskedInstanceKey</div></div>
+        <div><div class="cc-label">Created</div><div class="cc-value">@Model.CreatedDate.ToString("dd MMM yyyy hh:mm tt")</div></div>
+        <div><div class="cc-label">Modified</div><div class="cc-value">@(Model.ModifiedDate?.ToString("dd MMM yyyy hh:mm tt") ?? "—")</div></div>
+    </div>
+</div>
