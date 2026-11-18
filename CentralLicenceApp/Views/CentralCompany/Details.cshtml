@@ -16,6 +16,13 @@
         <div><div class="cc-label">Company Code</div><div class="cc-value">@Model.CompanyCode</div></div>
         <div><div class="cc-label">Application Company ID</div><div class="cc-value">@Model.ApplicationCompanyID</div></div>
         <div><div class="cc-label">API URL</div><div class="cc-value">@(string.IsNullOrWhiteSpace(Model.ApiUrl) ? "—" : Model.ApiUrl)</div></div>
+        <div><div class="cc-label">Web URL</div><div class="cc-value">
+            @if (Model.WebLink != null) { <a href="@Model.WebLink" target="_blank" rel="noopener noreferrer"><i class="bi bi-box-arrow-up-right me-1"></i>@Model.WebUrl</a> }
+            else { @(string.IsNullOrWhiteSpace(Model.WebUrl) ? "—" : Model.WebUrl) }
+        </div></div>
+        <div><div class="cc-label">Valid From</div><div class="cc-value">@(Model.ValidFrom?.ToString("dd MMM yyyy") ?? "—")</div></div>
+        <div><div class="cc-label">Valid To</div><div class="cc-value">@(Model.ValidTo?.ToString("dd MMM yyyy") ?? "—")</div></div>
+        <div><div class="cc-label">Validity</div><div class="cc-value"><span class="badge rounded-pill" style="background:@Model.Validity.Background;color:@Model.Validity.Color;">@Model.Validity.Text</span></div></div>
         <div><div class="cc-label">Instance Key</div><div class="cc-value" title="Partly hidden">@Model.MaskedInstanceKey</div></div>
         <div><div class="cc-label">Database connection</div><div class="cc-value">@if (Model.HasConnectionString) { <span class="badge badge-ok rounded-pill">Configured</span> } else { <span class="badge badge-neu rounded-pill">Not configured</span> }</div></div>
         <div><div class="cc-label">Created</div><div class="cc-value">@Model.CreatedDate.ToString("dd MMM yyyy hh:mm tt")</div></div>

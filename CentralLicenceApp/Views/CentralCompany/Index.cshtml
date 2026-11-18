@@ -52,9 +52,9 @@
     <div class="cc-panel-head"><span>Companies (@Model.Count)@(string.IsNullOrWhiteSpace(search) ? "" : $" matching \"{search}\"")</span></div>
     <div class="table-responsive">
         <table class="table cc-table mb-0">
-            <thead><tr><th>Company</th><th>App Company ID</th><th>API URL</th><th>Database</th><th>Users</th><th>Created</th><th>Modified</th><th class="text-end">View</th></tr></thead>
+            <thead><tr><th>Company</th><th>App Company ID</th><th>API URL</th><th>Database</th><th>Users</th><th>Validity</th><th>Created</th><th>Modified</th><th class="text-end">View</th></tr></thead>
             <tbody>
-                @if (!Model.Any()) { <tr><td colspan="8" class="text-center text-muted py-5">No companies found.</td></tr> }
+                @if (!Model.Any()) { <tr><td colspan="9" class="text-center text-muted py-5">No companies found.</td></tr> }
                 @foreach (var c in Model)
                 {
                     <tr>
@@ -69,6 +69,10 @@
                         <td data-label="Database">@if (c.HasConnectionString) { <span class="badge badge-ok rounded-pill">Configured</span> } else { <span class="badge badge-neu rounded-pill">Not configured</span> }</td>
                         <td data-label="Users">
                             <span class="cc-users-pill" style="@(c.UserCount > 0 ? "background:#eef2ff;color:#4338ca;" : "background:#f1f5f9;color:#94a3b8;")"><i class="bi bi-people"></i>@c.UserCount</span>
+                        </td>
+                        <td data-label="Validity">
+                            <span class="badge rounded-pill" style="background:@c.Validity.Background;color:@c.Validity.Color;">@c.Validity.Text</span>
+                            @if (c.ValidTo.HasValue) { <div style="font-size:.72rem;color:#94a3b8;">till @c.ValidTo.Value.ToString("dd MMM yyyy")</div> }
                         </td>
                         <td data-label="Created" class="text-nowrap">@c.CreatedDate.ToString("dd MMM yyyy")</td>
                         <td data-label="Modified" class="text-nowrap">@(c.ModifiedDate?.ToString("dd MMM yyyy") ?? "—")</td>

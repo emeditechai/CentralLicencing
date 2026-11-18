@@ -14,7 +14,7 @@ namespace CentralLicenceApp.Repositories
 
         // ConnectionString / DecryptedConnectionString are deliberately never selected.
         private const string CompanySelect = @"
-            SELECT c.ID, c.CompanyCode, c.CompanyName, c.ApplicationCompanyID, c.InstanceKey, c.CreatedDate, c.ModifiedDate, c.ApiUrl,
+            SELECT c.ID, c.CompanyCode, c.CompanyName, c.ApplicationCompanyID, c.InstanceKey, c.CreatedDate, c.ModifiedDate, c.ApiUrl, c.WebUrl, c.ValidFrom, c.ValidTo,
                    CAST(CASE WHEN NULLIF(LTRIM(RTRIM(c.ConnectionString)), '') IS NULL THEN 0 ELSE 1 END AS BIT) AS HasConnectionString,
                    (SELECT COUNT(*) FROM Central_Users u WHERE u.CompanyID = c.ID AND u.InstanceKey = c.InstanceKey) AS UserCount,
                    (SELECT MAX(u.CreatedDate) FROM Central_Users u WHERE u.CompanyID = c.ID AND u.InstanceKey = c.InstanceKey) AS LastUserAddedDate
@@ -35,7 +35,7 @@ namespace CentralLicenceApp.Repositories
             using var conn = CreateConnection();
             var sql = CompanySelect;
             if (!string.IsNullOrWhiteSpace(search))
-                sql += " WHERE c.CompanyName LIKE @S OR c.CompanyCode LIKE @S OR c.ApiUrl LIKE @S";
+                sql += " WHERE c.CompanyName LIKE @S OR c.CompanyCode LIKE @S OR c.ApiUrl LIKE @S OR c.WebUrl LIKE @S";
             return (await conn.QueryAsync<CentralCompany>(sql + " ORDER BY c.CompanyName", new { S = $"%{search?.Trim()}%" })).ToList();
         }
 
