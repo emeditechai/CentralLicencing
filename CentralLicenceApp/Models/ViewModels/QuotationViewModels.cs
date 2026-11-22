@@ -18,6 +18,9 @@ namespace CentralLicenceApp.Models.ViewModels
         [Display(Name = "Type")]
         public string? Type { get; set; }
 
+        [Display(Name = "Frequency")]
+        public string? BillingFrequency { get; set; }
+
         [Range(1, int.MaxValue, ErrorMessage = "Qty must be at least 1")]
         [Display(Name = "Qty")]
         public int Qty { get; set; } = 1;

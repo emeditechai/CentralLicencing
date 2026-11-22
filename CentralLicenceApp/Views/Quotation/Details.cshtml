@@ -80,7 +80,7 @@
                                     <td class="ps-3 text-muted" style="font-size:.8rem;">@line.SNo</td>
                                     <td class="fw-semibold" style="font-size:.875rem;">@line.ItemDescription</td>
                                     <td style="font-size:.82rem;">@(line.PlanName ?? "—")</td>
-                                    <td style="font-size:.82rem;">@(line.Type ?? "—")</td>
+                                    <td style="font-size:.82rem;">@(line.Type ?? "—")@if (string.Equals(line.Type?.Trim(), "Subscription", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(line.BillingFrequency)) {<span class="text-muted"> / @line.BillingFrequency</span>}</td>
                                     <td class="text-end">@line.Qty</td>
                                     <td class="text-end">₹@line.Rate.ToString("0.00")</td>
                                     <td class="text-end" style="font-size:.8rem;">

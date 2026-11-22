@@ -251,9 +251,14 @@
                     <td>
                         @if (!string.IsNullOrWhiteSpace(line.Type))
                         {
-                            var badgeBg = (line.Type ?? "").ToLowerInvariant() == "subscription" ? "#ede9fe" : "#e0f2fe";
-                            var badgeClr = (line.Type ?? "").ToLowerInvariant() == "subscription" ? "#6d28d9" : "#0369a1";
+                            var isSub = (line.Type ?? "").Trim().ToLowerInvariant() == "subscription";
+                            var badgeBg = isSub ? "#ede9fe" : "#e0f2fe";
+                            var badgeClr = isSub ? "#6d28d9" : "#0369a1";
                             <span style="background:@badgeBg;color:@badgeClr;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:600;">@line.Type</span>
+                            @if (isSub && !string.IsNullOrWhiteSpace(line.BillingFrequency))
+                            {
+                                <div style="margin-top:3px;color:#6d28d9;font-size:9px;font-weight:600;white-space:nowrap;">@line.BillingFrequency</div>
+                            }
                         }
                     </td>
                     <td class="num">@line.Qty</td>

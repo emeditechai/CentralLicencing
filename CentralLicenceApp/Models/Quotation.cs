@@ -65,6 +65,8 @@ namespace CentralLicenceApp.Models
         public string ItemDescription { get; set; } = string.Empty;
         public string? PlanName { get; set; }
         public string? Type { get; set; }
+        /// <summary>Monthly | Quarterly | Half Yearly | Annual — only meaningful for Subscription lines.</summary>
+        public string? BillingFrequency { get; set; }
         public int Qty { get; set; }
         public decimal Rate { get; set; }
         public decimal DiscountPercent { get; set; }

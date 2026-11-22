@@ -129,10 +129,10 @@ namespace CentralLicenceApp.Repositories
                 line.QuotationId = quotationId;
                 await conn.ExecuteAsync(@"
                     INSERT INTO QuotationLine
-                        (QuotationId, SNo, ItemDescription, PlanName, Type, Qty, Rate,
+                        (QuotationId, SNo, ItemDescription, PlanName, Type, BillingFrequency, Qty, Rate,
                          DiscountPercent, DiscountAmount, Amount, GstPercent, CgstAmount, SgstAmount, IgstAmount)
                     VALUES
-                        (@QuotationId, @SNo, @ItemDescription, @PlanName, @Type, @Qty, @Rate,
+                        (@QuotationId, @SNo, @ItemDescription, @PlanName, @Type, @BillingFrequency, @Qty, @Rate,
                          @DiscountPercent, @DiscountAmount, @Amount, @GstPercent, @CgstAmount, @SgstAmount, @IgstAmount);",
                     line, tx);
             }
@@ -190,10 +190,10 @@ namespace CentralLicenceApp.Repositories
                 line.QuotationId = quotation.Id;
                 await conn.ExecuteAsync(@"
                     INSERT INTO QuotationLine
-                        (QuotationId, SNo, ItemDescription, PlanName, Type, Qty, Rate,
+                        (QuotationId, SNo, ItemDescription, PlanName, Type, BillingFrequency, Qty, Rate,
                          DiscountPercent, DiscountAmount, Amount, GstPercent, CgstAmount, SgstAmount, IgstAmount)
                     VALUES
-                        (@QuotationId, @SNo, @ItemDescription, @PlanName, @Type, @Qty, @Rate,
+                        (@QuotationId, @SNo, @ItemDescription, @PlanName, @Type, @BillingFrequency, @Qty, @Rate,
                          @DiscountPercent, @DiscountAmount, @Amount, @GstPercent, @CgstAmount, @SgstAmount, @IgstAmount);",
                     line, tx);
             }

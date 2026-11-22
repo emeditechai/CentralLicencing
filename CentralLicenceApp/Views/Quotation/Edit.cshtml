@@ -115,7 +115,16 @@
                                             <input type="text" name="Lines[@i].ItemDescription" value="@line.ItemDescription" class="form-control form-control-sm item-desc" placeholder="Item description…" required />
                                         </td>
                                         <td><input type="text" name="Lines[@i].PlanName" value="@line.PlanName" class="form-control form-control-sm item-plan" /></td>
-                                        <td><input type="text" name="Lines[@i].Type" value="@line.Type" class="form-control form-control-sm item-type" /></td>
+                                        <td>
+                                            <input type="text" name="Lines[@i].Type" value="@line.Type" class="form-control form-control-sm item-type" />
+                                            <select name="Lines[@i].BillingFrequency" class="form-select form-select-sm item-freq mt-1" style="font-size:.75rem;" title="Billing frequency">
+                                                <option value="">Frequency…</option>
+                                                @foreach (var f in new[] { "Monthly", "Quarterly", "Half Yearly", "Annual" })
+                                                {
+                                                    <option value="@f" selected="@(string.Equals(line.BillingFrequency, f, StringComparison.OrdinalIgnoreCase))">@f</option>
+                                                }
+                                            </select>
+                                        </td>
                                         <td><input type="number" name="Lines[@i].Qty" value="@line.Qty" class="form-control form-control-sm line-qty" min="1" /></td>
                                         <td><input type="number" name="Lines[@i].Rate" value="@line.Rate" class="form-control form-control-sm line-rate" min="0" step="0.01" /></td>
                                         <td><input type="number" name="Lines[@i].DiscountPercent" value="@line.DiscountPercent" class="form-control form-control-sm line-disc" min="0" max="100" step="0.01" /></td>
@@ -372,6 +381,12 @@
         });
     }
 
+    // Frequency only applies to Subscription lines
+    function syncFreqVisibility(row) {
+        const isSub = (row.querySelector('.item-type').value || '').trim().toLowerCase() === 'subscription';
+        row.querySelector('.item-freq').style.display = isSub ? '' : 'none';
+    }
+
     function wireRow(row) {
         const picker = row.querySelector('.prod-picker');
         populatePicker(picker);
@@ -382,9 +397,13 @@
             row.querySelector('.item-plan').value  = r.pricingModel;
             const isSubscription = (r.billingModel || '').toLowerCase() === 'subscription';
             row.querySelector('.item-type').value  = isSubscription ? 'Subscription' : 'Onetime';
+            row.querySelector('.item-freq').value  = isSubscription ? (r.billingFrequency || '') : '';
+            syncFreqVisibility(row);
             row.querySelector('.line-rate').value  = r.rate;
             recompute();
         });
+        row.querySelector('.item-type').addEventListener('input', () => syncFreqVisibility(row));
+        syncFreqVisibility(row);
         row.querySelectorAll('.line-qty,.line-rate,.line-disc,.line-gst')
            .forEach(el => el.addEventListener('input', recompute));
     }
@@ -412,7 +431,14 @@
                 <input type="text" name="Lines[${index}].ItemDescription" class="form-control form-control-sm item-desc" placeholder="Item description…" required />
             </td>
             <td><input type="text" name="Lines[${index}].PlanName" class="form-control form-control-sm item-plan" /></td>
-            <td><input type="text" name="Lines[${index}].Type" class="form-control form-control-sm item-type" /></td>
+            <td>
+                <input type="text" name="Lines[${index}].Type" class="form-control form-control-sm item-type" />
+                <select name="Lines[${index}].BillingFrequency" class="form-select form-select-sm item-freq mt-1" style="font-size:.75rem;" title="Billing frequency">
+                    <option value="">Frequency…</option>
+                    <option value="Monthly">Monthly</option><option value="Quarterly">Quarterly</option>
+                    <option value="Half Yearly">Half Yearly</option><option value="Annual">Annual</option>
+                </select>
+            </td>
             <td><input type="number" name="Lines[${index}].Qty" value="1" class="form-control form-control-sm line-qty" min="1" /></td>
             <td><input type="number" name="Lines[${index}].Rate" value="0" class="form-control form-control-sm line-rate" min="0" step="0.01" /></td>
             <td><input type="number" name="Lines[${index}].DiscountPercent" value="0" class="form-control form-control-sm line-disc" min="0" max="100" step="0.01" /></td>
