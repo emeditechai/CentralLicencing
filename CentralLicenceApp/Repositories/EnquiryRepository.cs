@@ -18,7 +18,7 @@ namespace CentralLicenceApp.Repositories
 
         public async Task EnsureTablesAsync()
         {
-            var path = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "SqlScripts", "086_CreateClientEnquiryTables.sql");
+            var path = Helpers.SqlScriptPath.Resolve("086_CreateClientEnquiryTables.sql");
             if (!File.Exists(path)) return;
             using var conn = CreateConnection();
             var sql = (await File.ReadAllTextAsync(path)).Replace("\r\n", "\n");

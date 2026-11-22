@@ -62,7 +62,7 @@ namespace CentralLicenceApp.Repositories
         {
             using var conn = CreateConnection();
             await ((SqlConnection)conn).OpenAsync();
-            var scriptPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "SqlScripts", "063_TaskReportStoredProcedures.sql");
+            var scriptPath = Helpers.SqlScriptPath.Resolve("063_TaskReportStoredProcedures.sql");
             if (!File.Exists(scriptPath)) return;
             var sql = await File.ReadAllTextAsync(scriptPath);
             foreach (var batch in sql.Split(new[] { "\nGO\n", "\nGO\r\n" }, StringSplitOptions.RemoveEmptyEntries))

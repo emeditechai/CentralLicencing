@@ -17,4 +17,9 @@
     <PackageReference Include="WebPush" Version="1.0.12" />
   </ItemGroup>
 
+  <!-- Startup code runs some of these scripts (menus, tables, procedures); ship them with the build/publish. -->
+  <ItemGroup>
+    <None Include="SqlScripts\**\*.sql" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

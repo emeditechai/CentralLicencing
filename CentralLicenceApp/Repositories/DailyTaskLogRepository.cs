@@ -441,7 +441,7 @@ namespace CentralLicenceApp.Repositories
             var scripts = new[] { "062_CreateDailyTaskLogTables.sql", "081_CreateTaskAttachmentTable.sql", "082_CreateTaskCommentTable.sql", "083_AddTaskNumberToDailyTaskLog.sql", "085_AddPriorityToDailyTaskLog.sql", "087_CreateTaskCommentAttachmentTable.sql" };
             foreach (var scriptFile in scripts)
             {
-                var scriptPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "SqlScripts", scriptFile);
+                var scriptPath = Helpers.SqlScriptPath.Resolve(scriptFile);
                 if (!File.Exists(scriptPath)) continue;
                 var sql = await File.ReadAllTextAsync(scriptPath);
                 foreach (var batch in sql.Split(new[] { "\nGO\n", "\nGO\r\n" }, StringSplitOptions.RemoveEmptyEntries))

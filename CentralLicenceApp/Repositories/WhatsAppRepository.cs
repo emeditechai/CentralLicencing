@@ -22,7 +22,7 @@ namespace CentralLicenceApp.Repositories
 
         public async Task EnsureTablesAsync()
         {
-            var scriptPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "SqlScripts", "084_CreateWhatsAppTables.sql");
+            var scriptPath = Helpers.SqlScriptPath.Resolve("084_CreateWhatsAppTables.sql");
             if (!File.Exists(scriptPath)) return;
             using var conn = CreateConnection();
             var sql = await File.ReadAllTextAsync(scriptPath);

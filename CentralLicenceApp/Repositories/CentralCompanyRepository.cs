@@ -22,7 +22,7 @@ namespace CentralLicenceApp.Repositories
 
         public async Task EnsureMenuAsync()
         {
-            var path = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "SqlScripts", "088_AddCentralCompanyMenu.sql");
+            var path = Helpers.SqlScriptPath.Resolve("088_AddCentralCompanyMenu.sql");
             if (!File.Exists(path)) return;
             using var conn = CreateConnection();
             var sql = (await File.ReadAllTextAsync(path)).Replace("\r\n", "\n");

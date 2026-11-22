@@ -40,11 +40,7 @@ namespace CentralLicenceApp.Repositories
         public async Task EnsureStoredProceduresAsync()
         {
             var assembly = typeof(PayoutReportRepository).Assembly;
-            var resourcePath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "SqlScripts", "069_PayoutReportProcedures.sql");
-
-            // Fallback to relative from current directory
-            if (!File.Exists(resourcePath))
-                resourcePath = Path.Combine(Directory.GetCurrentDirectory(), "SqlScripts", "069_PayoutReportProcedures.sql");
+            var resourcePath = Helpers.SqlScriptPath.Resolve("069_PayoutReportProcedures.sql");
 
             if (!File.Exists(resourcePath)) return;
 
