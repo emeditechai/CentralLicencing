@@ -12,7 +12,7 @@ namespace CentralLicenceApp.Controllers
     [Authorize(Roles = "Administrator")]
     public class ProductMasterController : Controller
     {
-        private static readonly string[] ProductTypes = { "Healthcare", "Hospitality" };
+        private static readonly string[] ProductTypes = { "Healthcare", "Hospitality", "Others", "3rd Party addins", "Services" };
 
         private readonly IProductMasterRepository _repo;
         private readonly IProductRateRepository _productRateRepo;
