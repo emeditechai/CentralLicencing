@@ -79,10 +79,10 @@
         <div class="eq-card mb-3">
             <div class="eq-card-head">Quotation <a asp-controller="Quotation" asp-action="Create" class="btn btn-sm btn-outline-secondary">New quotation</a></div>
             <div class="eq-card-body">
-                @if (!string.IsNullOrWhiteSpace(e.QuotationNo)) { <div class="mb-2"><a asp-controller="Quotation" asp-action="Details" asp-route-id="@e.QuotationId" class="fw-semibold text-decoration-none">@e.QuotationNo</a></div> }
+                @if (!string.IsNullOrWhiteSpace(e.QuotationNo)) { <div class="mb-2 d-flex align-items-center gap-2"><a asp-controller="Quotation" asp-action="Details" asp-route-id="@e.QuotationId" class="fw-semibold text-decoration-none">@e.QuotationNo</a><a asp-controller="Quotation" asp-action="Print" asp-route-id="@e.QuotationId" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary py-0 px-2" title="View quotation (print)" aria-label="View quotation @e.QuotationNo"><i class="bi bi-eye"></i></a></div> }
                 <form asp-action="LinkQuotation" asp-route-id="@e.Id" method="post" class="d-flex gap-2" asp-permission="ClientEnquiry:Edit">
                     @Html.AntiForgeryToken()
-                    <select name="quotationId" class="form-select form-select-sm" aria-label="Quotation" required><option value="">Link a quotation</option>@foreach (var q in Model.Quotations) { <option value="@q.Id">@q.QuotationNo · @q.PartyName · ₹@q.TotalAmount.ToString("N0")</option> }</select>
+                    <select name="quotationId" class="form-select form-select-sm" aria-label="Quotation" required><option value="">Link a quotation</option>@foreach (var q in Model.Quotations.Where(x => x.Id != e.QuotationId)) { <option value="@q.Id">@q.QuotationNo · @q.PartyName · ₹@q.TotalAmount.ToString("N0")</option> }</select>
                     <button class="btn btn-sm btn-outline-primary">Link</button>
                 </form>
             </div>

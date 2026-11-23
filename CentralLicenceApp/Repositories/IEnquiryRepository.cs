@@ -33,7 +33,8 @@ namespace CentralLicenceApp.Repositories
         Task SetHoldAsync(int id, DateTime? resumeDate, string? reason, int userId);
         Task SoftDeleteAsync(int id, int userId);
         Task AddNoteAsync(int id, string note, int userId);
-        Task LinkQuotationAsync(int id, int quotationId, string quotationNo, int userId);
+        /// <summary>Links the quotation; returns false (and logs nothing) if it is already the linked quotation.</summary>
+        Task<bool> LinkQuotationAsync(int id, int quotationId, string quotationNo, int userId);
 
         // Follow-ups and calls
         Task<List<EnquiryFollowUp>> GetFollowUpsAsync(int enquiryId);

@@ -336,10 +336,15 @@ namespace CentralLicenceApp.Controllers
         public async Task<IActionResult> LinkQuotation(int id, int quotationId)
         {
             var scope = await GetScopeAsync();
-            if (await _repo.GetEnquiryAsync(id, scope) == null) return NotFound();
+            var e = await _repo.GetEnquiryAsync(id, scope);
+            if (e == null) return NotFound();
             var q = (await _repo.GetQuotationOptionsAsync()).FirstOrDefault(x => x.Id == quotationId);
             if (q == null) { TempData["Error"] = "Select a quotation."; return RedirectToAction(nameof(Details), new { id }); }
-            await _repo.LinkQuotationAsync(id, q.Id, q.QuotationNo, scope.UserId);
+            if (e.QuotationId == q.Id || !await _repo.LinkQuotationAsync(id, q.Id, q.QuotationNo, scope.UserId))
+            {
+                TempData["Error"] = $"Quotation {q.QuotationNo} is already linked to this enquiry.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
             TempData["Success"] = $"Quotation {q.QuotationNo} linked.";
             return RedirectToAction(nameof(Details), new { id });
         }

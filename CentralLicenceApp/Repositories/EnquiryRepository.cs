@@ -415,15 +415,20 @@ namespace CentralLicenceApp.Repositories
             tx.Commit();
         }
 
-        public async Task LinkQuotationAsync(int id, int quotationId, string quotationNo, int userId)
+        public async Task<bool> LinkQuotationAsync(int id, int quotationId, string quotationNo, int userId)
         {
             using var conn = CreateConnection();
             await conn.OpenAsync();
             using var tx = conn.BeginTransaction();
-            await conn.ExecuteAsync("UPDATE Enquiry SET QuotationId = @quotationId, UpdatedAt = GETDATE() WHERE Id = @id", new { id, quotationId }, tx);
+            // Only update when the link actually changes, so a repeat/double submit doesn't log a duplicate activity.
+            var changed = await conn.ExecuteAsync(
+                "UPDATE Enquiry SET QuotationId = @quotationId, UpdatedAt = GETDATE() WHERE Id = @id AND (QuotationId IS NULL OR QuotationId <> @quotationId)",
+                new { id, quotationId }, tx);
+            if (changed == 0) { tx.Rollback(); return false; }
             await ActivityAsync(conn, tx, id, "Quotation", $"Quotation {quotationNo} linked.", userId);
             await AdvanceStageAsync(conn, tx, id, EnquiryStageCodes.QuotationSent, userId);
             tx.Commit();
+            return true;
         }
 
         // ── Follow-ups and calls ────────────────────────────────────────────
