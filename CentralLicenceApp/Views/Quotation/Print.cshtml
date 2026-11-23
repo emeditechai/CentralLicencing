@@ -87,6 +87,18 @@
         .totals-table tr:last-child td{border-bottom:none;}
         .totals-table td:last-child{text-align:right;white-space:nowrap;font-weight:500;}
         .totals-table .total-row td{font-weight:700;font-size:11px;background:#1e293b;color:#fff;padding:6px 10px;border-bottom:none;}
+        /* Terms & Conditions (rich text) – keep inside A4 width */
+        .terms-block{margin-top:8px;font-size:8.5px;color:#333;line-height:1.45;width:100%;max-width:100%;overflow-wrap:break-word;word-wrap:break-word;}
+        .terms-title{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#1e293b;border-bottom:1px solid #ccc;padding-bottom:2px;margin-bottom:4px;}
+        .terms-body, .terms-body *{max-width:100%!important;white-space:normal!important;font-family:inherit!important;font-size:inherit!important;}
+        .terms-body p, .terms-body div{margin:0 0 2px;}
+        .terms-body h1, .terms-body h2, .terms-body h3, .terms-body h4, .terms-body h5, .terms-body h6{font-size:9px!important;font-weight:700;margin:6px 0 2px;color:#1e293b;}
+        .terms-body ul, .terms-body ol{margin:1px 0 3px;padding-left:14px;}
+        .terms-body ul ul, .terms-body ol ol, .terms-body ul ol, .terms-body ol ul{padding-left:12px;}
+        .terms-body li{margin:0 0 1px;padding-left:1px;page-break-inside:avoid;break-inside:avoid;}
+        .terms-body table{width:100%!important;table-layout:fixed;}
+        .terms-body img{height:auto;}
+        .terms-body strong, .terms-body b{color:#1e293b;}
         /* Footer */
         .validity-note{font-size:8.5px;color:#555;margin-top:8px;padding:5px 10px;border:1px dashed #ccc;background:#fffdf0;border-radius:4px;}
         /* Signature footer – fixed bottom on every print page */
@@ -325,7 +337,7 @@
     }
     @if (!string.IsNullOrWhiteSpace(Model.TermsAndConditions))
     {
-        <div style="margin-top:4px;font-size:9px;color:#444;"><strong>Terms &amp; Conditions:</strong><br />@Html.Raw(Model.TermsAndConditions)</div>
+        <div class="terms-block"><div class="terms-title">Terms &amp; Conditions</div><div class="terms-body">@Html.Raw(CentralLicenceApp.Helpers.HtmlText.ForPrint(Model.TermsAndConditions))</div></div>
     }
 
     @if (Model.ValidUntilDate.HasValue)
