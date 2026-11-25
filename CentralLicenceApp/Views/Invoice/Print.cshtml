@@ -125,10 +125,16 @@
         @@media print{
             body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
             .no-print{display:none!important;}
-            .page{padding:8mm 10mm 22mm;border:none;box-shadow:none;}
+            @@page{size:A4;margin:0;}
+            html,body{width:210mm;}
+            .page{width:210mm;min-height:0;padding:0 10mm;border:none;box-shadow:none;}
+            /* thead/tfoot repeat on every printed page: they reserve room at the top and
+               for the fixed signature footer at the bottom, so content never hides under it */
+            .pf-top{height:8mm;}
+            .pf-bottom{height:36mm;}
             .sig-footer{
                 position:fixed;
-                bottom:0;
+                bottom:4mm;
                 left:10mm;
                 right:10mm;
                 width:auto;
@@ -139,6 +145,10 @@
             body{background:#d0d0d0;}
             .page{margin:20px auto;box-shadow:0 4px 24px rgba(0,0,0,.18);border:1px solid #bbb;}
         }
+        /* Print frame (see @@media print) */
+        .print-frame{width:100%;border-collapse:collapse;}
+        .print-frame > thead > tr > td, .print-frame > tfoot > tr > td, .print-frame > tbody > tr > td{padding:0;border:none;vertical-align:top;}
+        @@media screen{.pf-top, .pf-bottom{height:0;}}
         /* Cancelled watermark */
         .page{position:relative;}
         .watermark-cancelled{
@@ -175,6 +185,7 @@
 </div>
 
 <div class="page">
+<table class="print-frame"><thead><tr><td><div class="pf-top"></div></td></tr></thead><tfoot><tr><td><div class="pf-bottom"></div></td></tr></tfoot><tbody><tr><td>
 @if (Model.IsCancelled)
 {
     <div class="watermark-cancelled">Cancelled</div>
@@ -379,6 +390,8 @@
     }
 
     <!-- ── SIGNATURE ──────────────────────────────────────── -->
+</td></tr></tbody></table>
+
     <div class="sig-footer">
     @{
         var sigs     = Model.Signatories;
